@@ -1,0 +1,3 @@
+[submodule "customized_robotwin"]
+	path = customized_robotwin
+	url = https://github.com/apexs-huawei/customized_robotwin
