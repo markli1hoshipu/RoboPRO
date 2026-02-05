@@ -1,4 +1,5 @@
-from envs._base_task import Base_Task
+# from envs._base_task import Base_Task
+from bench_envs._office_base_task import Base_Task
 from envs.utils import *
 import sapien
 import math
@@ -6,7 +7,7 @@ from envs._GLOBAL_CONFIGS import *
 from copy import deepcopy
 
 
-class grab_roller(Base_Task):
+class grab_roller_thing(Base_Task):
 
     def setup_demo(self, **kwags):
         super()._init_task_env_(**kwags)
