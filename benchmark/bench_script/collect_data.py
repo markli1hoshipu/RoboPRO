@@ -2,11 +2,13 @@ import sys
 
 sys.path.append("./")
 
+from setup_paths import setup_paths
+setup_paths()
+
 import sapien.core as sapien
 from sapien.render import clear_cache
 from collections import OrderedDict
 import pdb
-from envs import *
 import yaml
 import importlib
 import json
@@ -14,6 +16,7 @@ import traceback
 import os
 import time
 from argparse import ArgumentParser
+from pathlib import Path
 
 current_file_path = os.path.abspath(__file__)
 parent_directory = os.path.dirname(current_file_path)
@@ -21,6 +24,7 @@ robotwin_root = Path(os.environ["ROBOTWIN_ROOT"])
 bench_root = Path(os.environ["BENCH_ROOT"])
 os.chdir(robotwin_root) # change to customized_robotwin directory for pathing needs
 
+from envs import *
 
 def class_decorator(task_name):
     envs_module = importlib.import_module(f"bench_envs.{task_name}")

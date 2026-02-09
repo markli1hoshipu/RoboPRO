@@ -19,6 +19,9 @@ EXAMPLES:
     # With custom render frequency
     python bench_script/visualize_task_scene.py grab_roller_thing bench_demo_clean --render-freq 5
 
+    # Roll out the task (run play_once) then view
+    python bench_script/visualize_task_scene.py put_away_stapler bench_demo_clean --rollout
+
 ARGUMENTS:
     task_name      Task module name from bench_envs (e.g. grab_roller_thing)
     task_config    Task config name without .yml extension (e.g. bench_demo_clean)
@@ -26,6 +29,7 @@ ARGUMENTS:
 OPTIONS:
     --seed N           Random seed for scene initialization (default: 0)
     --render-freq N    Render every N simulation steps (default: 1)
+    --rollout          Run play_once() to roll out the task; if not set, only view initial setup
 
 NOTES:
     - The script automatically changes directory to customized_robotwin for proper path resolution
@@ -54,8 +58,11 @@ from envs import CONFIGS_PATH  # from customized_robotwin
 
 
 def get_env_class(task_name):
-    """Load task env class from bench_envs. Handles class name matching module or not."""
-    envs_module = importlib.import_module(f"bench_envs.{task_name}")
+    """Load task env class from bench_envs, or envs if not in bench_envs. Handles class name matching module or not."""
+    try:
+        envs_module = importlib.import_module(f"bench_envs.{task_name}")
+    except ModuleNotFoundError:
+        envs_module = importlib.import_module(f"envs.{task_name}")
     try:
         return getattr(envs_module, task_name)
     except AttributeError:
@@ -79,13 +86,15 @@ def main():
     parser.add_argument("task_name", type=str, help="Task module name (e.g. grab_roller_thing)")
     parser.add_argument("task_config", type=str, help="Task config name (e.g. bench_demo_clean)")
     parser.add_argument("--seed", type=int, default=0, help="Random seed for scene")
-    parser.add_argument("--render-freq", type=int, default=1, help="Render every N steps (default 1)")
+    parser.add_argument("--render-freq", type=int, default=3, help="Render every N steps (default 1)")
+    parser.add_argument("--rollout", action="store_true", help="Run play_once() to roll out the task")
     args = parser.parse_args()
 
     task_name = args.task_name
     task_config = args.task_config
     seed = args.seed
     render_freq = args.render_freq
+    rollout = args.rollout
 
     # Load env class from bench_envs
     env_class = get_env_class(task_name)
@@ -131,7 +140,7 @@ def main():
     cfg["right_embodiment_config"] = get_embodiment_config(cfg["right_robot_file"])
 
     # Build env and setup scene with viewer
-    print(f"Loading task: {task_name} with config: {task_config} (seed={seed})")
+    # print(f"Loading task: {task_name} with config: {task_config} (seed={seed})")
     env = env_class()
     try:
         env.setup_demo(**cfg)
@@ -144,8 +153,14 @@ def main():
         env.close_env()
         return
 
-    print("Scene ready. Close the viewer window to exit.")
     viewer = env.viewer
+    if rollout:
+        print("Rolling out task (play_once)...")
+        env.play_once()
+        print("Rollout done. Close the viewer window to exit.")
+    else:
+        print("Scene ready. Close the viewer window to exit.")
+
     while not viewer.closed:
         env.scene.step()
         env.scene.update_render()

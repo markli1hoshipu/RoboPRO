@@ -16,6 +16,7 @@ from setup_paths import setup_paths
 setup_paths()
 
 from envs.utils import *
+from bench_envs.utils import *
 import math
 from envs.robot import Robot
 from envs.camera import Camera
@@ -36,7 +37,7 @@ current_file_path = os.path.abspath(__file__)
 parent_directory = os.path.dirname(current_file_path)
 
 
-class Base_Task(gym.Env):
+class Office_base_task(gym.Env):
 
     def __init__(self):
         pass
@@ -122,6 +123,7 @@ class Base_Task(gym.Env):
 
         self.create_static_elements(table_xy_bias=table_xy_bias, table_height=0.74)
         self.load_robot(**kwags)
+        self.load_cabinet()
         self.load_camera(**kwags)
         self.robot.move_to_homestate()
 
@@ -217,7 +219,7 @@ class Base_Task(gym.Env):
         sapien.render.set_camera_shader_dir("rt")
         sapien.render.set_ray_tracing_samples_per_pixel(32)
         sapien.render.set_ray_tracing_path_depth(8)
-        sapien.render.set_ray_tracing_denoiser("oidn")
+        sapien.render.set_ray_tracing_denoiser("optix")
 
         # declare sapien scene
         scene_config = sapien.SceneConfig()
@@ -316,16 +318,58 @@ class Base_Task(gym.Env):
             is_static=True,
             texture_id=self.table_texture,
         )
-        # Additional static elements: bookcase upright on table
-        bookcase_pose = sapien.Pose(p=[0, 5, 0.741], q=[1, 0, 0, 0])
-        id = np.random.choice([0, 3], 1)[0]
-        self.bookcase = create_actor(
-            scene=self,
-            pose=bookcase_pose,
-            modelname="014_bookcase",
-            convex=True,
-            model_id=1,
+        self.shelf = create_sapien_gltf_actor(
+            scene=self.scene,
+            pose=sapien.Pose(p=[1, -0.65, 0], q=[0.5, 0.5, 0.5, 0.5]),
+            gltf_path="./assets/objects_bench/120_storage-rack/storage_rack_02.gltf",
+            collision_path="./assets/objects_bench/120_storage-rack/base0.glb",
+            scale=[0.6, 0.8, 0.4],
+            is_static=True,
+            name="storage_rack"
         )
+        # Additional static elements: bookcase upright on table
+        # bookcase_pose = sapien.Pose(p=[0, 5, 0.741], q=[1, 0, 0, 0])
+        # id = np.random.choice([0, 3], 1)[0]
+        # self.bookcase = create_actor(
+        #     scene=self,
+        #     pose=bookcase_pose,
+        #     modelname="036_cabinet",
+        #     convex=True,
+        #     model_id=0,
+        # )
+    
+    def load_cabinet(self):
+        """
+        Load the cabinet separately because there is a scaling issue when loading the cabinet before calling load_robot()
+        """
+        self.cabinet = create_sapien_urdf_obj(
+            scene=self,
+            pose=sapien.Pose(p=[-0.4, 0.2, 0.741], q=[0.7071, 0, 0, 0.7071]),
+            modelname="036_cabinet",
+            modelid=46653,
+            fix_root_link=True,
+        )
+        # self.cabinet = rand_create_sapien_urdf_obj(
+        #     scene=self,
+        #     modelname="036_cabinet",
+        #     modelid=46653,
+        #     xlim=[-0.05, 0],
+        #     ylim=[0.155, 0.155],
+        #     rotate_rand=False,
+        #     rotate_lim=[0, 0, np.pi / 16],
+        #     qpos=[1, 0, 0, 1],
+        #     fix_root_link=True,
+        # )
+        self.add_prohibit_area(self.cabinet, padding=0.01)
+
+        # self.trash_bin = create_actor(
+        #     scene=self,
+        #     pose=sapien.Pose(p=[0, 5, 0.741], q=[0.651892, 0.651428, 0.274378, 0.274584]),
+        #     modelname="063_tabletrashbin",
+        #     convex=True,
+        #     model_id=0,
+        # )
+        # 062 possibly?
 
     def get_cluttered_table(self, cluttered_numbers=10, xlim=[-0.59, 0.59], ylim=[-0.34, 0.34], zlim=[0.741]):
         self.record_cluttered_objects = []  # record cluttered objects
@@ -1108,12 +1152,15 @@ class Base_Task(gym.Env):
             return
         res_pre_top_down_pose = None
         res_top_down_pose = None
+        res_id_top_down = None
         dis_top_down = 1e9
         res_pre_side_pose = None
         res_side_pose = None
+        res_id_side = None
         dis_side = 1e9
         res_pre_pose = None
         res_pose = None
+        res_id = None
         dis = 1e9
 
         pref_direction = self.robot.get_grasp_perfect_direction(arm_tag)
@@ -1158,23 +1205,29 @@ class Base_Task(gym.Env):
             if res_pre_top_down_pose is None or now_dis_top_down < dis_top_down:
                 res_pre_top_down_pose = pre_pose
                 res_top_down_pose = pose
+                res_id_top_down = i
                 dis_top_down = now_dis_top_down
 
             if res_pre_side_pose is None or now_dis_side < dis_side:
                 res_pre_side_pose = pre_pose
                 res_side_pose = pose
+                res_id_side = i
                 dis_side = now_dis_side
 
             now_dis = 0.7 * now_dis_top_down + 0.3 * now_dis_side
             if res_pre_pose is None or now_dis < dis:
                 res_pre_pose = pre_pose
                 res_pose = pose
+                res_id = i
                 dis = now_dis
 
         if dis_top_down < 0.15:
+            # print(f"choose_grasp_pose: selected contact_point_id={res_id_top_down} (top_down)")
             return res_pre_top_down_pose, res_top_down_pose
         if dis_side < 0.15:
+            # print(f"choose_grasp_pose: selected contact_point_id={res_id_side} (side)")
             return res_pre_side_pose, res_side_pose
+        # print(f"choose_grasp_pose: selected contact_point_id={res_id} (combined)")
         return res_pre_pose, res_pose
 
     def grasp_actor(
