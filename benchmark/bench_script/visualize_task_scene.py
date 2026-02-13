@@ -142,11 +142,7 @@ def main():
     # Build env and setup scene with viewer
     # print(f"Loading task: {task_name} with config: {task_config} (seed={seed})")
     env = env_class()
-    try:
-        env.setup_demo(**cfg)
-    except Exception as e:
-        print("Setup failed:", e)
-        raise SystemExit(1)
+    env.setup_demo(**cfg)
 
     if not getattr(env, "render_freq", 0) or getattr(env, "viewer", None) is None:
         print("Warning: viewer not created (render_freq was 0?). Exiting.")

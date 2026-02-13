@@ -20,6 +20,7 @@ from bench_envs.utils import *
 import math
 from envs.robot import Robot
 from envs.camera import Camera
+from envs.utils.actor_utils import Actor, ArticulationActor
 
 from copy import deepcopy
 import subprocess
@@ -121,9 +122,11 @@ class Office_base_task(gym.Env):
 
         self.instruction = None  # for Eval
 
-        self.create_static_elements(table_xy_bias=table_xy_bias, table_height=0.74)
+        self.collision_list = [] # list of collision objects for curobo planner
+
         self.load_robot(**kwags)
-        self.load_cabinet()
+        self.create_static_elements(table_xy_bias=table_xy_bias, table_height=0.74)
+        # self.load_cabinet() # Should be with create_static_elements, but it errors when loaded before robot
         self.load_camera(**kwags)
         self.robot.move_to_homestate()
 
@@ -142,6 +145,8 @@ class Office_base_task(gym.Env):
         if not is_stable:
             raise UnStableError(
                 f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
+
+        self.update_world()
 
         if self.eval_mode:
             with open(os.path.join(CONFIGS_PATH, "_eval_step_limit.yml"), "r") as f:
@@ -318,25 +323,34 @@ class Office_base_task(gym.Env):
             is_static=True,
             texture_id=self.table_texture,
         )
+
+        shelf_scale = [0.6, 0.9, 0.4]
         self.shelf = create_sapien_gltf_actor(
             scene=self.scene,
-            pose=sapien.Pose(p=[1, -0.65, 0], q=[0.5, 0.5, 0.5, 0.5]),
+            pose=sapien.Pose(p=[0.95, -0.65, 0], q=[0.5, 0.5, 0.5, 0.5]),
+            # pose=sapien.Pose(p=[1, 10, 0], q=[0.5, 0.5, 0.5, 0.5]),
             gltf_path="./assets/objects_bench/120_storage-rack/storage_rack_02.gltf",
-            collision_path="./assets/objects_bench/120_storage-rack/base0.glb",
-            scale=[0.6, 0.8, 0.4],
+            collision_path="./assets/objects_bench/120_storage-rack/collision/base0.glb",
+            scale=shelf_scale,
             is_static=True,
-            name="storage_rack"
+            name="shelf"
         )
-        # Additional static elements: bookcase upright on table
-        # bookcase_pose = sapien.Pose(p=[0, 5, 0.741], q=[1, 0, 0, 0])
-        # id = np.random.choice([0, 3], 1)[0]
-        # self.bookcase = create_actor(
-        #     scene=self,
-        #     pose=bookcase_pose,
-        #     modelname="036_cabinet",
-        #     convex=True,
-        #     model_id=0,
+
+        self.collision_list.append((self.shelf, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex", shelf_scale, False))
+
+        # shelf_scale = [0.05, 0.6, 0.05]
+        # self.shelf2 = create_sapien_gltf_actor(
+        #     scene=self.scene,
+        #     pose=sapien.Pose(p=[0.5, -0.25, 0.4], q=[0.5, 0.5, 0.5, 0.5]),
+        #     # pose=sapien.Pose(p=[1, 10, 0], q=[0.5, 0.5, 0.5, 0.5]),
+        #     gltf_path="./assets/objects_bench/120_storage-rack/storage_rack_02.gltf",
+        #     collision_path="./assets/objects_bench/120_storage-rack/collision/base0.glb",
+        #     scale=shelf_scale,
+        #     is_static=True,
+        #     name="shelf2"
         # )
+
+        # self.collision_list.append((self.shelf2, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/collision/base0.glb", shelf_scale, True))
     
     def load_cabinet(self):
         """
@@ -349,6 +363,7 @@ class Office_base_task(gym.Env):
             modelid=46653,
             fix_root_link=True,
         )
+        # self.collision_list.append((self.cabinet, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/collision/base0.glb", [1,1,1], True))
         # self.cabinet = rand_create_sapien_urdf_obj(
         #     scene=self,
         #     modelname="036_cabinet",
@@ -370,6 +385,17 @@ class Office_base_task(gym.Env):
         #     model_id=0,
         # )
         # 062 possibly?
+        # Additional static elements: bookcase upright on table
+        # bookcase_pose = sapien.Pose(p=[0, 5, 0.741], q=[1, 0, 0, 0])
+        # id = np.random.choice([0, 3], 1)[0]
+        # self.bookcase = create_actor(
+        #     scene=self,
+        #     pose=bookcase_pose,
+        #     modelname="014_bookcase",
+        #     convex=True,
+        #     model_id=0,
+        # )
+        # self.collision_list.append((self.bookcase, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/014_bookcase/collision/base0.glb", [1,1,1], True))
 
     def get_cluttered_table(self, cluttered_numbers=10, xlim=[-0.59, 0.59], ylim=[-0.34, 0.34], zlim=[0.741]):
         self.record_cluttered_objects = []  # record cluttered objects
@@ -1190,7 +1216,6 @@ class Office_base_task(gym.Env):
             contact_point_id = [(i, None) for i in contact_point_id]
         else:
             contact_point_id = actor.iter_contact_points()
-
         for i, _ in contact_point_id:
             pre_pose = self.get_grasp_pose(actor, arm_tag, contact_point_id=i, pre_dis=pre_dis)
             if pre_pose is None:
@@ -1220,7 +1245,7 @@ class Office_base_task(gym.Env):
                 res_pose = pose
                 res_id = i
                 dis = now_dis
-
+                
         if dis_top_down < 0.15:
             # print(f"choose_grasp_pose: selected contact_point_id={res_id_top_down} (top_down)")
             return res_pre_top_down_pose, res_top_down_pose
@@ -1787,3 +1812,102 @@ class Office_base_task(gym.Env):
             # print(f"Saving image with episode_num={episode_num}, filename: {filename}, path: {generate_dir}")
         
         return image_data
+    
+    def update_world(self):
+        collision_dict = {"mesh": {}, "cuboid": {}}
+        for actor, collision_path, scale, convex in self.collision_list:
+            if convex:
+                if type(actor) == ArticulationActor or type(actor) == Actor:
+                    pose = actor.get_pose()
+                    np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                    collision_dict["mesh"][actor.get_name()] = {
+                        "file_path": collision_path,
+                        "pose": np_pose,
+                        "scale": scale,
+                    }
+                else:
+                    pose = actor.get_pose()
+                    np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                    collision_dict["mesh"][actor.name] = {
+                        "file_path": collision_path,
+                        "pose": np_pose,
+                        "scale": scale,
+                    }
+            else: #non convex, multiple convex parts
+                pose = actor.get_pose()
+                np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                convex_collision_dict = self.collision_dict_from_convex_obj_dir(
+                    collision_path,
+                    pose=np_pose,
+                    scale=scale,
+                    name_prefix = actor.name if actor.name else actor.get_name()
+                )
+                collision_dict["mesh"] = (
+                    collision_dict["mesh"] | convex_collision_dict["mesh"]
+                )
+
+
+        self.robot.update_world(collision_dict)
+    
+    def collision_dict_from_convex_obj_dir(
+            self,
+            obj_dir: str | Path,
+            *,
+            name_prefix: str = "shelf_part",
+            pose: tuple[float, float, float, float, float, float, float],  # [x,y,z,qw,qx,qy,qz]
+            scale: tuple[float, float, float],  # e.g. (0.6, 0.8, 0.4)
+            glob_pattern: str = "*.obj",
+            recursive: bool = False,
+        ) -> dict:
+            """
+            Used to convert a directory of obj files into a dict of collision objects for curobo planner.
+            Returns collision_dict in the form:
+            collision_dict["mesh"][<name>] = {"file_path": ..., "pose": ..., "scale": ...}
+
+            One entry per OBJ file (skips invalid/empty OBJs).
+            """
+            obj_dir = Path(obj_dir)
+            if not obj_dir.exists() or not obj_dir.is_dir():
+                raise FileNotFoundError(f"OBJ directory not found or not a directory: {obj_dir}")
+
+            it = obj_dir.rglob(glob_pattern) if recursive else obj_dir.glob(glob_pattern)
+            obj_files = sorted([p for p in it if p.is_file()])
+
+            if not obj_files:
+                raise FileNotFoundError(
+                    f"No OBJ files found in {obj_dir} with pattern '{glob_pattern}' (recursive={recursive})"
+                )
+
+            collision_dict = {"mesh": {}}
+
+            for i, p in enumerate(obj_files):
+                # Validate OBJ so cuRobo/trimesh won't crash later
+                try:
+                    m = trimesh.load(str(p), force="mesh", process=False)
+                except Exception: # means the obj file is invalid
+                    continue
+
+                if isinstance(m, trimesh.Scene):
+                    if len(m.geometry) == 0:
+                        continue
+                    # concatenate ensures vertices/faces exist
+                    m = trimesh.util.concatenate(tuple(m.geometry.values()))
+
+                if getattr(m, "vertices", None) is None or len(m.vertices) == 0:
+                    continue
+                if getattr(m, "faces", None) is None or len(m.faces) == 0:
+                    continue
+
+                part_name = f"{name_prefix}_{i}_{p.stem}"
+                collision_dict["mesh"][part_name] = {
+                    "file_path": str(p),
+                    "pose": list(pose),
+                    "scale": list(scale),
+                }
+            
+            if not collision_dict["mesh"]:
+                raise ValueError(
+                    f"No valid mesh files were added from directory: {obj_dir} "
+                )
+
+            return collision_dict

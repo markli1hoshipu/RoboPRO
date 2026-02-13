@@ -12,6 +12,7 @@ import glob
 class place_phone_shelf(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
+        kwargs["collision_cache"] = {"mesh": 70, "obb": 1}
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
@@ -50,7 +51,7 @@ class place_phone_shelf(Office_base_task):
 
         stand_pose = rand_pose(
                 xlim=[0.88,0.94],
-                ylim=[-0.5,-0.6],
+                ylim=[-0.55,-0.4],
                 zlim=[0.95],
                 qpos=[0.5, 0.5, -0.5, -0.5],
                 rotate_rand=False,
@@ -64,8 +65,7 @@ class place_phone_shelf(Office_base_task):
         #     )
 
         self.stand_id = np.random.choice([1, 2], 1)[0]
-        # stand_pose.p[2] = 0.95
-        # stand_pose.q = [0.5, 0.5, -0.5, -0.5]
+        # stand_pose.p = [0, 5, 0.95]
         self.stand = create_actor(
             scene=self,
             pose=stand_pose,
@@ -75,8 +75,19 @@ class place_phone_shelf(Office_base_task):
             is_static=False,
         )
         self.stand.set_mass(0.1)
+        # self.collision_list.append((self.stand, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/078_phonestand/collision/base0.glb", [0.065, 0.065, 0.065]))
         self.add_prohibit_area(self.phone, padding=0.15)
         self.add_prohibit_area(self.stand, padding=0.15)
+
+        # self.shampoo = create_actor(
+        #     scene=self,
+        #     pose=sapien.Pose(p=[0.5, -0.35, 0.4], q=[0.5, 0.5, 0.5, 0.5]),
+        #     modelname="049_shampoo",
+        #     convex=True,
+        #     model_id=1,
+        #     is_static=True,
+        # )
+        # self.collision_list.append((self.shampoo, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/049_shampoo/collision/base1.glb", [0.1, 0.5, 0.1]))
 
     def play_once(self):
         # Determine which arm to use based on phone's position (left if phone is on left side, else right)
@@ -88,7 +99,7 @@ class place_phone_shelf(Office_base_task):
         # Get stand's functional point as target for placement
         stand_func_pose = self.stand.get_functional_point(0)
         
-        self.move(self.back_to_origin(arm_tag=arm_tag))
+        # self.move(self.back_to_origin(arm_tag=arm_tag))
         
         # Place the phone onto the stand's functional point with alignment constraint
         self.move(
@@ -100,6 +111,9 @@ class place_phone_shelf(Office_base_task):
                 dis=0,
                 constrain="align",
             ))
+        # self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.4))
+        # self.move(self.move_by_displacement(arm_tag=arm_tag, z=-0.4))
+
 
         self.info["info"] = {
             "{A}": f"077_phone/base{self.phone_id}",
