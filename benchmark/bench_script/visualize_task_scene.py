@@ -42,6 +42,7 @@ import argparse
 import importlib
 import yaml
 from pathlib import Path
+import numpy as np
 
 from setup_paths import setup_paths
 setup_paths()
@@ -85,7 +86,7 @@ def main():
     parser = argparse.ArgumentParser(description="Visualize a benchmark task scene")
     parser.add_argument("task_name", type=str, help="Task module name (e.g. grab_roller_thing)")
     parser.add_argument("task_config", type=str, help="Task config name (e.g. bench_demo_clean)")
-    parser.add_argument("--seed", type=int, default=0, help="Random seed for scene")
+    parser.add_argument("--seed", type=int, default=-1, help="Random seed for scene")
     parser.add_argument("--render-freq", type=int, default=3, help="Render every N steps (default 1)")
     parser.add_argument("--rollout", action="store_true", help="Run play_once() to roll out the task")
     args = parser.parse_args()
@@ -108,7 +109,7 @@ def main():
     cfg["task_name"] = task_name
     cfg["render_freq"] = render_freq
     cfg["now_ep_num"] = 0
-    cfg["seed"] = seed
+    cfg["seed"] = seed if seed != -1 else np.random.randint(100)
     cfg["need_plan"] = True
     cfg["save_data"] = False
 

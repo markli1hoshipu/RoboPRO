@@ -126,7 +126,6 @@ class Office_base_task(gym.Env):
 
         self.load_robot(**kwags)
         self.create_static_elements(table_xy_bias=table_xy_bias, table_height=0.74)
-        # self.load_cabinet() # Should be with create_static_elements, but it errors when loaded before robot
         self.load_camera(**kwags)
         self.robot.move_to_homestate()
 
@@ -198,7 +197,7 @@ class Office_base_task(gym.Env):
             self.scene.step()
         for idx, actor in enumerate(actors_list):
             actors_pose_list.append([actor.get_pose()])
-        check(500)
+        check(700)
         return is_stable, unstable_list
 
     def play_once(self):
@@ -338,6 +337,15 @@ class Office_base_task(gym.Env):
 
         self.collision_list.append((self.shelf, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex", shelf_scale, False))
 
+        # self.cabinet = create_sapien_urdf_obj(
+        #     scene=self,
+        #     pose=sapien.Pose(p=[-0.4, 0.2, 0.741], q=[0.7071, 0, 0, 0.7071]),
+        #     modelname="036_cabinet",
+        #     modelid=46653,
+        #     fix_root_link=True,
+        # )
+        # self.add_prohibit_area(self.cabinet, padding=0.01)
+        
         # shelf_scale = [0.05, 0.6, 0.05]
         # self.shelf2 = create_sapien_gltf_actor(
         #     scene=self.scene,
@@ -431,6 +439,7 @@ class Office_base_task(gym.Env):
             obj_offset = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
             obj_maxz = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_max"]
 
+
             success, self.cluttered_obj = rand_create_cluttered_actor(
                 self.scene,
                 xlim=xlim,
@@ -457,6 +466,13 @@ class Office_base_task(gym.Env):
             self.size_dict.append(pose)
             success_count += 1
             self.record_cluttered_objects.append({"object_type": obj_name, "object_index": obj_idx})
+
+            # add to collision list--------------------------------------------------------------------------------
+            if self.cluttered_item_info[obj_name]["type"] == "urdf":
+                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
+            else:
+                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
+            self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale, True))
 
         if success_count < cluttered_numbers:
             print(f"Warning: Only {success_count} cluttered objects are placed on the table.")
@@ -1814,9 +1830,10 @@ class Office_base_task(gym.Env):
         return image_data
     
     def update_world(self):
+        """Updates CuRobo Collision World Model with new collision objects"""
         collision_dict = {"mesh": {}, "cuboid": {}}
-        for actor, collision_path, scale, convex in self.collision_list:
-            if convex:
+        for actor, collision_path, scale, single_file in self.collision_list:
+            if single_file:
                 if type(actor) == ArticulationActor or type(actor) == Actor:
                     pose = actor.get_pose()
                     np_pose = np.concatenate([pose.p, pose.q]).tolist()
@@ -1834,13 +1851,18 @@ class Office_base_task(gym.Env):
                         "scale": scale,
                     }
             else: #non convex, multiple convex parts
+                name_prefix = (
+                    getattr(actor, "name", None)
+                    or getattr(actor, "get_name", lambda: None)()
+                    or getattr(actor, "modelname", None)
+                )
                 pose = actor.get_pose()
                 np_pose = np.concatenate([pose.p, pose.q]).tolist()
                 convex_collision_dict = self.collision_dict_from_convex_obj_dir(
                     collision_path,
                     pose=np_pose,
                     scale=scale,
-                    name_prefix = actor.name if actor.name else actor.get_name()
+                    name_prefix = name_prefix
                 )
                 collision_dict["mesh"] = (
                     collision_dict["mesh"] | convex_collision_dict["mesh"]

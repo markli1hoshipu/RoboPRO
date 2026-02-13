@@ -12,12 +12,10 @@ import glob
 class place_phone_shelf(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
-        kwargs["collision_cache"] = {"mesh": 70, "obb": 1}
+        kwargs["collision_cache"] = {"mesh": 80, "obb": 3}
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
-        tag = np.random.randint(2)
-        tag = 1
         ori_quat = [
             [0.707, 0.707, 0, 0],
             [0.5, 0.5, 0.5, 0.5],
@@ -25,17 +23,13 @@ class place_phone_shelf(Office_base_task):
             [0.5, 0.5, -0.5, -0.5],
             [0.5, -0.5, 0.5, -0.5],
         ]
-        if tag == 0:
-            phone_x_lim = [-0.25, -0.05]
-            stand_x_lim = [-0.15, 0.0]
-        else:
-            phone_x_lim = [0.05, 0.25]
-            stand_x_lim = [0, 0.15]
 
         self.phone_id = np.random.choice([0, 1, 2, 4], 1)[0]
         phone_pose = rand_pose(
-            xlim=phone_x_lim,
-            ylim=[-0.2, 0.0],
+            # xlim = [-0.0],
+            xlim = [0,0.35],
+            # ylim=[0.05],
+            ylim=[-0.23, 0.05],
             qpos=ori_quat[self.phone_id],
             rotate_rand=True,
             rotate_lim=[0, 0.7, 0],
@@ -52,20 +46,12 @@ class place_phone_shelf(Office_base_task):
         stand_pose = rand_pose(
                 xlim=[0.88,0.94],
                 ylim=[-0.55,-0.4],
-                zlim=[0.95],
+                zlim=[0.97],
                 qpos=[0.5, 0.5, -0.5, -0.5],
                 rotate_rand=False,
             )
-        # while np.sqrt(np.sum((phone_pose.p[:2] - stand_pose.p[:2])**2)) < 0.15:
-        #     stand_pose = rand_pose(
-        #         xlim=stand_x_lim,
-        #         ylim=[0, 0.2],
-        #         qpos=[0.707, 0.707, 0, 0],
-        #         rotate_rand=False,
-        #     )
 
         self.stand_id = np.random.choice([1, 2], 1)[0]
-        # stand_pose.p = [0, 5, 0.95]
         self.stand = create_actor(
             scene=self,
             pose=stand_pose,
@@ -75,23 +61,51 @@ class place_phone_shelf(Office_base_task):
             is_static=False,
         )
         self.stand.set_mass(0.1)
-        # self.collision_list.append((self.stand, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/078_phonestand/collision/base0.glb", [0.065, 0.065, 0.065]))
-        self.add_prohibit_area(self.phone, padding=0.15)
+        self.add_prohibit_area(self.phone, padding=0.08)
         self.add_prohibit_area(self.stand, padding=0.15)
+        # ------------------------------------------------------------
 
-        # self.shampoo = create_actor(
-        #     scene=self,
-        #     pose=sapien.Pose(p=[0.5, -0.35, 0.4], q=[0.5, 0.5, 0.5, 0.5]),
-        #     modelname="049_shampoo",
+        # ------------------------------------------------------------
+        # id_list = [i for i in range(4)]
+        # self.bottle_id = np.random.choice(id_list)
+        # self.bottle = rand_create_actor(
+        #     self,
+        #     xlim=[0.5],
+        #     ylim=[-0.25],
+        #     modelname="038_milk-box",
+        #     rotate_rand=True,
+        #     rotate_lim=[0, 1, 0],
+        #     qpos=[0.66, 0.66, -0.25, -0.25],
         #     convex=True,
-        #     model_id=1,
-        #     is_static=True,
+        #     model_id=self.bottle_id,
         # )
-        # self.collision_list.append((self.shampoo, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/049_shampoo/collision/base1.glb", [0.1, 0.5, 0.1]))
+        
+        # self.bottle.set_mass(0.1)
+        # self.add_prohibit_area(self.bottle, padding=0.1)
+        # self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.bottle_id}.glb", [1,1,1], True))
+        # ------------------------------------------------------------
+        self.id_list = [i for i in range(20)]
+        self.bottle_id = np.random.choice(self.id_list)
+        self.bottle = rand_create_actor(
+            self,
+            xlim=[self.phone.get_pose().p[0]+0.15],
+            ylim=[self.phone.get_pose().p[1]-0.01],
+            modelname="001_bottle",
+            rotate_rand=True,
+            rotate_lim=[0, 1, 0],
+            qpos=[0.66, 0.66, -0.25, -0.25],
+            convex=True,
+            model_id=self.bottle_id,
+            scale = [0.14, 0.14, 0.14],
+        )
+        
+        self.bottle.set_mass(0.1)
+        self.add_prohibit_area(self.bottle, padding=0.04)
+        self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb", [0.14, 0.14, 0.14], True))
 
     def play_once(self):
         # Determine which arm to use based on phone's position (left if phone is on left side, else right)
-        arm_tag = ArmTag("left" if self.phone.get_pose().p[0] < 0 else "right")
+        arm_tag = ArmTag("right")
 
         # Grasp the phone with specified arm
         self.move(self.grasp_actor(self.phone, arm_tag=arm_tag, pre_grasp_dis=0.08))
