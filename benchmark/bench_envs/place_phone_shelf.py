@@ -12,7 +12,7 @@ import glob
 class place_phone_shelf(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
-        kwargs["collision_cache"] = {"mesh": 80, "obb": 3}
+        kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
@@ -62,7 +62,7 @@ class place_phone_shelf(Office_base_task):
         )
         self.stand.set_mass(0.1)
         self.add_prohibit_area(self.phone, padding=0.08)
-        self.add_prohibit_area(self.stand, padding=0.15)
+        self.add_prohibit_area(self.stand, padding=0.06)
         # ------------------------------------------------------------
 
         # ------------------------------------------------------------

@@ -139,6 +139,7 @@ class Office_base_task(gym.Env):
 
         if self.cluttered_table:
             self.get_cluttered_table()
+            self.get_cluttered_shelf()
 
         is_stable, unstable_list = self.check_stable()
         if not is_stable:
@@ -439,7 +440,6 @@ class Office_base_task(gym.Env):
             obj_offset = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
             obj_maxz = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_max"]
 
-
             success, self.cluttered_obj = rand_create_cluttered_actor(
                 self.scene,
                 xlim=xlim,
@@ -476,6 +476,81 @@ class Office_base_task(gym.Env):
 
         if success_count < cluttered_numbers:
             print(f"Warning: Only {success_count} cluttered objects are placed on the table.")
+
+        self.size_dict = None
+        self.cluttered_objs = []
+
+    def get_cluttered_shelf(self, cluttered_numbers=6, xlim=[0.95], ylim=[-0.65], zlim=[0.97]):
+        self.record_cluttered_objects = []  # record cluttered objects
+        self.size_dict = list()
+
+        xlim = [self.shelf.get_pose().p[0]-0.1, self.shelf.get_pose().p[0]+0.1]
+        ylim = [self.shelf.get_pose().p[1]-0.3, self.shelf.get_pose().p[1]+0.3]
+
+        if np.random.rand() < self.clean_background_rate:
+            return
+
+        task_objects_list = []
+        for entity in self.scene.get_all_actors():
+            actor_name = entity.get_name()
+            if actor_name == "":
+                continue
+            if actor_name in ["table", "wall", "ground"]:
+                continue
+            task_objects_list.append(actor_name)
+        self.obj_names, self.cluttered_item_info = get_available_cluttered_objects(task_objects_list)
+
+        success_count = 0
+        max_try = 50
+        trys = 0
+
+        while success_count < cluttered_numbers and trys < max_try:
+            obj = np.random.randint(len(self.obj_names))
+            obj_name = self.obj_names[obj]
+            obj_idx = np.random.randint(len(self.cluttered_item_info[obj_name]["ids"]))
+            obj_idx = self.cluttered_item_info[obj_name]["ids"][obj_idx]
+            obj_radius = self.cluttered_item_info[obj_name]["params"][obj_idx]["radius"]
+            obj_offset = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
+            obj_maxz = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_max"]
+
+            # breakpoint()
+            success, self.cluttered_obj = rand_create_cluttered_actor(
+                self.scene,
+                xlim=xlim,
+                ylim=ylim,
+                zlim=zlim,
+                modelname=obj_name,
+                modelid=obj_idx,
+                modeltype=self.cluttered_item_info[obj_name]["type"],
+                rotate_rand=True,
+                rotate_lim=[0, 0, math.pi],
+                size_dict=self.size_dict,
+                obj_radius=obj_radius,
+                z_offset=obj_offset,
+                z_max=obj_maxz,
+                prohibited_area=self.prohibited_area,
+                shelf=True,
+            )
+            if not success or self.cluttered_obj is None:
+                trys += 1
+                continue
+            self.cluttered_obj.set_name(f"{obj_name}")
+            self.cluttered_objs.append(self.cluttered_obj)
+            pose = self.cluttered_obj.get_pose().p.tolist()
+            pose.append(obj_radius)
+            self.size_dict.append(pose)
+            success_count += 1
+            self.record_cluttered_objects.append({"object_type": obj_name, "object_index": obj_idx})
+
+            # add to collision list--------------------------------------------------------------------------------
+            if self.cluttered_item_info[obj_name]["type"] == "urdf":
+                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
+            else:
+                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
+            self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale, True))
+
+        if success_count < cluttered_numbers:
+            print(f"Warning: Only {success_count} cluttered objects are placed on the shelf.")
 
         self.size_dict = None
         self.cluttered_objs = []

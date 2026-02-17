@@ -14,3 +14,7 @@ gotta install the additional objects_bench assets somehow. create shelf glb with
 For new envs:
 
 create the tasks_instructions/{task_name}.json file
+
+Note: Current implementation only works for Aloha-Agilex
+    CuRobo obstacles to robot frame
+    Attaching external objects to link is only defined in aloha yml

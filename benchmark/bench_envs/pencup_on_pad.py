@@ -8,7 +8,7 @@ from copy import deepcopy
 import glob
 
 
-class mouse_on_pad(Office_base_task):
+class pencup_on_pad(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
@@ -16,48 +16,35 @@ class mouse_on_pad(Office_base_task):
 
     def load_actors(self):
         rand_pos = rand_pose(
-            xlim=[-0.45, 0.45],
-            ylim=[-0.23, 0.05],
-            qpos=[0.5, 0.5, 0.5, 0.5],
-            rotate_rand=True,
-            rotate_lim=[0, 3.14, 0],
-        )
-        while abs(rand_pos.p[0]) < 0.3:
-            rand_pos = rand_pose(
-            xlim=[-0.45, 0.45],
-            ylim=[-0.23, 0.05],
-            qpos=[0.5, 0.5, 0.5, 0.5],
-            rotate_rand=True,
-            rotate_lim=[0, 3.14, 0],
-        )
+                xlim=[0.84,0.9],
+                ylim=[-0.55,-0.4],
+                zlim=[0.97],
+                qpos=[0.5, 0.5, -0.5, -0.5],
+                rotate_rand=False,
+            )
 
-        self.mouse_id = np.random.choice([0, 1, 2], 1)[0]
-        self.mouse = create_actor(
+        self.pencup_id = np.random.choice([0, 1, 2, 3, 5, 6], 1)[0]
+        # 1,6 might be too small
+        print(f"pencup_id: {self.pencup_id}")
+        self.pencup = create_actor(
             scene=self,
             pose=rand_pos,
-            modelname="047_mouse",
+            modelname="059_pencup",
             convex=True,
-            model_id=self.mouse_id,
+            model_id=self.pencup_id,
+            is_static=False,
         )
-        self.mouse.set_mass(0.05)
+        self.pencup.set_mass(0.1)
+        self.add_prohibit_area(self.pencup, padding=0.08)
 
-        if rand_pos.p[0] > 0:
-            xlim = [0]
-        else:
-            xlim = [0]
         target_rand_pose = rand_pose(
-            xlim=xlim,
-            ylim=[-0.23, 0.05],
+            xlim=[0.05,0.35],
+            # xlim=[0.3],
+            # ylim=[0.05],
+            ylim=[0.05,0.15],
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
         )
-        # while (np.sqrt((target_rand_pose.p[0] - rand_pos.p[0])**2 + (target_rand_pose.p[1] - rand_pos.p[1])**2) < 0.1):
-        #     target_rand_pose = rand_pose(
-        #         xlim=xlim,
-        #         ylim=[-0.2, 0.0],
-        #         qpos=[1, 0, 0, 0],
-        #         rotate_rand=False,
-        #     )
 
         colors = {
             "Red": (1, 0, 0),
@@ -74,7 +61,7 @@ class mouse_on_pad(Office_base_task):
         color_index = np.random.choice(len(color_items))
         self.color_name, self.color_value = color_items[color_index]
 
-        half_size = [0.035, 0.065, 0.0005]
+        half_size = [0.04, 0.04, 0.0005]
         self.target = create_box(
             scene=self,
             pose=target_rand_pose,
@@ -83,46 +70,45 @@ class mouse_on_pad(Office_base_task):
             name="box",
             is_static=True,
         )
-        self.add_prohibit_area(self.target, padding=0.12)
-        self.add_prohibit_area(self.mouse, padding=0.03)
+        self.add_prohibit_area(self.target, padding=0.08)
         # Construct target pose with position from target object and identity orientation
-        self.target_pose = self.target.get_pose().p.tolist() + [0, 0, 0, 1]
+        self.target_pose = self.target.get_pose().p.tolist() + [0.9239, 0, 0, -0.3827]   # wxyz
+        self.target_pose[2]+=0.05
 
         # ------------------------------------------------------------
-        center_x = (self.mouse.get_pose().p[0] + self.target.get_pose().p[0]) / 2
-        center_y = (self.mouse.get_pose().p[1] + self.target.get_pose().p[1]) / 2
-        id_list = [i for i in range(4)]
-        self.milk_box_id = np.random.choice(id_list)
-        self.milk_box = rand_create_actor(
+        self.id_list = [i for i in range(20)]
+        self.bottle_id = np.random.choice(self.id_list)
+        self.bottle = rand_create_actor(
             self,
-            xlim=[center_x],
-            ylim=[center_y],
-            modelname="038_milk-box",
+            xlim=[self.target_pose[0]+0.18],
+            ylim=[self.target_pose[1]-0.1],
+            modelname="001_bottle",
             rotate_rand=True,
             rotate_lim=[0, 1, 0],
             qpos=[0.66, 0.66, -0.25, -0.25],
             convex=True,
-            model_id=self.milk_box_id,
+            model_id=self.bottle_id,
+            scale = [0.14, 0.14, 0.14],
         )
         
-        self.milk_box.set_mass(0.1)
-        self.add_prohibit_area(self.milk_box, padding=0.1)
-        self.collision_list.append((self.milk_box, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.milk_box_id}.glb", [1,1,1], True))
+        self.bottle.set_mass(0.3)
+        self.add_prohibit_area(self.bottle, padding=0.04)
+        self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb", self.bottle.scale, True))
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag("right" if self.mouse.get_pose().p[0] > 0 else "left")
+        arm_tag = ArmTag("right")
 
         # Grasp the mouse with the selected arm
-        self.move(self.grasp_actor(self.mouse, arm_tag=arm_tag, pre_grasp_dis=0.1))
+        self.move(self.grasp_actor(self.pencup, arm_tag=arm_tag, pre_grasp_dis=0.15))
 
         # Lift the mouse upward by 0.1 meters in z-direction
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
+        # self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
 
         # Place the mouse at the target location with alignment constraint
         self.move(
             self.place_actor(
-                self.mouse,
+                self.pencup,
                 arm_tag=arm_tag,
                 target_pose=self.target_pose,
                 constrain="align",
@@ -131,16 +117,16 @@ class mouse_on_pad(Office_base_task):
             ))
 
         # Record information about the objects and arm used in the task
-        self.info["info"] = {
-            "{A}": f"047_mouse/base{self.mouse_id}",
-            "{B}": f"{self.color_name}",
-            "{a}": str(arm_tag),
-        }
+        # self.info["info"] = {
+        #     "{A}": f"047_mouse/base{self.mouse_id}",
+        #     "{B}": f"{self.color_name}",
+        #     "{a}": str(arm_tag),
+        # }
         return self.info
 
     def check_success(self):
-        mouse_pose = self.mouse.get_pose().p
-        mouse_qpose = np.abs(self.mouse.get_pose().q)
+        mouse_pose = self.pencup.get_pose().p
+        mouse_qpose = np.abs(self.pencup.get_pose().q)
         target_pos = self.target.get_pose().p
         eps1 = 0.015
         eps2 = 0.012
