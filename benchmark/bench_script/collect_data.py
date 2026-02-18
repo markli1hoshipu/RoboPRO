@@ -209,6 +209,8 @@ def run(TASK_ENV, args):
         for episode_idx in range(st_idx, args["episode_num"]):
             print(f"\033[34mTask name: {args['task_name']}\033[0m")
 
+            print(f"Seed in collect data: {seed_list[episode_idx]}")
+
             TASK_ENV.setup_demo(now_ep_num=episode_idx, seed=seed_list[episode_idx], **args)
 
             traj_data = TASK_ENV.load_tran_data(episode_idx)

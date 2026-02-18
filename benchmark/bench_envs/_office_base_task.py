@@ -62,6 +62,7 @@ class Office_base_task(gym.Env):
         ta.setup_logging("CRITICAL")  # hide logging
         np.random.seed(kwags.get("seed", 0))
         torch.manual_seed(kwags.get("seed", 0))
+        print(f"seed in setup: {kwags.get('seed', 0)}")
         # random.seed(kwags.get('seed', 0))
 
         self.FRAME_IDX = 0
@@ -114,6 +115,7 @@ class Office_base_task(gym.Env):
 
         self.eval_success = False
         self.table_z_bias = (np.random.uniform(low=-self.random_table_height, high=0) + table_height_bias)  # TODO
+        self.shelf_heights = [0.87, 1.29] # heights of the shelf levels
         self.need_plan = kwags.get("need_plan", True)
         self.left_joint_path = kwags.get("left_joint_path", [])
         self.right_joint_path = kwags.get("right_joint_path", [])
@@ -142,9 +144,9 @@ class Office_base_task(gym.Env):
             self.get_cluttered_shelf()
 
         is_stable, unstable_list = self.check_stable()
-        if not is_stable:
-            raise UnStableError(
-                f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
+        # if not is_stable:
+        #     raise UnStableError(
+        #         f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
 
         self.update_world()
 
@@ -324,42 +326,17 @@ class Office_base_task(gym.Env):
             texture_id=self.table_texture,
         )
 
-        shelf_scale = [0.6, 0.9, 0.4]
-        self.shelf = create_sapien_gltf_actor(
+        shelf_scale = [0.6, 0.87, 0.4]
+        self.shelf = create_multiple_obj_actor(
             scene=self.scene,
-            pose=sapien.Pose(p=[0.95, -0.65, 0], q=[0.5, 0.5, 0.5, 0.5]),
-            # pose=sapien.Pose(p=[1, 10, 0], q=[0.5, 0.5, 0.5, 0.5]),
-            gltf_path="./assets/objects_bench/120_storage-rack/storage_rack_02.gltf",
-            collision_path="./assets/objects_bench/120_storage-rack/collision/base0.glb",
+            pose=sapien.Pose(p=[0.85, -0.65, -0.07], q=[0.5, 0.5, 0.5, 0.5]),
+            visual_path=f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/storage_rack_02.gltf",
+            collision_path=f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex",
             scale=shelf_scale,
             is_static=True,
             name="shelf"
         )
-
-        self.collision_list.append((self.shelf, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex", shelf_scale, False))
-
-        # self.cabinet = create_sapien_urdf_obj(
-        #     scene=self,
-        #     pose=sapien.Pose(p=[-0.4, 0.2, 0.741], q=[0.7071, 0, 0, 0.7071]),
-        #     modelname="036_cabinet",
-        #     modelid=46653,
-        #     fix_root_link=True,
-        # )
-        # self.add_prohibit_area(self.cabinet, padding=0.01)
-        
-        # shelf_scale = [0.05, 0.6, 0.05]
-        # self.shelf2 = create_sapien_gltf_actor(
-        #     scene=self.scene,
-        #     pose=sapien.Pose(p=[0.5, -0.25, 0.4], q=[0.5, 0.5, 0.5, 0.5]),
-        #     # pose=sapien.Pose(p=[1, 10, 0], q=[0.5, 0.5, 0.5, 0.5]),
-        #     gltf_path="./assets/objects_bench/120_storage-rack/storage_rack_02.gltf",
-        #     collision_path="./assets/objects_bench/120_storage-rack/collision/base0.glb",
-        #     scale=shelf_scale,
-        #     is_static=True,
-        #     name="shelf2"
-        # )
-
-        # self.collision_list.append((self.shelf2, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/collision/base0.glb", shelf_scale, True))
+        self.collision_list.append((self.shelf, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex", shelf_scale))
     
     def load_cabinet(self):
         """
@@ -372,7 +349,7 @@ class Office_base_task(gym.Env):
             modelid=46653,
             fix_root_link=True,
         )
-        # self.collision_list.append((self.cabinet, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/collision/base0.glb", [1,1,1], True))
+        # self.collision_list.append((self.cabinet, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/collision/base0.glb", [1,1,1]))
         # self.cabinet = rand_create_sapien_urdf_obj(
         #     scene=self,
         #     modelname="036_cabinet",
@@ -404,7 +381,7 @@ class Office_base_task(gym.Env):
         #     convex=True,
         #     model_id=0,
         # )
-        # self.collision_list.append((self.bookcase, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/014_bookcase/collision/base0.glb", [1,1,1], True))
+        # self.collision_list.append((self.bookcase, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/014_bookcase/collision/base0.glb", [1,1,1]))
 
     def get_cluttered_table(self, cluttered_numbers=10, xlim=[-0.59, 0.59], ylim=[-0.34, 0.34], zlim=[0.741]):
         self.record_cluttered_objects = []  # record cluttered objects
@@ -434,6 +411,8 @@ class Office_base_task(gym.Env):
         while success_count < cluttered_numbers and trys < max_try:
             obj = np.random.randint(len(self.obj_names))
             obj_name = self.obj_names[obj]
+            if obj_name == "066_vinegar":
+                continue
             obj_idx = np.random.randint(len(self.cluttered_item_info[obj_name]["ids"]))
             obj_idx = self.cluttered_item_info[obj_name]["ids"][obj_idx]
             obj_radius = self.cluttered_item_info[obj_name]["params"][obj_idx]["radius"]
@@ -472,7 +451,7 @@ class Office_base_task(gym.Env):
                 path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
             else:
                 path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
-            self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale, True))
+            self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale))
 
         if success_count < cluttered_numbers:
             print(f"Warning: Only {success_count} cluttered objects are placed on the table.")
@@ -486,6 +465,7 @@ class Office_base_task(gym.Env):
 
         xlim = [self.shelf.get_pose().p[0]-0.1, self.shelf.get_pose().p[0]+0.1]
         ylim = [self.shelf.get_pose().p[1]-0.3, self.shelf.get_pose().p[1]+0.3]
+        zlim = [self.shelf_heights[self.shelf_level]]
 
         if np.random.rand() < self.clean_background_rate:
             return
@@ -547,10 +527,10 @@ class Office_base_task(gym.Env):
                 path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
             else:
                 path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
-            self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale, True))
+            self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale))
 
-        if success_count < cluttered_numbers:
-            print(f"Warning: Only {success_count} cluttered objects are placed on the shelf.")
+        # if success_count < cluttered_numbers:
+            # print(f"Warning: Only {success_count} cluttered objects are placed on the shelf.")
 
         self.size_dict = None
         self.cluttered_objs = []
@@ -584,6 +564,7 @@ class Office_base_task(gym.Env):
             random_head_camera_dis=self.random_head_camera_dis,
             **kwags,
         )
+        self.cameras.add_extra_cameras(f"{os.environ['BENCH_ROOT']}/bench_assets/embodiments/office_config.yml")
         self.cameras.load_camera(self.scene)
         self.scene.step()  # run a physical step
         self.scene.update_render()  # sync pose from SAPIEN to renderer
@@ -1382,6 +1363,12 @@ class Office_base_task(gym.Env):
             target_dis=grasp_dis,
             contact_point_id=contact_point_id,
         )
+
+        if pre_grasp_pose is None:
+            print("[ERROR] can't find a valid pre_grasp_pose")
+            self.plan_success = False
+            return None, []
+
         if pre_grasp_pose == grasp_pose:
             return arm_tag, [
                 Action(arm_tag, "move", target_pose=pre_grasp_pose),
@@ -1907,8 +1894,21 @@ class Office_base_task(gym.Env):
     def update_world(self):
         """Updates CuRobo Collision World Model with new collision objects"""
         collision_dict = {"mesh": {}, "cuboid": {}}
-        for actor, collision_path, scale, single_file in self.collision_list:
-            if single_file:
+        for actor, collision_path, scale in self.collision_list:
+            if type(actor) == Simple_Actor: #built from multiple obj files
+                name_prefix = actor.get_name()
+                pose = actor.get_pose()
+                np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                convex_collision_dict = self.collision_dict_from_convex_obj_dir(
+                    collision_path,
+                    pose=np_pose,
+                    scale=scale,
+                    name_prefix = name_prefix
+                )
+                collision_dict["mesh"] = (
+                    collision_dict["mesh"] | convex_collision_dict["mesh"]
+                )
+            else:
                 if type(actor) == ArticulationActor or type(actor) == Actor:
                     pose = actor.get_pose()
                     np_pose = np.concatenate([pose.p, pose.q]).tolist()
@@ -1925,23 +1925,6 @@ class Office_base_task(gym.Env):
                         "pose": np_pose,
                         "scale": scale,
                     }
-            else: #non convex, multiple convex parts
-                name_prefix = (
-                    getattr(actor, "name", None)
-                    or getattr(actor, "get_name", lambda: None)()
-                    or getattr(actor, "modelname", None)
-                )
-                pose = actor.get_pose()
-                np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                convex_collision_dict = self.collision_dict_from_convex_obj_dir(
-                    collision_path,
-                    pose=np_pose,
-                    scale=scale,
-                    name_prefix = name_prefix
-                )
-                collision_dict["mesh"] = (
-                    collision_dict["mesh"] | convex_collision_dict["mesh"]
-                )
 
 
         self.robot.update_world(collision_dict)

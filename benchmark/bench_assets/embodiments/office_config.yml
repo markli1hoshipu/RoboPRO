@@ -1,0 +1,30 @@
+# additional cameras that are independent of the robot embodiment
+static_camera_list: 
+- name: shelf_camera # for shelf viewing
+  type: D435
+  position:
+  - -0.1
+  - -0.85
+  - 2
+  forward:
+  - 1
+  - 0.7
+  - -1.1
+  left:
+  - -0.7
+  - 1
+  - 0
+- name: demo_camera
+  type: D435
+  position:
+  - 0.1
+  - 1.5
+  - 2
+  forward:
+  - 0
+  - -1
+  - -0.6
+  left:
+  - 1
+  - 0
+  - 0

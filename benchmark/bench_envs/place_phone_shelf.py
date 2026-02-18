@@ -16,6 +16,7 @@ class place_phone_shelf(Office_base_task):
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
+        self.shelf_level = 0
         ori_quat = [
             [0.707, 0.707, 0, 0],
             [0.5, 0.5, 0.5, 0.5],
@@ -44,9 +45,9 @@ class place_phone_shelf(Office_base_task):
         self.phone.set_mass(0.01)
 
         stand_pose = rand_pose(
-                xlim=[0.88,0.94],
-                ylim=[-0.55,-0.4],
-                zlim=[0.97],
+                xlim=[0.75],
+                ylim=[-0.6,-0.4],
+                zlim=[self.shelf_heights[self.shelf_level]],
                 qpos=[0.5, 0.5, -0.5, -0.5],
                 rotate_rand=False,
             )
@@ -64,8 +65,6 @@ class place_phone_shelf(Office_base_task):
         self.add_prohibit_area(self.phone, padding=0.08)
         self.add_prohibit_area(self.stand, padding=0.06)
         # ------------------------------------------------------------
-
-        # ------------------------------------------------------------
         # id_list = [i for i in range(4)]
         # self.bottle_id = np.random.choice(id_list)
         # self.bottle = rand_create_actor(
@@ -82,7 +81,7 @@ class place_phone_shelf(Office_base_task):
         
         # self.bottle.set_mass(0.1)
         # self.add_prohibit_area(self.bottle, padding=0.1)
-        # self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.bottle_id}.glb", [1,1,1], True))
+        # self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.bottle_id}.glb", [1,1,1]))
         # ------------------------------------------------------------
         self.id_list = [i for i in range(20)]
         self.bottle_id = np.random.choice(self.id_list)
@@ -101,7 +100,7 @@ class place_phone_shelf(Office_base_task):
         
         self.bottle.set_mass(0.1)
         self.add_prohibit_area(self.bottle, padding=0.04)
-        self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb", [0.14, 0.14, 0.14], True))
+        self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb", [0.14, 0.14, 0.14]))
 
     def play_once(self):
         # Determine which arm to use based on phone's position (left if phone is on left side, else right)

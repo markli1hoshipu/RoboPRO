@@ -15,17 +15,34 @@ class pencup_on_pad(Office_base_task):
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
+        self.shelf_level = np.random.randint(0, 2)
+        zlim = self.shelf_heights[self.shelf_level]
         rand_pos = rand_pose(
-                xlim=[0.84,0.9],
+                xlim=[0.74,0.8],
                 ylim=[-0.55,-0.4],
-                zlim=[0.97],
+                zlim=[zlim],
                 qpos=[0.5, 0.5, -0.5, -0.5],
                 rotate_rand=False,
             )
 
-        self.pencup_id = np.random.choice([0, 1, 2, 3, 5, 6], 1)[0]
+        self.pencup_id = np.random.choice([0, 1, 2, 3, 5], 1)[0]
+        # [3]
+        # print(f"pencup_id: {self.pencup_id}")
         # 1,6 might be too small
-        print(f"pencup_id: {self.pencup_id}")
+
+        self.coaster = create_actor(
+            scene=self,
+            pose=sapien.Pose(p=rand_pos.p, q=[0.5, 0.5, 0.5, 0.5]),
+            modelname="019_coaster",
+            convex=True,
+            model_id=0,
+            is_static=False,
+        )
+        # self.collision_list.append((self.coaster, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/019_coaster/collision/base0.glb", self.coaster.scale))
+        
+        p = rand_pos.p
+        p[2] += 0.025
+        rand_pos.set_p(p) # cup above the coaster
         self.pencup = create_actor(
             scene=self,
             pose=rand_pos,
@@ -38,10 +55,10 @@ class pencup_on_pad(Office_base_task):
         self.add_prohibit_area(self.pencup, padding=0.08)
 
         target_rand_pose = rand_pose(
-            xlim=[0.05,0.35],
-            # xlim=[0.3],
+            xlim=[0.05,0.38],
+            # xlim=[0.4],
             # ylim=[0.05],
-            ylim=[0.05,0.15],
+            ylim=[-0.05,0.2],
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
         )
@@ -72,7 +89,7 @@ class pencup_on_pad(Office_base_task):
         )
         self.add_prohibit_area(self.target, padding=0.08)
         # Construct target pose with position from target object and identity orientation
-        self.target_pose = self.target.get_pose().p.tolist() + [0.9239, 0, 0, -0.3827]   # wxyz
+        self.target_pose = self.target.get_pose().p.tolist() + [1,0,0,0]   # wxyz
         self.target_pose[2]+=0.05
 
         # ------------------------------------------------------------
@@ -93,14 +110,14 @@ class pencup_on_pad(Office_base_task):
         
         self.bottle.set_mass(0.3)
         self.add_prohibit_area(self.bottle, padding=0.04)
-        self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb", self.bottle.scale, True))
+        self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb", self.bottle.scale))
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag("right")
 
         # Grasp the mouse with the selected arm
-        self.move(self.grasp_actor(self.pencup, arm_tag=arm_tag, pre_grasp_dis=0.15))
+        self.move(self.grasp_actor(self.pencup, arm_tag=arm_tag, pre_grasp_dis=0.08, contact_point_id=[0,1,2,5,6,7]))
 
         # Lift the mouse upward by 0.1 meters in z-direction
         # self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
@@ -112,16 +129,16 @@ class pencup_on_pad(Office_base_task):
                 arm_tag=arm_tag,
                 target_pose=self.target_pose,
                 constrain="align",
-                pre_dis=0.07,
+                pre_dis=0.01,
                 dis=0.005,
             ))
 
         # Record information about the objects and arm used in the task
-        # self.info["info"] = {
-        #     "{A}": f"047_mouse/base{self.mouse_id}",
-        #     "{B}": f"{self.color_name}",
-        #     "{a}": str(arm_tag),
-        # }
+        self.info["info"] = {
+            "{A}": f"059_pencup/base{self.pencup_id}",
+            "{B}": f"{self.color_name}",
+            "{a}": str(arm_tag),
+        }
         return self.info
 
     def check_success(self):

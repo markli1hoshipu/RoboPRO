@@ -150,21 +150,28 @@ def main():
         env.close_env()
         return
     
-    # viewing camera --------------------------------------------
+    # # viewing camera --------------------------------------------
     # env._update_render()
     # env.cameras.update_picture()
     # rgb_dict = env.cameras.get_rgb()
 
     # # e.g. head_camera, front_camera, left_camera, right_camera, or your new camera name
-    # img = rgb_dict["extra_camera"]["rgb"]
+    # img = rgb_dict["demo_camera"]["rgb"]
     # if img.dtype != np.uint8:
     #     img = (img * 255).clip(0, 255).astype(np.uint8)
     # # OpenCV uses BGR
     # import cv2
     # img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    # cv2.imshow("head_camera", img_bgr)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+    # try:
+    #     while True:
+    #         cv2.imshow("head_camera", img_bgr)
+    #         if cv2.waitKey(1) & 0xFF == ord('q'):
+    #             break
+    # except KeyboardInterrupt:
+    #     print("Interrupted by Ctrl+C")
+    # finally:
+    #     cv2.destroyAllWindows()
+    # # -------------------------------------------------------
 
     viewer = env.viewer
     if rollout:
