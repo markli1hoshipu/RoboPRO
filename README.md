@@ -19,7 +19,6 @@ can't name the same as robotwin name env
 Note: Current implementation only works for Aloha-Agilex
     CuRobo obstacles to robot frame
     Attaching external objects to link is only defined in aloha yml
-    extra camera is only defined in aloha config.yml
 
 
 for task description json generation:

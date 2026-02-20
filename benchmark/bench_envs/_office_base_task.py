@@ -62,7 +62,6 @@ class Office_base_task(gym.Env):
         ta.setup_logging("CRITICAL")  # hide logging
         np.random.seed(kwags.get("seed", 0))
         torch.manual_seed(kwags.get("seed", 0))
-        print(f"seed in setup: {kwags.get('seed', 0)}")
         # random.seed(kwags.get('seed', 0))
 
         self.FRAME_IDX = 0
@@ -115,7 +114,8 @@ class Office_base_task(gym.Env):
 
         self.eval_success = False
         self.table_z_bias = (np.random.uniform(low=-self.random_table_height, high=0) + table_height_bias)  # TODO
-        self.shelf_heights = [0.87, 1.29] # heights of the shelf levels
+        self.shelf_heights = [0.85, 1.29] # heights of the shelf levels
+        self.shelf_level = -1
         self.need_plan = kwags.get("need_plan", True)
         self.left_joint_path = kwags.get("left_joint_path", [])
         self.right_joint_path = kwags.get("right_joint_path", [])
@@ -139,14 +139,17 @@ class Office_base_task(gym.Env):
         self.robot.set_origin_endpose()
         self.load_actors()
 
+        self.unstable_objects = ["thermos","045_sand-clock","can","066_vinegar","086_woodenblock", "030_drill"] # objects to skip for distractors
         if self.cluttered_table:
             self.get_cluttered_table()
-            self.get_cluttered_shelf()
+            if self.shelf_level != -1: # -1 means shelf is not used
+                self.get_cluttered_shelf()
 
         is_stable, unstable_list = self.check_stable()
-        # if not is_stable:
-        #     raise UnStableError(
-        #         f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
+        if not is_stable:
+            raise UnStableError(
+                f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
+            # print(f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
 
         self.update_world()
 
@@ -200,7 +203,7 @@ class Office_base_task(gym.Env):
             self.scene.step()
         for idx, actor in enumerate(actors_list):
             actors_pose_list.append([actor.get_pose()])
-        check(700)
+        check(300)
         return is_stable, unstable_list
 
     def play_once(self):
@@ -411,7 +414,7 @@ class Office_base_task(gym.Env):
         while success_count < cluttered_numbers and trys < max_try:
             obj = np.random.randint(len(self.obj_names))
             obj_name = self.obj_names[obj]
-            if obj_name == "066_vinegar":
+            if obj_name in self.unstable_objects:
                 continue
             obj_idx = np.random.randint(len(self.cluttered_item_info[obj_name]["ids"]))
             obj_idx = self.cluttered_item_info[obj_name]["ids"][obj_idx]
@@ -487,6 +490,8 @@ class Office_base_task(gym.Env):
         while success_count < cluttered_numbers and trys < max_try:
             obj = np.random.randint(len(self.obj_names))
             obj_name = self.obj_names[obj]
+            if obj_name in self.unstable_objects:
+                continue
             obj_idx = np.random.randint(len(self.cluttered_item_info[obj_name]["ids"]))
             obj_idx = self.cluttered_item_info[obj_name]["ids"][obj_idx]
             obj_radius = self.cluttered_item_info[obj_name]["params"][obj_idx]["radius"]
