@@ -1,7 +1,7 @@
 # if you want to modify the config, please check the following tutorial first:
 # https://robotwin-platform.github.io/doc/usage/configurations.html
 render_freq: 0
-episode_num: 10
+episode_num: 1
 use_seed: false
 save_freq: 15
 embodiment: [aloha-agilex]
@@ -31,7 +31,7 @@ data_type:
   actor_segmentation: false
 pcd_down_sample_num: 1024
 pcd_crop: true
-save_path: ./data
+save_path: ./data/bench_data
 clear_cache_freq: 5
 collect_data: true
 eval_video_log: true

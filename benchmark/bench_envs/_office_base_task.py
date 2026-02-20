@@ -12,9 +12,6 @@ import transforms3d as t3d
 from collections import OrderedDict
 import torch, random
 
-from setup_paths import setup_paths
-setup_paths()
-
 from envs.utils import *
 from bench_envs.utils import *
 import math
