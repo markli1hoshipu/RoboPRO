@@ -60,6 +60,7 @@ class Office_base_task(gym.Env):
         np.random.seed(kwags.get("seed", 0))
         torch.manual_seed(kwags.get("seed", 0))
         # random.seed(kwags.get('seed', 0))
+        self.seed = kwags.get("seed", 0)
 
         self.FRAME_IDX = 0
         self.task_name = kwags.get("task_name")
@@ -111,7 +112,7 @@ class Office_base_task(gym.Env):
 
         self.eval_success = False
         self.table_z_bias = (np.random.uniform(low=-self.random_table_height, high=0) + table_height_bias)  # TODO
-        self.shelf_heights = [0.85, 1.29] # heights of the shelf levels
+        self.shelf_heights = [0.845, 1.29] # heights of the shelf levels
         self.shelf_level = -1
         self.need_plan = kwags.get("need_plan", True)
         self.left_joint_path = kwags.get("left_joint_path", [])
@@ -136,7 +137,7 @@ class Office_base_task(gym.Env):
         self.robot.set_origin_endpose()
         self.load_actors()
 
-        self.unstable_objects = ["thermos","045_sand-clock","can","066_vinegar","086_woodenblock", "030_drill"] # objects to skip for distractors
+        self.unstable_objects = ["thermos","045_sand-clock","can","066_vinegar","086_woodenblock", "030_drill", "105_sauce-can", "spoon"] # objects to manage stabilityas distractors
         if self.cluttered_table:
             self.get_cluttered_table()
             if self.shelf_level != -1: # -1 means shelf is not used
@@ -237,8 +238,8 @@ class Office_base_task(gym.Env):
         self.scene.add_ground(kwargs.get("ground_height", 0))
         # set default physical material
         self.scene.default_physical_material = self.scene.create_physical_material(
-            kwargs.get("static_friction", 0.5),
-            kwargs.get("dynamic_friction", 0.5),
+            kwargs.get("static_friction", 2),
+            kwargs.get("dynamic_friction", 1),
             kwargs.get("restitution", 0),
         )
         # give some white ambient light of moderate intensity
@@ -329,7 +330,7 @@ class Office_base_task(gym.Env):
         shelf_scale = [0.6, 0.87, 0.4]
         self.shelf = create_multiple_obj_actor(
             scene=self.scene,
-            pose=sapien.Pose(p=[0.85, -0.65, -0.07], q=[0.5, 0.5, 0.5, 0.5]),
+            pose=sapien.Pose(p=[0.9, -0.65, -0.07], q=[0.5, 0.5, 0.5, 0.5]),
             visual_path=f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/storage_rack_02.gltf",
             collision_path=f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex",
             scale=shelf_scale,
@@ -337,51 +338,6 @@ class Office_base_task(gym.Env):
             name="shelf"
         )
         self.collision_list.append((self.shelf, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex", shelf_scale))
-    
-    def load_cabinet(self):
-        """
-        Load the cabinet separately because there is a scaling issue when loading the cabinet before calling load_robot()
-        """
-        self.cabinet = create_sapien_urdf_obj(
-            scene=self,
-            pose=sapien.Pose(p=[-0.4, 0.2, 0.741], q=[0.7071, 0, 0, 0.7071]),
-            modelname="036_cabinet",
-            modelid=46653,
-            fix_root_link=True,
-        )
-        # self.collision_list.append((self.cabinet, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/collision/base0.glb", [1,1,1]))
-        # self.cabinet = rand_create_sapien_urdf_obj(
-        #     scene=self,
-        #     modelname="036_cabinet",
-        #     modelid=46653,
-        #     xlim=[-0.05, 0],
-        #     ylim=[0.155, 0.155],
-        #     rotate_rand=False,
-        #     rotate_lim=[0, 0, np.pi / 16],
-        #     qpos=[1, 0, 0, 1],
-        #     fix_root_link=True,
-        # )
-        self.add_prohibit_area(self.cabinet, padding=0.01)
-
-        # self.trash_bin = create_actor(
-        #     scene=self,
-        #     pose=sapien.Pose(p=[0, 5, 0.741], q=[0.651892, 0.651428, 0.274378, 0.274584]),
-        #     modelname="063_tabletrashbin",
-        #     convex=True,
-        #     model_id=0,
-        # )
-        # 062 possibly?
-        # Additional static elements: bookcase upright on table
-        # bookcase_pose = sapien.Pose(p=[0, 5, 0.741], q=[1, 0, 0, 0])
-        # id = np.random.choice([0, 3], 1)[0]
-        # self.bookcase = create_actor(
-        #     scene=self,
-        #     pose=bookcase_pose,
-        #     modelname="014_bookcase",
-        #     convex=True,
-        #     model_id=0,
-        # )
-        # self.collision_list.append((self.bookcase, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/014_bookcase/collision/base0.glb", [1,1,1]))
 
     def get_cluttered_table(self, cluttered_numbers=10, xlim=[-0.59, 0.59], ylim=[-0.34, 0.34], zlim=[0.741]):
         self.record_cluttered_objects = []  # record cluttered objects
@@ -439,6 +395,13 @@ class Office_base_task(gym.Env):
                 trys += 1
                 continue
             self.cluttered_obj.set_name(f"{obj_name}")
+
+            # manage stability as distractors
+            self.cluttered_obj.set_mass(1)
+            rb = self.cluttered_obj.actor.components[1]
+            rb.set_linear_damping(5.0)
+            rb.set_angular_damping(20.0)
+
             self.cluttered_objs.append(self.cluttered_obj)
             pose = self.cluttered_obj.get_pose().p.tolist()
             pose.append(obj_radius)
@@ -487,15 +450,14 @@ class Office_base_task(gym.Env):
         while success_count < cluttered_numbers and trys < max_try:
             obj = np.random.randint(len(self.obj_names))
             obj_name = self.obj_names[obj]
-            if obj_name in self.unstable_objects:
-                continue
+            # if obj_name in self.unstable_objects:
+            #     continue
             obj_idx = np.random.randint(len(self.cluttered_item_info[obj_name]["ids"]))
             obj_idx = self.cluttered_item_info[obj_name]["ids"][obj_idx]
             obj_radius = self.cluttered_item_info[obj_name]["params"][obj_idx]["radius"]
             obj_offset = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
             obj_maxz = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_max"]
 
-            # breakpoint()
             success, self.cluttered_obj = rand_create_cluttered_actor(
                 self.scene,
                 xlim=xlim,
@@ -517,6 +479,13 @@ class Office_base_task(gym.Env):
                 trys += 1
                 continue
             self.cluttered_obj.set_name(f"{obj_name}")
+
+            # manage stability as distractors
+            self.cluttered_obj.set_mass(1)
+            rb = self.cluttered_obj.actor.components[1]
+            rb.set_linear_damping(5.0)
+            rb.set_angular_damping(20.0)
+
             self.cluttered_objs.append(self.cluttered_obj)
             pose = self.cluttered_obj.get_pose().p.tolist()
             pose.append(obj_radius)
@@ -1914,7 +1883,7 @@ class Office_base_task(gym.Env):
                 if type(actor) == ArticulationActor or type(actor) == Actor:
                     pose = actor.get_pose()
                     np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                    collision_dict["mesh"][actor.get_name()] = {
+                    collision_dict["mesh"][f"{actor.get_name()}_{self.seed}"] = {
                         "file_path": collision_path,
                         "pose": np_pose,
                         "scale": scale,
@@ -1922,7 +1891,7 @@ class Office_base_task(gym.Env):
                 else:
                     pose = actor.get_pose()
                     np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                    collision_dict["mesh"][actor.name] = {
+                    collision_dict["mesh"][f"{actor.name}_{self.seed}"] = {
                         "file_path": collision_path,
                         "pose": np_pose,
                         "scale": scale,

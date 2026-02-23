@@ -45,9 +45,9 @@ class place_phone_shelf(Office_base_task):
         self.phone.set_mass(0.01)
 
         stand_pose = rand_pose(
-                xlim=[0.75],
+                xlim=[self.shelf.get_pose().p[0]-0.1],
                 ylim=[-0.6,-0.4],
-                zlim=[self.shelf_heights[self.shelf_level]],
+                zlim=[self.shelf_heights[self.shelf_level]+0.01],
                 qpos=[0.5, 0.5, -0.5, -0.5],
                 rotate_rand=False,
             )
@@ -61,28 +61,11 @@ class place_phone_shelf(Office_base_task):
             model_id=self.stand_id,
             is_static=False,
         )
-        self.stand.set_mass(0.1)
+        self.stand.set_mass(1)
         self.add_prohibit_area(self.phone, padding=0.08)
         self.add_prohibit_area(self.stand, padding=0.06)
-        # ------------------------------------------------------------
-        # id_list = [i for i in range(4)]
-        # self.bottle_id = np.random.choice(id_list)
-        # self.bottle = rand_create_actor(
-        #     self,
-        #     xlim=[0.5],
-        #     ylim=[-0.25],
-        #     modelname="038_milk-box",
-        #     rotate_rand=True,
-        #     rotate_lim=[0, 1, 0],
-        #     qpos=[0.66, 0.66, -0.25, -0.25],
-        #     convex=True,
-        #     model_id=self.bottle_id,
-        # )
-        
-        # self.bottle.set_mass(0.1)
-        # self.add_prohibit_area(self.bottle, padding=0.1)
-        # self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.bottle_id}.glb", [1,1,1]))
-        # ------------------------------------------------------------
+
+        #  ---------------------------------------------------------------------
         self.id_list = [i for i in range(20)]
         self.bottle_id = np.random.choice(self.id_list)
         self.bottle = rand_create_actor(
