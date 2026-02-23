@@ -4,6 +4,7 @@ Benchmark for Robotwin
 
 ## Installation Instructions
 ```bash
+git clone https://github.com/apexs-huawei/robotwin_bench.git
 git submodule update --init --recursive
 ```
 Then follow installation instructions on [https://robotwin-platform.github.io/doc/usage/robotwin-install.html](https://robotwin-platform.github.io/doc/usage/robotwin-install.html) 
