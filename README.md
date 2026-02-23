@@ -2,29 +2,32 @@
 
 Benchmark for Robotwin
 
+## Installation Instructions
+```bash
 git submodule update --init --recursive
+```
+Then follow installation instructions on [https://robotwin-platform.github.io/doc/usage/robotwin-install.html](https://robotwin-platform.github.io/doc/usage/robotwin-install.html) 
 
-Follow installation instructions on [https://robotwin-platform.github.io/doc/usage/robotwin-install.html](https://robotwin-platform.github.io/doc/usage/robotwin-install.html)  
-in bash, run source set_env.sh
-and run export ROBOTWIN_BENCH_TASK="bench"
+Import the storage rack as 120_storage-rack under customized_robotwin/assets/objects_bench
 
-run visualize_task_scene.py for visualizing scenes
+## Per-session commands
+Run the following commands every session to set env vars:
+```bash
+source set_env.sh
+export ROBOTWIN_BENCH_TASK="bench" # bench if you want to work with benchmark tasks, anything else if you are working with the original robotwin tasks
+```
+## For creating new benchmark tasks
+These are required steps to follow in addiion to creating a new task file.
+- Add the desired evaluation step limit to _eval_step_lim.yml in benchmark/bench_task_config.yml
+- Create a task description json and put it in benchmark/bench_description/task_instructions.
 
-gotta install the additional objects_bench assets somehow. gotta get the updated camera config files, config.yml
+Refer to [this page](https://robotwin-platform.github.io/doc/usage/description.html) for how to create new task description templates using an LLM API.
 
-For new envs:
+Refer to the following alternative instructions if no LLM API is available:
 
-create the tasks_instructions/{task_name}.json file using gen_task_instruction_templates.sh
-can't name the same as robotwin name env
-add step lim to _eval_step_lim.yml in bench_task_config.yml
-
-Note: Current implementation only works for Aloha-Agilex
-    CuRobo obstacles to robot frame
-    Attaching external objects to link is only defined in aloha yml
-
-
-for task description json generation:
-Generate a list of 60 different alternative descriptions for the following: "pick up the phone and put it on the phone stand". Each description should not be longer than 8 words
+Prompt an LLM with the following template with the placeholders filled in with the task-specific info. Refer to any existing task template json in customized_robotwin/description/task_instruction for examples on placeholder values.
+```bash
+Generate a list of 60 different alternative descriptions for the following: "{general task instruction}". Each description should not be longer than {max words} words
 
 ##Generic example: "Set {A} on the {B} mat with {a}."
 
@@ -35,8 +38,16 @@ Generate a list of 60 different alternative descriptions for the following: "pic
 5. Clearly or implicitly include all steps of the task in each instruction.
 
 ##Schema:
-The object schema for you to abstract is "{A} notifies the phone, {B} notifies the phonestand. Arm use literal 'arm'"
+The object schema for you to abstract is "{object schema}"
 1. Use placeholders in the format {X} for objects, where X is defined in a schema.
 2. Use placeholders in the format {x} for arm placeholders, where x is defined in a schema.
 2. Object placeholders ({A-Z}) are included in every instruction, but REFERENCE TO ARMS, INCLUDING arm placeholders ({a-z}) MUST be omitted in 50% of the instructions.
 3. Make sure instructions flow naturally when placeholders are replaced with actual objects or arm notations.
+```
+### Additional Notes for Task Generation
+- Run visualize_task_scene.py in customized_robotwin/script/bench_script for visualizing scenes
+
+- Do not name a new task with the same name as any existing task, including the original Robotwin tasks.
+
+Note: Current implementation supports Aloha-Agilex the best. Attaching external objects to link is only defined in aloha yml
+
