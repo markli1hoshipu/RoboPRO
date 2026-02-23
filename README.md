@@ -6,6 +6,7 @@ git submodule update --init --recursive
 
 Follow installation instructions on [https://robotwin-platform.github.io/doc/usage/robotwin-install.html](https://robotwin-platform.github.io/doc/usage/robotwin-install.html)  
 in bash, run source set_env.sh
+and run export ROBOTWIN_BENCH_TASK="bench"
 
 run visualize_task_scene.py for visualizing scenes
 
@@ -15,6 +16,7 @@ For new envs:
 
 create the tasks_instructions/{task_name}.json file using gen_task_instruction_templates.sh
 can't name the same as robotwin name env
+add step lim to _eval_step_lim.yml in bench_task_config.yml
 
 Note: Current implementation only works for Aloha-Agilex
     CuRobo obstacles to robot frame

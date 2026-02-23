@@ -151,7 +151,7 @@ class Office_base_task(gym.Env):
         self.update_world()
 
         if self.eval_mode:
-            with open(os.path.join(CONFIGS_PATH, "_eval_step_limit.yml"), "r") as f:
+            with open(os.path.join(os.environ["BENCH_ROOT"], "bench_task_config", "_bench_eval_step_limit.yml"), "r") as f:
                 try:
                     data = yaml.safe_load(f)
                     self.step_lim = data[self.task_name]
@@ -1653,7 +1653,7 @@ class Office_base_task(gym.Env):
 
         eval_video_freq = 1  # fixed
         if (self.eval_video_path is not None and self.take_action_cnt % eval_video_freq == 0):
-            self.eval_video_ffmpeg.stdin.write(self.now_obs["observation"]["head_camera"]["rgb"].tobytes())
+            self.eval_video_ffmpeg.stdin.write(self.now_obs["observation"]["demo_camera"]["rgb"].tobytes())
 
         self.take_action_cnt += 1
         print(f"step: \033[92m{self.take_action_cnt} / {self.step_lim}\033[0m", end="\r")
