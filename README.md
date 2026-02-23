@@ -1,6 +1,6 @@
 # robotwin_bench
 
-Benchmark for Robotwin
+New benchmark for Robotwin
 
 ## Installation Instructions
 ```bash
@@ -16,7 +16,7 @@ Import the storage rack as 120_storage-rack under customized_robotwin/assets/obj
 cd customized_robotwin
 ```
 Run commands in the same way you would run them for the original Robotwin. Refer to this [usage guide](https://robotwin-platform.github.io/doc/usage/index.html).
-### Per-session commands
+### Per-Session Commands
 Run the following commands every session to set env vars:
 ```bash
 source set_env.sh
@@ -25,13 +25,13 @@ export ROBOTWIN_BENCH_TASK="bench" # bench if you want to work with benchmark ta
 ## For Creating New Benchmark Tasks
 These are required steps to follow in addiion to creating a new task file.
 - Add the desired evaluation step limit to _eval_step_lim.yml in benchmark/bench_task_config.yml
-- Create a task description json and put it in benchmark/bench_description/task_instructions.
+- Create a task description template json and put it in benchmark/bench_description/task_instructions.
 
 Refer to [this page](https://robotwin-platform.github.io/doc/usage/description.html) for how to create new task description templates using an LLM API.
 
 Refer to the following alternative instructions if no LLM API is available:
 
-Prompt an LLM with the following template with the placeholders filled in with the task-specific info. Refer to any existing task template json in customized_robotwin/description/task_instruction for examples on placeholder values.
+Prompt an LLM directly with the following template with the placeholders filled in with the task-specific info. Refer to any existing task template json in customized_robotwin/description/task_instruction for examples on placeholder values.
 ```bash
 Generate a list of 60 different alternative descriptions for the following: "{general task instruction}". Each description should not be longer than {max words} words
 
