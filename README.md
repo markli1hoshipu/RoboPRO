@@ -10,13 +10,18 @@ Then follow installation instructions on [https://robotwin-platform.github.io/do
 
 Import the storage rack as 120_storage-rack under customized_robotwin/assets/objects_bench
 
-## Per-session commands
+## Usage
+```bash
+cd customized_robotwin
+```
+Run commands in the same way you would run them for the original Robotwin. Refer to this [usage guide](https://robotwin-platform.github.io/doc/usage/index.html).
+### Per-session commands
 Run the following commands every session to set env vars:
 ```bash
 source set_env.sh
 export ROBOTWIN_BENCH_TASK="bench" # bench if you want to work with benchmark tasks, anything else if you are working with the original robotwin tasks
 ```
-## For creating new benchmark tasks
+## For Creating New Benchmark Tasks
 These are required steps to follow in addiion to creating a new task file.
 - Add the desired evaluation step limit to _eval_step_lim.yml in benchmark/bench_task_config.yml
 - Create a task description json and put it in benchmark/bench_description/task_instructions.
