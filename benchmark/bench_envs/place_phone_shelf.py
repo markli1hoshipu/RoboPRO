@@ -81,7 +81,10 @@ class place_phone_shelf(Office_base_task):
             scale = [0.14, 0.14, 0.14],
         )
         
-        self.bottle.set_mass(0.1)
+        self.bottle.set_mass(1)
+        rb = self.bottle.actor.components[1]
+        rb.set_linear_damping(5.0)
+        rb.set_angular_damping(20.0)
         self.add_prohibit_area(self.bottle, padding=0.04)
         self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb", [0.14, 0.14, 0.14]))
 
@@ -95,8 +98,8 @@ class place_phone_shelf(Office_base_task):
         # Get stand's functional point as target for placement
         stand_func_pose = self.stand.get_functional_point(0)
         
-        # self.move(self.back_to_origin(arm_tag=arm_tag))
-        
+        self.attach_object(self.phone, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/077_phone/collision/base{self.phone_id}.glb", str(arm_tag))
+
         # Place the phone onto the stand's functional point with alignment constraint
         self.move(
             self.place_actor(

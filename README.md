@@ -10,6 +10,7 @@ git submodule update --init --recursive
 Then follow installation instructions on [https://robotwin-platform.github.io/doc/usage/robotwin-install.html](https://robotwin-platform.github.io/doc/usage/robotwin-install.html) 
 
 Import the storage rack as 120_storage-rack under customized_robotwin/assets/objects_bench
+Copy benchmark/bench_assets/embodiments/aloha-agilex yml files to customized_robotwin/assets/embodiments/aloha-agilex
 
 ## Usage
 ```bash
@@ -55,5 +56,7 @@ The object schema for you to abstract is "{object schema}"
 
 - Do not name a new task with the same name as any existing task, including the original Robotwin tasks.
 
-Note: Current implementation supports Aloha-Agilex the best. Attaching external objects to link is only defined in aloha yml
+Note: Current implementation supports Aloha-Agilex the best in terms of task set up. Attaching external objects to link is only defined in aloha yml. To do this for other embodiments:
+- New link in robot yaml: extra_links, collision_link_names, self_collision_ignore
+- Sphere placeholders in collision yaml: collision_spheres
 

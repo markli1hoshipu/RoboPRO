@@ -1888,14 +1888,14 @@ class Office_base_task(gym.Env):
                         "pose": np_pose,
                         "scale": scale,
                     }
-                else:
-                    pose = actor.get_pose()
-                    np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                    collision_dict["mesh"][f"{actor.name}_{self.seed}"] = {
-                        "file_path": collision_path,
-                        "pose": np_pose,
-                        "scale": scale,
-                    }
+                # else:
+                #     pose = actor.get_pose()
+                #     np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                #     collision_dict["mesh"][f"{actor.name}_{self.seed}"] = {
+                #         "file_path": collision_path,
+                #         "pose": np_pose,
+                #         "scale": scale,
+                #     }
 
 
         self.robot.update_world(collision_dict)
@@ -1962,3 +1962,17 @@ class Office_base_task(gym.Env):
                 )
 
             return collision_dict
+        
+    def attach_object(self, actor, file_path, arms_tag: str):
+        """
+        Attach a held object to the robot in Curobo Planning. Currently supports Actor or ArticulationActor.
+        """
+        pose = actor.get_pose()
+        np_pose = np.concatenate([pose.p, pose.q]).tolist()
+        object = {
+            "name": actor.get_name(),
+            "pose": np_pose,
+            "file_path": file_path,
+            "scale": actor.scale,
+        }
+        self.robot.attach_object(object, arms_tag=arms_tag)

@@ -17,13 +17,22 @@ class pencup_on_pad(Office_base_task):
     def load_actors(self):
         self.shelf_level = np.random.randint(0, 2)
         zlim = self.shelf_heights[self.shelf_level]
-        rand_pos = rand_pose(
-                xlim=[0.74,0.8],
-                ylim=[-0.55,-0.4],
-                zlim=[zlim],
-                qpos=[0.5, 0.5, -0.5, -0.5],
-                rotate_rand=False,
-            )
+        if self.shelf_level == 0:
+            rand_pos = rand_pose(
+                    xlim=[0.76,0.85],
+                    ylim=[-0.55,-0.4],
+                    zlim=[zlim],
+                    qpos=[0.5, 0.5, -0.5, -0.5],
+                    rotate_rand=False,
+                )
+        else:
+            rand_pos = rand_pose(
+                    xlim=[0.76,0.8],
+                    ylim=[-0.55,-0.4],
+                    zlim=[zlim],
+                    qpos=[0.5, 0.5, -0.5, -0.5],
+                    rotate_rand=False,
+                )
 
         self.pencup_id = np.random.choice([0, 1, 2, 3, 5], 1)[0]
         # [3]
@@ -108,7 +117,10 @@ class pencup_on_pad(Office_base_task):
             scale = [0.14, 0.14, 0.14],
         )
         
-        self.bottle.set_mass(0.3)
+        self.bottle.set_mass(1)
+        rb = self.bottle.actor.components[1]
+        rb.set_linear_damping(5.0)
+        rb.set_angular_damping(20.0)
         self.add_prohibit_area(self.bottle, padding=0.04)
         self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb", self.bottle.scale))
 
@@ -116,13 +128,12 @@ class pencup_on_pad(Office_base_task):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag("right")
 
-        # Grasp the mouse with the selected arm
+        # Grasp the cup with the selected arm
         self.move(self.grasp_actor(self.pencup, arm_tag=arm_tag, pre_grasp_dis=0.08, contact_point_id=[0,1,2,5,6,7]))
 
-        # Lift the mouse upward by 0.1 meters in z-direction
-        # self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
+        self.attach_object(self.pencup, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/059_pencup/collision/base{self.pencup_id}.glb", str(arm_tag))
 
-        # Place the mouse at the target location with alignment constraint
+        # Place the cup at the target location with alignment constraint
         self.move(
             self.place_actor(
                 self.pencup,

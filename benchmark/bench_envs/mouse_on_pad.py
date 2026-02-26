@@ -119,6 +119,8 @@ class mouse_on_pad(Office_base_task):
         # Lift the mouse upward by 0.1 meters in z-direction
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
 
+        self.attach_object(self.mouse, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/047_mouse/collision/base{self.mouse_id}.glb", str(arm_tag))
+
         # Place the mouse at the target location with alignment constraint
         self.move(
             self.place_actor(
