@@ -367,8 +367,8 @@ class Office_base_task(gym.Env):
         while success_count < cluttered_numbers and trys < max_try:
             obj = np.random.randint(len(self.obj_names))
             obj_name = self.obj_names[obj]
-            if obj_name in self.unstable_objects:
-                continue
+            # if obj_name in self.unstable_objects:
+            #     continue
             obj_idx = np.random.randint(len(self.cluttered_item_info[obj_name]["ids"]))
             obj_idx = self.cluttered_item_info[obj_name]["ids"][obj_idx]
             obj_radius = self.cluttered_item_info[obj_name]["params"][obj_idx]["radius"]
@@ -397,10 +397,7 @@ class Office_base_task(gym.Env):
             self.cluttered_obj.set_name(f"{obj_name}")
 
             # manage stability as distractors
-            self.cluttered_obj.set_mass(1)
-            rb = self.cluttered_obj.actor.components[1]
-            rb.set_linear_damping(5.0)
-            rb.set_angular_damping(20.0)
+            self.stabilize_object(self.cluttered_obj)
 
             self.cluttered_objs.append(self.cluttered_obj)
             pose = self.cluttered_obj.get_pose().p.tolist()
@@ -481,10 +478,7 @@ class Office_base_task(gym.Env):
             self.cluttered_obj.set_name(f"{obj_name}")
 
             # manage stability as distractors
-            self.cluttered_obj.set_mass(1)
-            rb = self.cluttered_obj.actor.components[1]
-            rb.set_linear_damping(5.0)
-            rb.set_angular_damping(20.0)
+            self.stabilize_object(self.cluttered_obj)
 
             self.cluttered_objs.append(self.cluttered_obj)
             pose = self.cluttered_obj.get_pose().p.tolist()
@@ -505,6 +499,12 @@ class Office_base_task(gym.Env):
 
         self.size_dict = None
         self.cluttered_objs = []
+    
+    def stabilize_object(self, object):
+        object.set_mass(1)
+        rb = object.actor.components[1]
+        rb.set_linear_damping(5.0)
+        rb.set_angular_damping(20.0)
 
     def load_robot(self, **kwags):
         """
@@ -788,7 +788,7 @@ class Office_base_task(gym.Env):
             else:
                 actor_data = {}
 
-        scale: float = actor_data.get("scale", 1)
+        scale: float = actor_data.get("scale", actor.scale)
         origin_bounding_size = (np.array(actor_data.get("extents", [0.1, 0.1, 0.1])) * scale / 2)
         origin_bounding_pts = (np.array([
             [-1, -1, -1],
@@ -1976,3 +1976,9 @@ class Office_base_task(gym.Env):
             "scale": actor.scale,
         }
         self.robot.attach_object(object, arms_tag=arms_tag)
+
+    def detach_object(self, arms_tag: str):
+        """
+        Detach the attached objects from the robot in Curobo Planning.
+        """
+        self.robot.detach_object(arms_tag=arms_tag)

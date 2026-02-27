@@ -51,13 +51,6 @@ class mouse_on_pad(Office_base_task):
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
         )
-        # while (np.sqrt((target_rand_pose.p[0] - rand_pos.p[0])**2 + (target_rand_pose.p[1] - rand_pos.p[1])**2) < 0.1):
-        #     target_rand_pose = rand_pose(
-        #         xlim=xlim,
-        #         ylim=[-0.2, 0.0],
-        #         qpos=[1, 0, 0, 0],
-        #         rotate_rand=False,
-        #     )
 
         colors = {
             "Red": (1, 0, 0),
