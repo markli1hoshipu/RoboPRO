@@ -16,7 +16,7 @@ class place_phone_shelf(Office_base_task):
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
-        self.shelf_level = 0
+        shelf_level = 0
         ori_quat = [
             [0.707, 0.707, 0, 0],
             [0.5, 0.5, 0.5, 0.5],
@@ -47,7 +47,7 @@ class place_phone_shelf(Office_base_task):
         stand_pose = rand_pose(
                 xlim=[self.shelf.get_pose().p[0]-0.1],
                 ylim=[-0.6,-0.4],
-                zlim=[self.shelf_heights[self.shelf_level]+0.01],
+                zlim=[self.shelf_heights[shelf_level]+0.01],
                 qpos=[0.5, 0.5, -0.5, -0.5],
                 rotate_rand=False,
             )
@@ -62,8 +62,8 @@ class place_phone_shelf(Office_base_task):
             is_static=False,
         )
         self.stand.set_mass(1)
-        self.add_prohibit_area(self.phone, padding=0.08)
-        self.add_prohibit_area(self.stand, padding=0.06)
+        self.add_prohibit_area(self.phone, padding=0.08, area="table")
+        self.add_prohibit_area(self.stand, padding=0.06, area=f"shelf{shelf_level}")
 
         #  ---------------------------------------------------------------------
         self.id_list = [i for i in range(20)]
@@ -85,7 +85,7 @@ class place_phone_shelf(Office_base_task):
         rb = self.bottle.actor.components[1]
         rb.set_linear_damping(5.0)
         rb.set_angular_damping(20.0)
-        self.add_prohibit_area(self.bottle, padding=0.04)
+        self.add_prohibit_area(self.bottle, padding=0.04, area="table")
         self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb", [0.14, 0.14, 0.14]))
 
     def play_once(self):

@@ -76,8 +76,8 @@ class mouse_on_pad(Office_base_task):
             name="box",
             is_static=True,
         )
-        self.add_prohibit_area(self.target, padding=0.12)
-        self.add_prohibit_area(self.mouse, padding=0.03)
+        self.add_prohibit_area(self.target, padding=0.12, area="table")
+        self.add_prohibit_area(self.mouse, padding=0.03, area="table")
         # Construct target pose with position from target object and identity orientation
         self.target_pose = self.target.get_pose().p.tolist() + [0, 0, 0, 1]
 
@@ -99,7 +99,7 @@ class mouse_on_pad(Office_base_task):
         )
         
         self.milk_box.set_mass(0.1)
-        self.add_prohibit_area(self.milk_box, padding=0.1)
+        self.add_prohibit_area(self.milk_box, padding=0.1, area="table")
         self.collision_list.append((self.milk_box, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.milk_box_id}.glb", [1,1,1]))
 
     def play_once(self):

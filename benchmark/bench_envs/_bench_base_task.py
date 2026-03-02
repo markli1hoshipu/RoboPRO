@@ -1,0 +1,661 @@
+import os
+import re
+import sapien.core as sapien
+from sapien.render import clear_cache as sapien_clear_cache
+from sapien.utils.viewer import Viewer
+import numpy as np
+import gymnasium as gym
+import pdb
+import toppra as ta
+import json
+import transforms3d as t3d
+from collections import OrderedDict
+import torch, random
+
+from envs.utils import *
+from bench_envs.utils import *
+import math
+from envs.robot import Robot
+from envs.camera import Camera
+from envs.utils.actor_utils import Actor, ArticulationActor
+from envs._base_task import Base_Task
+
+from copy import deepcopy
+import subprocess
+from pathlib import Path
+import trimesh
+import imageio
+import glob
+
+
+from envs._GLOBAL_CONFIGS import *
+
+from typing import Optional, Literal
+
+current_file_path = os.path.abspath(__file__)
+parent_directory = os.path.dirname(current_file_path)
+
+
+class Bench_base_task(Base_Task):
+    """
+    Base task for all benchmark tasks. Mimics robotwin base task, with some functionality changes
+    """
+
+    def __init__(self):
+        pass
+
+    # =========================================================== Init Task Env ===========================================================
+    def _init_task_env_(self, table_xy_bias=[0, 0], table_height_bias=0, **kwags):
+        pass
+
+
+    def setup_scene(self, **kwargs):
+        """
+        Set the scene
+            - Set up the basic scene: light source, viewer.
+        """
+        self.engine = sapien.Engine()
+        # declare sapien renderer
+        from sapien.render import set_global_config
+
+        set_global_config(max_num_materials=50000, max_num_textures=50000)
+        self.renderer = sapien.SapienRenderer()
+        # give renderer to sapien sim
+        self.engine.set_renderer(self.renderer)
+
+        sapien.render.set_camera_shader_dir("rt")
+        sapien.render.set_ray_tracing_samples_per_pixel(32)
+        sapien.render.set_ray_tracing_path_depth(8)
+        sapien.render.set_ray_tracing_denoiser("optix")
+
+        # declare sapien scene
+        scene_config = sapien.SceneConfig()
+        self.scene = self.engine.create_scene(scene_config)
+        # set simulation timestep
+        self.scene.set_timestep(kwargs.get("timestep", 1 / 250))
+        # add ground to scene
+        self.scene.add_ground(kwargs.get("ground_height", 0))
+        # set default physical material
+        self.scene.default_physical_material = self.scene.create_physical_material(
+            kwargs.get("static_friction", 2),
+            kwargs.get("dynamic_friction", 1),
+            kwargs.get("restitution", 0),
+        )
+        # give some white ambient light of moderate intensity
+        self.scene.set_ambient_light(kwargs.get("ambient_light", [0.5, 0.5, 0.5]))
+        # default enable shadow unless specified otherwise
+        shadow = kwargs.get("shadow", True)
+        # default spotlight angle and intensity
+        direction_lights = kwargs.get("direction_lights", [[[0, 0.5, -1], [0.5, 0.5, 0.5]]])
+        self.direction_light_lst = []
+        for direction_light in direction_lights:
+            if self.random_light:
+                direction_light[1] = [
+                    np.random.rand(),
+                    np.random.rand(),
+                    np.random.rand(),
+                ]
+            self.direction_light_lst.append(
+                self.scene.add_directional_light(direction_light[0], direction_light[1], shadow=shadow))
+        # default point lights position and intensity
+        point_lights = kwargs.get("point_lights", [[[1, 0, 1.8], [1, 1, 1]], [[-1, 0, 1.8], [1, 1, 1]]])
+        self.point_light_lst = []
+        for point_light in point_lights:
+            if self.random_light:
+                point_light[1] = [np.random.rand(), np.random.rand(), np.random.rand()]
+            self.point_light_lst.append(self.scene.add_point_light(point_light[0], point_light[1], shadow=shadow))
+
+        # initialize viewer with camera position and orientation
+        if self.render_freq:
+            self.viewer = Viewer(self.renderer)
+            self.viewer.set_scene(self.scene)
+            self.viewer.set_camera_xyz(
+                x=kwargs.get("camera_xyz_x", 0.4),
+                y=kwargs.get("camera_xyz_y", 0.22),
+                z=kwargs.get("camera_xyz_z", 1.5),
+            )
+            self.viewer.set_camera_rpy(
+                r=kwargs.get("camera_rpy_r", 0),
+                p=kwargs.get("camera_rpy_p", -0.8),
+                y=kwargs.get("camera_rpy_y", 2.45),
+            )
+
+    def create_static_elements(self, table_xy_bias=[0, 0], table_height=0.74):
+        pass
+
+    def get_cluttered_surfaces(self):
+        pass
+    
+    def stabilize_object(self, object):
+        object.set_mass(1)
+        rb = object.actor.components[1]
+        rb.set_linear_damping(5.0)
+        rb.set_angular_damping(20.0)
+
+    def load_camera(self, **kwags):
+        """
+        Add cameras and set camera parameters
+            - Including four cameras: left, right, front, head.
+        """
+
+        self.cameras = Camera(
+            bias=self.table_z_bias,
+            random_head_camera_dis=self.random_head_camera_dis,
+            **kwags,
+        )
+        self.add_extra_cameras() # extra cameras specific to task env
+        self.cameras.load_camera(self.scene)
+        self.scene.step()  # run a physical step
+        self.scene.update_render()  # sync pose from SAPIEN to renderer
+    
+    def add_extra_cameras(self):
+        pass
+
+    # =========================================================== Basic APIs ===========================================================
+
+    def add_prohibit_area(
+        self,
+        actor: Actor | sapien.Entity | sapien.Pose | list | np.ndarray,
+        padding=0.01,
+        area="table"
+    ):
+
+        if (isinstance(actor, sapien.Pose) or isinstance(actor, list) or isinstance(actor, np.ndarray)):
+            actor_pose = transforms._toPose(actor)
+            actor_data = {}
+        else:
+            actor_pose = actor.get_pose()
+            if isinstance(actor, Actor):
+                actor_data = actor.config
+            else:
+                actor_data = {}
+
+        scale: float = actor_data.get("scale", actor.scale)
+        origin_bounding_size = (np.array(actor_data.get("extents", [0.1, 0.1, 0.1])) * scale / 2)
+        origin_bounding_pts = (np.array([
+            [-1, -1, -1],
+            [-1, -1, 1],
+            [-1, 1, -1],
+            [-1, 1, 1],
+            [1, -1, -1],
+            [1, -1, 1],
+            [1, 1, -1],
+            [1, 1, 1],
+        ]) * origin_bounding_size)
+
+        actor_matrix = actor_pose.to_transformation_matrix()
+        trans_bounding_pts = actor_matrix[:3, :3] @ origin_bounding_pts.T + actor_matrix[:3, 3].reshape(3, 1)
+        x_min = np.min(trans_bounding_pts[0]) - padding
+        x_max = np.max(trans_bounding_pts[0]) + padding
+        y_min = np.min(trans_bounding_pts[1]) - padding
+        y_max = np.max(trans_bounding_pts[1]) + padding
+        # add_robot_visual_box(self, [x_min, y_min, actor_matrix[3, 3]])
+        # add_robot_visual_box(self, [x_max, y_max, actor_matrix[3, 3]])
+        self.prohibited_area[area].append([x_min, y_min, x_max, y_max])
+
+    def choose_grasp_pose(
+        self,
+        actor: Actor,
+        arm_tag: ArmTag,
+        pre_dis=0.1,
+        target_dis=0,
+        contact_point_id: list | float = None,
+    ) -> list:
+        """
+        Test the grasp pose function.
+        - actor: The actor to be grasped.
+        - arm_tag: The arm to be used for grasping, either "left" or "right".
+        - pre_dis: The distance in front of the grasp point, default is 0.1.
+        """
+        if not self.plan_success:
+            return
+        res_pre_top_down_pose = None
+        res_top_down_pose = None
+        res_id_top_down = None
+        dis_top_down = 1e9
+        res_pre_side_pose = None
+        res_side_pose = None
+        res_id_side = None
+        dis_side = 1e9
+        res_pre_pose = None
+        res_pose = None
+        res_id = None
+        dis = 1e9
+
+        pref_direction = self.robot.get_grasp_perfect_direction(arm_tag)
+
+        def get_grasp_pose(pre_grasp_pose, pre_grasp_dis):
+            grasp_pose = deepcopy(pre_grasp_pose)
+            grasp_pose = np.array(grasp_pose)
+            direction_mat = t3d.quaternions.quat2mat(grasp_pose[-4:])
+            grasp_pose[:3] += [pre_grasp_dis, 0, 0] @ np.linalg.inv(direction_mat)
+            grasp_pose = grasp_pose.tolist()
+            return grasp_pose
+
+        def check_pose(pre_pose, pose, arm_tag):
+            if arm_tag == "left":
+                plan_func = self.robot.left_plan_path
+            else:
+                plan_func = self.robot.right_plan_path
+            pre_path = plan_func(pre_pose)
+            if pre_path["status"] != "Success":
+                return False
+            pre_qpos = pre_path["position"][-1]
+            return plan_func(pose)["status"] == "Success"
+
+        if contact_point_id is not None:
+            if type(contact_point_id) != list:
+                contact_point_id = [contact_point_id]
+            contact_point_id = [(i, None) for i in contact_point_id]
+        else:
+            contact_point_id = actor.iter_contact_points()
+        for i, _ in contact_point_id:
+            pre_pose = self.get_grasp_pose(actor, arm_tag, contact_point_id=i, pre_dis=pre_dis)
+            if pre_pose is None:
+                continue
+            pose = get_grasp_pose(pre_pose, pre_dis - target_dis)
+            now_dis_top_down = cal_quat_dis(
+                pose[-4:],
+                GRASP_DIRECTION_DIC[("top_down_little_left" if arm_tag == "right" else "top_down_little_right")],
+            )
+            now_dis_side = cal_quat_dis(pose[-4:], GRASP_DIRECTION_DIC[pref_direction])
+
+            if res_pre_top_down_pose is None or now_dis_top_down < dis_top_down:
+                res_pre_top_down_pose = pre_pose
+                res_top_down_pose = pose
+                res_id_top_down = i
+                dis_top_down = now_dis_top_down
+
+            if res_pre_side_pose is None or now_dis_side < dis_side:
+                res_pre_side_pose = pre_pose
+                res_side_pose = pose
+                res_id_side = i
+                dis_side = now_dis_side
+
+            now_dis = 0.7 * now_dis_top_down + 0.3 * now_dis_side
+            if res_pre_pose is None or now_dis < dis:
+                res_pre_pose = pre_pose
+                res_pose = pose
+                res_id = i
+                dis = now_dis
+                
+        if dis_top_down < 0.15:
+            # print(f"choose_grasp_pose: selected contact_point_id={res_id_top_down} (top_down)")
+            return res_pre_top_down_pose, res_top_down_pose
+        if dis_side < 0.15:
+            # print(f"choose_grasp_pose: selected contact_point_id={res_id_side} (side)")
+            return res_pre_side_pose, res_side_pose
+        # print(f"choose_grasp_pose: selected contact_point_id={res_id} (combined)")
+        return res_pre_pose, res_pose
+
+    def grasp_actor(
+        self,
+        actor: Actor,
+        arm_tag: ArmTag,
+        pre_grasp_dis=0.1,
+        grasp_dis=0,
+        gripper_pos=0.0,
+        contact_point_id: list | float = None,
+    ):
+        if not self.plan_success:
+            return None, []
+        if self.need_plan == False:
+            if pre_grasp_dis == grasp_dis:
+                return arm_tag, [
+                    Action(arm_tag, "move", target_pose=[0, 0, 0, 0, 0, 0, 0]),
+                    Action(arm_tag, "close", target_gripper_pos=gripper_pos),
+                ]
+            else:
+                return arm_tag, [
+                    Action(arm_tag, "move", target_pose=[0, 0, 0, 0, 0, 0, 0]),
+                    Action(
+                        arm_tag,
+                        "move",
+                        target_pose=[0, 0, 0, 0, 0, 0, 0],
+                        constraint_pose=[1, 1, 1, 0, 0, 0],
+                    ),
+                    Action(arm_tag, "close", target_gripper_pos=gripper_pos),
+                ]
+
+        pre_grasp_pose, grasp_pose = self.choose_grasp_pose(
+            actor,
+            arm_tag=arm_tag,
+            pre_dis=pre_grasp_dis,
+            target_dis=grasp_dis,
+            contact_point_id=contact_point_id,
+        )
+
+        if pre_grasp_pose is None:
+            print("[ERROR] can't find a valid pre_grasp_pose")
+            self.plan_success = False
+            return None, []
+
+        if pre_grasp_pose == grasp_pose:
+            return arm_tag, [
+                Action(arm_tag, "move", target_pose=pre_grasp_pose),
+                Action(arm_tag, "close", target_gripper_pos=gripper_pos),
+            ]
+        else:
+            return arm_tag, [
+                Action(arm_tag, "move", target_pose=pre_grasp_pose),
+                Action(
+                    arm_tag,
+                    "move",
+                    target_pose=grasp_pose,
+                    constraint_pose=[1, 1, 1, 0, 0, 0],
+                ),
+                Action(arm_tag, "close", target_gripper_pos=gripper_pos),
+            ]
+
+
+    def take_action(self, action, action_type:Literal['qpos', 'ee']='qpos'):  # action_type: qpos or ee
+        if self.take_action_cnt == self.step_lim or self.eval_success:
+            return
+
+        eval_video_freq = 1  # fixed
+        if (self.eval_video_path is not None and self.take_action_cnt % eval_video_freq == 0):
+            self.eval_video_ffmpeg.stdin.write(self.now_obs["observation"]["demo_camera"]["rgb"].tobytes())
+
+        self.take_action_cnt += 1
+        print(f"step: \033[92m{self.take_action_cnt} / {self.step_lim}\033[0m", end="\r")
+
+        self._update_render()
+        if self.render_freq:
+            self.viewer.render()
+
+        actions = np.array([action])
+        left_jointstate = self.robot.get_left_arm_jointState()
+        right_jointstate = self.robot.get_right_arm_jointState()
+        left_arm_dim = len(left_jointstate) - 1 if action_type == 'qpos' else 7
+        right_arm_dim = len(right_jointstate) - 1 if action_type == 'qpos' else 7
+        current_jointstate = np.array(left_jointstate + right_jointstate)
+
+        left_arm_actions, left_gripper_actions, left_current_qpos, left_path = (
+            [],
+            [],
+            [],
+            [],
+        )
+        right_arm_actions, right_gripper_actions, right_current_qpos, right_path = (
+            [],
+            [],
+            [],
+            [],
+        )
+
+        left_arm_actions, left_gripper_actions = (
+            actions[:, :left_arm_dim],
+            actions[:, left_arm_dim],
+        )
+        right_arm_actions, right_gripper_actions = (
+            actions[:, left_arm_dim + 1:left_arm_dim + right_arm_dim + 1],
+            actions[:, left_arm_dim + right_arm_dim + 1],
+        )
+        left_current_gripper, right_current_gripper = (
+            self.robot.get_left_gripper_val(),
+            self.robot.get_right_gripper_val(),
+        )
+
+        left_gripper_path = np.hstack((left_current_gripper, left_gripper_actions))
+        right_gripper_path = np.hstack((right_current_gripper, right_gripper_actions))
+
+        if action_type == 'qpos':
+            left_current_qpos, right_current_qpos = (
+                current_jointstate[:left_arm_dim],
+                current_jointstate[left_arm_dim + 1:left_arm_dim + right_arm_dim + 1],
+            )
+            left_path = np.vstack((left_current_qpos, left_arm_actions))
+            right_path = np.vstack((right_current_qpos, right_arm_actions))
+
+            # ========== TOPP ==========
+            # TODO
+            topp_left_flag, topp_right_flag = True, True
+
+            try:
+                times, left_pos, left_vel, acc, duration = (self.robot.left_mplib_planner.TOPP(left_path,
+                                                                                            1 / 250,
+                                                                                            verbose=True))
+                left_result = dict()
+                left_result["position"], left_result["velocity"] = left_pos, left_vel
+                left_n_step = left_result["position"].shape[0]
+            except Exception as e:
+                # print("left arm TOPP error: ", e)
+                topp_left_flag = False
+                left_n_step = 50  # fixed
+
+            if left_n_step == 0:
+                topp_left_flag = False
+                left_n_step = 50  # fixed
+
+            try:
+                times, right_pos, right_vel, acc, duration = (self.robot.right_mplib_planner.TOPP(right_path,
+                                                                                                1 / 250,
+                                                                                                verbose=True))
+                right_result = dict()
+                right_result["position"], right_result["velocity"] = right_pos, right_vel
+                right_n_step = right_result["position"].shape[0]
+            except Exception as e:
+                # print("right arm TOPP error: ", e)
+                topp_right_flag = False
+                right_n_step = 50  # fixed
+
+            if right_n_step == 0:
+                topp_right_flag = False
+                right_n_step = 50  # fixed
+        
+        elif action_type == 'ee':
+
+            left_result = self.robot.left_plan_path(left_arm_actions[0])
+            right_result = self.robot.right_plan_path(right_arm_actions[0])
+            if left_result["status"] != "Success":
+                left_n_step = 50
+                topp_left_flag = False
+                # print("left fail")
+            else: 
+                left_n_step = left_result["position"].shape[0]
+                topp_left_flag = True
+            
+            if right_result["status"] != "Success":
+                right_n_step = 50
+                topp_right_flag = False
+                # print("right fail")
+            else:
+                right_n_step = right_result["position"].shape[0]
+                topp_right_flag = True
+
+        # ========== Gripper ==========
+
+        left_mod_num = left_n_step % len(left_gripper_actions)
+        right_mod_num = right_n_step % len(right_gripper_actions)
+        left_gripper_step = [0] + [
+            left_n_step // len(left_gripper_actions) + (1 if i < left_mod_num else 0)
+            for i in range(len(left_gripper_actions))
+        ]
+        right_gripper_step = [0] + [
+            right_n_step // len(right_gripper_actions) + (1 if i < right_mod_num else 0)
+            for i in range(len(right_gripper_actions))
+        ]
+
+        left_gripper = []
+        for gripper_step in range(1, left_gripper_path.shape[0]):
+            region_left_gripper = np.linspace(
+                left_gripper_path[gripper_step - 1],
+                left_gripper_path[gripper_step],
+                left_gripper_step[gripper_step] + 1,
+            )[1:]
+            left_gripper = left_gripper + region_left_gripper.tolist()
+        left_gripper = np.array(left_gripper)
+
+        right_gripper = []
+        for gripper_step in range(1, right_gripper_path.shape[0]):
+            region_right_gripper = np.linspace(
+                right_gripper_path[gripper_step - 1],
+                right_gripper_path[gripper_step],
+                right_gripper_step[gripper_step] + 1,
+            )[1:]
+            right_gripper = right_gripper + region_right_gripper.tolist()
+        right_gripper = np.array(right_gripper)
+
+        now_left_id, now_right_id = 0, 0
+
+        # ========== Control Loop ==========
+        while now_left_id < left_n_step or now_right_id < right_n_step:
+
+            if (now_left_id < left_n_step and now_left_id / left_n_step <= now_right_id / right_n_step):
+                if topp_left_flag:
+                    self.robot.set_arm_joints(
+                        left_result["position"][now_left_id],
+                        left_result["velocity"][now_left_id],
+                        "left",
+                    )
+                self.robot.set_gripper(left_gripper[now_left_id], "left")
+
+                now_left_id += 1
+
+            if (now_right_id < right_n_step and now_right_id / right_n_step <= now_left_id / left_n_step):
+                if topp_right_flag:
+                    self.robot.set_arm_joints(
+                        right_result["position"][now_right_id],
+                        right_result["velocity"][now_right_id],
+                        "right",
+                    )
+                self.robot.set_gripper(right_gripper[now_right_id], "right")
+
+                now_right_id += 1
+
+            self.scene.step()
+            self._update_render()
+                
+            if self.check_success():
+                self.eval_success = True
+                self.get_obs() # update obs
+                if (self.eval_video_path is not None):
+                    self.eval_video_ffmpeg.stdin.write(self.now_obs["observation"]["head_camera"]["rgb"].tobytes())
+                return
+
+        self._update_render()
+        if self.render_freq:  # UI
+            self.viewer.render()
+    
+    # =========================================================== Extra Curobo Utils ===========================================================
+
+    def update_world(self):
+        """Updates CuRobo Collision World Model with new collision objects"""
+        collision_dict = {"mesh": {}, "cuboid": {}}
+        for actor, collision_path, scale in self.collision_list:
+            if type(actor) == Simple_Actor: #built from multiple obj files
+                name_prefix = actor.get_name()
+                pose = actor.get_pose()
+                np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                convex_collision_dict = self.collision_dict_from_convex_obj_dir(
+                    collision_path,
+                    pose=np_pose,
+                    scale=scale,
+                    name_prefix = name_prefix
+                )
+                collision_dict["mesh"] = (
+                    collision_dict["mesh"] | convex_collision_dict["mesh"]
+                )
+            else:
+                if type(actor) == ArticulationActor or type(actor) == Actor:
+                    pose = actor.get_pose()
+                    np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                    collision_dict["mesh"][f"{actor.get_name()}_{self.seed}"] = {
+                        "file_path": collision_path,
+                        "pose": np_pose,
+                        "scale": scale,
+                    }
+                # else:
+                #     pose = actor.get_pose()
+                #     np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                #     collision_dict["mesh"][f"{actor.name}_{self.seed}"] = {
+                #         "file_path": collision_path,
+                #         "pose": np_pose,
+                #         "scale": scale,
+                #     }
+
+
+        self.robot.update_world(collision_dict)
+    
+    def collision_dict_from_convex_obj_dir(
+        self,
+        obj_dir: str | Path,
+        *,
+        name_prefix: str = "shelf_part",
+        pose: tuple[float, float, float, float, float, float, float],  # [x,y,z,qw,qx,qy,qz]
+        scale: tuple[float, float, float],  # e.g. (0.6, 0.8, 0.4)
+        glob_pattern: str = "*.obj",
+        recursive: bool = False,
+    ) -> dict:
+        """
+        Used to convert a directory of obj files into a dict of collision objects for curobo planner.
+        Returns collision_dict in the form:
+        collision_dict["mesh"][<name>] = {"file_path": ..., "pose": ..., "scale": ...}
+
+        One entry per OBJ file (skips invalid/empty OBJs).
+        """
+        obj_dir = Path(obj_dir)
+        if not obj_dir.exists() or not obj_dir.is_dir():
+            raise FileNotFoundError(f"OBJ directory not found or not a directory: {obj_dir}")
+
+        it = obj_dir.rglob(glob_pattern) if recursive else obj_dir.glob(glob_pattern)
+        obj_files = sorted([p for p in it if p.is_file()])
+
+        if not obj_files:
+            raise FileNotFoundError(
+                f"No OBJ files found in {obj_dir} with pattern '{glob_pattern}' (recursive={recursive})"
+            )
+
+        collision_dict = {"mesh": {}}
+
+        for i, p in enumerate(obj_files):
+            # Validate OBJ so cuRobo/trimesh won't crash later
+            try:
+                m = trimesh.load(str(p), force="mesh", process=False)
+            except Exception: # means the obj file is invalid
+                continue
+
+            if isinstance(m, trimesh.Scene):
+                if len(m.geometry) == 0:
+                    continue
+                # concatenate ensures vertices/faces exist
+                m = trimesh.util.concatenate(tuple(m.geometry.values()))
+
+            if getattr(m, "vertices", None) is None or len(m.vertices) == 0:
+                continue
+            if getattr(m, "faces", None) is None or len(m.faces) == 0:
+                continue
+
+            part_name = f"{name_prefix}_{i}_{p.stem}"
+            collision_dict["mesh"][part_name] = {
+                "file_path": str(p),
+                "pose": list(pose),
+                "scale": list(scale),
+            }
+        
+        if not collision_dict["mesh"]:
+            raise ValueError(
+                f"No valid mesh files were added from directory: {obj_dir} "
+            )
+
+        return collision_dict
+        
+    def attach_object(self, actor, file_path, arms_tag: str):
+        """
+        Attach a held object to the robot in Curobo Planning. Currently supports Actor or ArticulationActor.
+        """
+        pose = actor.get_pose()
+        np_pose = np.concatenate([pose.p, pose.q]).tolist()
+        object = {
+            "name": actor.get_name(),
+            "pose": np_pose,
+            "file_path": file_path,
+            "scale": actor.scale,
+        }
+        self.robot.attach_object(object, arms_tag=arms_tag)
+
+    def detach_object(self, arms_tag: str):
+        """
+        Detach the attached objects from the robot in Curobo Planning.
+        """
+        self.robot.detach_object(arms_tag=arms_tag)

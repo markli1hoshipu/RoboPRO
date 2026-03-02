@@ -15,9 +15,9 @@ class pencup_on_pad(Office_base_task):
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
-        self.shelf_level = np.random.randint(0, 2)
-        zlim = self.shelf_heights[self.shelf_level]
-        if self.shelf_level == 0:
+        shelf_level = np.random.randint(0, 2)
+        zlim = self.shelf_heights[shelf_level]
+        if shelf_level == 0:
             rand_pos = rand_pose(
                     xlim=[0.76,0.85],
                     ylim=[-0.55,-0.4],
@@ -61,7 +61,7 @@ class pencup_on_pad(Office_base_task):
             is_static=False,
         )
         self.pencup.set_mass(0.1)
-        self.add_prohibit_area(self.pencup, padding=0.08)
+        self.add_prohibit_area(self.pencup, padding=0.08, area=f"shelf{shelf_level}")
 
         target_rand_pose = rand_pose(
             xlim=[0.05,0.38],
@@ -96,7 +96,7 @@ class pencup_on_pad(Office_base_task):
             name="box",
             is_static=True,
         )
-        self.add_prohibit_area(self.target, padding=0.08)
+        self.add_prohibit_area(self.target, padding=0.08, area="table")
         # Construct target pose with position from target object and identity orientation
         self.target_pose = self.target.get_pose().p.tolist() + [1,0,0,0]   # wxyz
         self.target_pose[2]+=0.05
@@ -121,7 +121,7 @@ class pencup_on_pad(Office_base_task):
         rb = self.bottle.actor.components[1]
         rb.set_linear_damping(5.0)
         rb.set_angular_damping(20.0)
-        self.add_prohibit_area(self.bottle, padding=0.04)
+        self.add_prohibit_area(self.bottle, padding=0.04, area="table")
         self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb", self.bottle.scale))
 
     def play_once(self):
