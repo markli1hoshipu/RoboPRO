@@ -15,7 +15,6 @@ class items_to_shelf(Office_base_task):
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
-        self.shelf_level = 1
         rand_pos = rand_pose(
             xlim=[0.1,0.4],
             ylim=[-0.15,0],
@@ -23,7 +22,7 @@ class items_to_shelf(Office_base_task):
             rotate_rand=False,
             rotate_lim=[0, 3.14, 0],
         )
-        scale = [0.17,0.13,0.17]
+        scale = [0.18,0.14,0.17]
         self.wooden_box = create_actor(
             scene=self,
             pose=rand_pos,
@@ -34,10 +33,11 @@ class items_to_shelf(Office_base_task):
             is_static=False,
         )
         self.wooden_box.set_mass(1)
-        self.add_prohibit_area(self.wooden_box, padding=0.02)
+        self.add_prohibit_area(self.wooden_box, padding=0.02, area="table")
         self.collision_list.append((self.wooden_box, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/042_wooden_box/collision/base0.glb", scale))
 
         # ------------------------------------------------------------
+        self.cube_id = 0
         center = self.wooden_box.get_pose().p
         self.cube = rand_create_actor(
             self,
@@ -49,12 +49,13 @@ class items_to_shelf(Office_base_task):
             rotate_lim=[0, 0.5, 0],
             qpos=[0, 0, 0.7071, 0.7071],
             convex=True,
-            model_id=0,
+            model_id=self.cube_id,
             is_static=False,
         )
         self.cube.set_mass(0.1)
 
         # ------------------------------------------------------------
+        self.tea_box_id = 0
         self.tea_box = rand_create_actor(
             self,
             xlim=[center[0]+0.09,center[0]+0.02],
@@ -65,17 +66,17 @@ class items_to_shelf(Office_base_task):
             rotate_lim=[0.5, 0, 0],
             qpos=[-0.7071, 0, 0.7071, 0],
             convex=True,
-            model_id=0,
+            model_id=self.tea_box_id,
             is_static=False,
         )
         self.tea_box.set_mass(0.1)
 
         # placement targets --------------------------------------------------
-        # target 1
+        # target 1, tea box placement target
         target_rand_pose = rand_pose(
             xlim=[0.785],
             ylim=[-0.55,-0.39],
-            zlim = [self.shelf_heights[1]-0.04],
+            zlim = [self.shelf_heights[1]-0.015],
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
         )
@@ -90,10 +91,10 @@ class items_to_shelf(Office_base_task):
             is_static=True,
         )
         self.target1_pose = self.target1.get_pose().p.tolist() + [0, 0, 0, 1]
-        self.target1_pose[2] += 0.02 # raise target 0.02 meters
-        self.add_prohibit_area(self.target1, padding=0.05)
+        self.target1_pose[2] += 0.04 # raise target 0.02 meters
+        self.add_prohibit_area(self.target1, padding=0.05, area="shelf1")
 
-        # target 2
+        # target 2, rubics cube placement target
         target_rand_pose = rand_pose(
             xlim=[0.785],
             ylim=[-0.55,-0.39],
@@ -113,7 +114,7 @@ class items_to_shelf(Office_base_task):
         )
         self.target2_pose = self.target2.get_pose().p.tolist() + [-0.5, 0.5, 0.5, -0.5]
         self.target2_pose[2] += 0.1 # raise target 0.02 meters
-        self.add_prohibit_area(self.target2, padding=0.05)
+        self.add_prohibit_area(self.target2, padding=0.05, area=f"shelf0")
 
     def play_once(self):
         arm_tag = ArmTag("right")
@@ -127,7 +128,7 @@ class items_to_shelf(Office_base_task):
         # Lift the box upward by 0.1 meters in z-direction
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.06))
 
-        self.attach_object(self.tea_box, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/112_tea-box/collision/base0.glb", str(arm_tag))
+        self.attach_object(self.tea_box, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/112_tea-box/collision/base{self.tea_box_id}.glb", str(arm_tag))
 
         self.move(
             self.place_actor(
@@ -144,13 +145,13 @@ class items_to_shelf(Office_base_task):
         # rubics cube --------------------------------------------------
         action = self.grasp_actor(self.cube, arm_tag=arm_tag, pre_grasp_dis=0.1, contact_point_id=3)
         if action:
-            action[1][1].target_pose[2] += 0.03 # grasp center of box
+            action[1][1].target_pose[2] += 0.04 # grasp center of box
         self.move(action)
 
         # Lift the box upward by 0.1 meters in z-direction
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.06))
 
-        self.attach_object(self.cube, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/073_rubikscube/collision/base0.glb", str(arm_tag))
+        self.attach_object(self.cube, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/073_rubikscube/collision/base{self.cube_id}.glb", str(arm_tag))
 
         self.move(
             self.place_actor(
@@ -159,27 +160,20 @@ class items_to_shelf(Office_base_task):
                 target_pose=self.target2_pose,
                 constrain="align",
                 pre_dis=0.08,
-                dis=-0.01,
+                dis=-0.02,
             ))
 
         self.detach_object(arms_tag=str(arm_tag))
 
         # Record information about the objects and arm used in the task
         self.info["info"] = {
-            # "{A}": f"047_mouse/base{self.wooden_box_id}",
-            # "{B}": f"{self.color_name}",
-            # "{a}": str(arm_tag),
+            "{A}": f"112_tea-box/base{self.tea_box_id}",
+            "{B}": f"073_rubikscube/base{self.cube_id}",
+            "{a}": str(arm_tag),
         }
         return self.info
 
     def check_success(self):
-        mouse_pose = self.wooden_box.get_pose().p
-        mouse_qpose = np.abs(self.wooden_box.get_pose().q)
-        target_pos = self.target.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
-
-        return (np.all(abs(mouse_pose[:2] - target_pos[:2]) < np.array([eps1, eps2]))
-                and (np.abs(mouse_qpose[2] * mouse_qpose[3] - 0.49) < eps1
-                     or np.abs(mouse_qpose[0] * mouse_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
-                and self.robot.is_right_gripper_open())
+        tea_box_pose = self.tea_box.get_pose().p
+        rubics_cube_pose = self.cube.get_pose().p
+        return tea_box_pose[2]+0.03 > self.shelf_heights[1] and rubics_cube_pose[2] > self.shelf_heights[0]

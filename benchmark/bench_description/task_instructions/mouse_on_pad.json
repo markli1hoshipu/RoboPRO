@@ -1,7 +1,7 @@
 {
   "full_description": "grab the mouse and place it on a colored mat",
   "schema": "{A} notifies the mouse, {B} notifies the color of the mat(YOU SHOULD SAY {B} mat, or {B} colored mat), {a} notifies the arm to grab the mouse",
-  "preference": "num of words should not exceed 15",
+  "preference": "num of words should not exceed 10",
   "seen": [
     "Take the {A} and place it on the {B} mat.",
     "Lift the {A} using {a} and move it to the {B} mat.",
