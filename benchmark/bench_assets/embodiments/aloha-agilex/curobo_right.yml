@@ -71,7 +71,7 @@ robot_cfg:
     extra_links: 
       attached_object:
         link_name: "attached_object"
-        parent_link_name: "fr_link6"          # or fr_link8 if that’s your grasp/tool link
+        parent_link_name: "fr_link6"          # or fr_link8 if thats your grasp/tool link
         joint_name: "attached_object_joint"
         joint_type: "FIXED"
         fixed_transform: [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
