@@ -46,7 +46,7 @@ class place_phone_shelf(Office_base_task):
 
         stand_pose = rand_pose(
                 xlim=[self.shelf.get_pose().p[0]-0.1],
-                ylim=[-0.6,-0.4],
+                ylim=[self.shelf.get_pose().p[1]-0.24,self.shelf.get_pose().p[1]+0.24],
                 zlim=[self.shelf_heights[shelf_level]+0.01],
                 qpos=[0.5, 0.5, -0.5, -0.5],
                 rotate_rand=False,

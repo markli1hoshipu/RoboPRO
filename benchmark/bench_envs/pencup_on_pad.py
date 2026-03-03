@@ -19,8 +19,8 @@ class pencup_on_pad(Office_base_task):
         zlim = self.shelf_heights[shelf_level]
         if shelf_level == 0:
             rand_pos = rand_pose(
-                    xlim=[0.76,0.85],
-                    ylim=[-0.55,-0.4],
+                    xlim=[0.76,0.8],
+                    ylim=[self.shelf.get_pose().p[1]-0.24,self.shelf.get_pose().p[1]+0.24],
                     zlim=[zlim],
                     qpos=[0.5, 0.5, -0.5, -0.5],
                     rotate_rand=False,
@@ -28,7 +28,7 @@ class pencup_on_pad(Office_base_task):
         else:
             rand_pos = rand_pose(
                     xlim=[0.76,0.8],
-                    ylim=[-0.55,-0.4],
+                    ylim=[self.shelf.get_pose().p[1]-0.16,self.shelf.get_pose().p[1]+0.16],
                     zlim=[zlim],
                     qpos=[0.5, 0.5, -0.5, -0.5],
                     rotate_rand=False,

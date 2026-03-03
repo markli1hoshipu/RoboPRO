@@ -75,7 +75,7 @@ class items_to_shelf(Office_base_task):
         # target 1, tea box placement target
         target_rand_pose = rand_pose(
             xlim=[0.785],
-            ylim=[-0.55,-0.39],
+            ylim=[self.shelf.get_pose().p[1]-0.16,self.shelf.get_pose().p[1]+0.16],
             zlim = [self.shelf_heights[1]-0.015],
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
@@ -97,7 +97,7 @@ class items_to_shelf(Office_base_task):
         # target 2, rubics cube placement target
         target_rand_pose = rand_pose(
             xlim=[0.785],
-            ylim=[-0.55,-0.39],
+            ylim=[self.shelf.get_pose().p[1]-0.24,self.shelf.get_pose().p[1]+0.24],
             zlim = [self.shelf_heights[0]-0.02],
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
