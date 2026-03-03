@@ -158,6 +158,7 @@ class Office_base_task(Bench_base_task):
         self.info["texture_info"] = {
             "wall_texture": self.wall_texture,
             "table_texture": self.table_texture,
+            "floor_texture": self.floor_texture,
         }
         self.info["info"] = {}
 
@@ -165,7 +166,7 @@ class Office_base_task(Bench_base_task):
 
     def create_static_elements(self, table_xy_bias=[0, 0], table_height=0.74):
         self.table_xy_bias = table_xy_bias
-        wall_texture, table_texture = None, None
+        wall_texture, table_texture, floor_texture = None, None, None
         table_height += self.table_z_bias
 
         if self.random_background:
@@ -176,26 +177,47 @@ class Office_base_task(Bench_base_task):
 
             # wall_texture, table_texture = np.random.randint(0, file_count), np.random.randint(0, file_count)
             if texture_type == "seen":
-                wall_texture, table_texture = np.random.randint(0, file_count), np.random.choice(
+                wall_texture = np.random.randint(0, file_count)
+                table_texture = np.random.choice(
                     # simple textures, not distracting
-                    [0,2,3,4,5,6,7,,9,10,12,13,14,16,17,18,19,20,21,22,24,25,26,33,34,35,36,38]
+                    [0,2,3,4,5,6,7,9,10,12,13,14,16,17,18,19,20,21,22,24,25,26,33,34,35,36,38]
+                    )
+                floor_texture = np.random.choice(
+                    # simple textures, not distracting
+                    [4, 5, 6, 9, 25, 26, 38, 201, 238, 477, 497]
                     )
             else:
-                wall_texture, table_texture = np.random.randint(0, file_count), np.random.choice(
+                wall_texture = np.random.randint(0, file_count)
+                table_texture = np.random.choice(
                     # simple textures, not distracting
                     [0,1,2,3,6,7,8,9,10,13,14,15,23,24,27,29,34,41,47]
                     )
+                floor_texture = np.random.choice(
+                    # simple textures, not distracting
+                    [0,6,9,25,29,30,34,82,73,75,94,145,179,223,238]
+                    )
 
-            self.wall_texture, self.table_texture = (
-                f"{texture_type}/{wall_texture}",
-                f"{texture_type}/{table_texture}",
-            )
+            self.wall_texture = f"{texture_type}/{wall_texture}"
+            self.table_texture = f"{texture_type}/{table_texture}"
+            self.floor_texture = f"{texture_type}/{floor_texture}"
             if np.random.rand() <= self.clean_background_rate:
                 self.wall_texture = None
             if np.random.rand() <= self.clean_background_rate:
                 self.table_texture = None
+            if np.random.rand() <= self.clean_background_rate:
+                self.floor_texture = None
         else:
-            self.wall_texture, self.table_texture = None, None
+            self.wall_texture, self.table_texture, self.floor_texture = None, None, None
+
+        self.floor = create_box(
+            self.scene,
+            sapien.Pose(p=[0, 0, 0]),
+            half_size=[2, 2, 0.02],
+            color=(0.85, 0.85, 0.85),
+            name="floor",
+            texture_id=self.floor_texture,
+            is_static=True,
+        )
 
         self.wall = create_box(
             self.scene,
@@ -221,7 +243,7 @@ class Office_base_task(Bench_base_task):
         shelf_scale = [0.6, 0.87, 0.4]
         self.shelf = create_multiple_obj_actor(
             scene=self.scene,
-            pose=sapien.Pose(p=[0.9, -0.65, -0.07], q=[0.5, 0.5, 0.5, 0.5]),
+            pose=sapien.Pose(p=[0.9, -0.42, -0.07], q=[0.5, 0.5, 0.5, 0.5]),
             visual_path=f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/storage_rack_02.gltf",
             collision_path=f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex",
             scale=shelf_scale,
