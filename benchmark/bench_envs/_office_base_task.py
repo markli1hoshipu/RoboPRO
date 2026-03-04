@@ -37,6 +37,9 @@ parent_directory = os.path.dirname(current_file_path)
 
 
 class Office_base_task(Bench_base_task):
+    def __init__(self):
+        pass
+
     def _init_task_env_(self, table_xy_bias=[0, 0], table_height_bias=0, **kwags):
         """
         Initialization TODO
@@ -51,7 +54,7 @@ class Office_base_task(Bench_base_task):
         - `self.right_arm_joint_id`: [7,15,19,23,27,31].
         - `self.render_fre`: Render frequency.
         """
-        super().__init__()
+        super().__init__() # need to fix this. right now this does nothing. it should be calling gym.Env.__init__()
         ta.setup_logging("CRITICAL")  # hide logging
         np.random.seed(kwags.get("seed", 0))
         torch.manual_seed(kwags.get("seed", 0))
@@ -180,21 +183,21 @@ class Office_base_task(Bench_base_task):
                 wall_texture = np.random.randint(0, file_count)
                 table_texture = np.random.choice(
                     # simple textures, not distracting
-                    [0,2,3,4,5,6,7,9,10,12,13,14,16,17,18,19,20,21,22,24,25,26,33,34,35,36,38]
+                    [0,2,4,5,7,9,14,16,18,19]
                     )
                 floor_texture = np.random.choice(
                     # simple textures, not distracting
-                    [4, 5, 6, 9, 25, 26, 38, 201, 238, 477, 497]
+                    [2,3,4,5,6,17,47,71,110]
                     )
             else:
                 wall_texture = np.random.randint(0, file_count)
                 table_texture = np.random.choice(
                     # simple textures, not distracting
-                    [0,1,2,3,6,7,8,9,10,13,14,15,23,24,27,29,34,41,47]
+                    [1,8,9,27,29,30,37,55]
                     )
                 floor_texture = np.random.choice(
                     # simple textures, not distracting
-                    [0,6,9,25,29,30,34,82,73,75,94,145,179,223,238]
+                    [0,6,8,23,34,41,47,61,64]
                     )
 
             self.wall_texture = f"{texture_type}/{wall_texture}"
@@ -209,14 +212,13 @@ class Office_base_task(Bench_base_task):
         else:
             self.wall_texture, self.table_texture, self.floor_texture = None, None, None
 
-        self.floor = create_box(
+        self.floor = create_visual_textured_box(
             self.scene,
             sapien.Pose(p=[0, 0, 0]),
-            half_size=[2, 2, 0.02],
+            half_size=[2, 2, 0.005],
             color=(0.85, 0.85, 0.85),
             name="floor",
             texture_id=self.floor_texture,
-            is_static=True,
         )
 
         self.wall = create_box(

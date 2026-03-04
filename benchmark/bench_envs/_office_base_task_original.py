@@ -35,7 +35,7 @@ current_file_path = os.path.abspath(__file__)
 parent_directory = os.path.dirname(current_file_path)
 
 
-class Office_base_task(gym.Env):
+class Office_base_task_original(gym.Env):
 
     def __init__(self):
         pass
