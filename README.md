@@ -18,13 +18,14 @@ Copy all the benchmark/bench_assets/embodiments/aloha-agilex yml files into cust
 ```bash
 cd customized_robotwin
 ```
-Run commands in the same way you would run them for the original Robotwin. Refer to this [usage guide](https://robotwin-platform.github.io/doc/usage/index.html).
 ### Per-Session Commands
 Run the following commands every session to set env vars:
 ```bash
 source set_env.sh
 export ROBOTWIN_BENCH_TASK="bench" # bench if you want to work with benchmark tasks, anything else if you are working with the original robotwin tasks
 ```
+---
+Run commands in the same way you would run them for the original Robotwin. Refer to this [usage guide](https://robotwin-platform.github.io/doc/usage/index.html).
 
 Run the following script to make sure everything is set up properly:
 ```bash
