@@ -10,6 +10,7 @@ git submodule update --init --recursive
 Then follow installation instructions on [https://robotwin-platform.github.io/doc/usage/robotwin-install.html](https://robotwin-platform.github.io/doc/usage/robotwin-install.html) 
 
 Import the storage rack as 120_storage-rack under customized_robotwin/assets/objects_bench
+
 Copy benchmark/bench_assets/embodiments/aloha-agilex yml files to customized_robotwin/assets/embodiments/aloha-agilex
 
 ## Usage
