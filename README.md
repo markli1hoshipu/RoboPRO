@@ -13,6 +13,7 @@ Import the storage rack as 120_storage-rack under customized_robotwin/assets/obj
 Copy benchmark/bench_assets/embodiments/aloha-agilex yml files to customized_robotwin/assets/embodiments/aloha-agilex
 
 ## Usage
+** switch to benchmark/implementation for both repos
 ```bash
 cd customized_robotwin
 ```
@@ -23,6 +24,12 @@ Run the following commands every session to set env vars:
 source set_env.sh
 export ROBOTWIN_BENCH_TASK="bench" # bench if you want to work with benchmark tasks, anything else if you are working with the original robotwin tasks
 ```
+
+Run the following script to make sure everything is set up properly:
+```bash
+python script/bench_script/visualize_task_scene.py mouse_on_pad bench_demo_clean --rollout --seed 0
+```
+
 ## For Creating New Benchmark Tasks
 These are required steps to follow in addiion to creating a new task file.
 - Add the desired evaluation step limit to _eval_step_lim.yml in benchmark/bench_task_config.yml
