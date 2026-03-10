@@ -9,9 +9,9 @@ git submodule update --init --recursive
 ```
 Then follow installation instructions on [https://robotwin-platform.github.io/doc/usage/robotwin-install.html](https://robotwin-platform.github.io/doc/usage/robotwin-install.html) 
 
-Import the storage rack as 120_storage-rack under customized_robotwin/assets/objects_bench
+Copy the benchmark/bench_assets/120_storage-rack folder into  customized_robotwin/assets/objects_bench
 
-Copy benchmark/bench_assets/embodiments/aloha-agilex yml files to customized_robotwin/assets/embodiments/aloha-agilex
+Copy all the benchmark/bench_assets/embodiments/aloha-agilex yml files into customized_robotwin/assets/embodiments/aloha-agilex (will overwrite existing files)
 
 ### Known Curobo Cache Issue
 In customized_robotwin/envs/curobo/src/curobo/geom/sdf/world_mesh.py replace the clear_cache() definition with:
@@ -35,13 +35,14 @@ def clear_cache(self):
 ```bash
 cd customized_robotwin
 ```
-Run commands in the same way you would run them for the original Robotwin. Refer to this [usage guide](https://robotwin-platform.github.io/doc/usage/index.html).
 ### Per-Session Commands
 Run the following commands every session to set env vars:
 ```bash
 source set_env.sh
 export ROBOTWIN_BENCH_TASK="bench" # bench if you want to work with benchmark tasks, anything else if you are working with the original robotwin tasks
 ```
+---
+Run commands in the same way you would run them for the original Robotwin. Refer to this [usage guide](https://robotwin-platform.github.io/doc/usage/index.html).
 
 Run the following script to make sure everything is set up properly:
 ```bash
