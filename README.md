@@ -13,6 +13,23 @@ Import the storage rack as 120_storage-rack under customized_robotwin/assets/obj
 
 Copy benchmark/bench_assets/embodiments/aloha-agilex yml files to customized_robotwin/assets/embodiments/aloha-agilex
 
+### Known Curobo Cache Issue
+In customized_robotwin/envs/curobo/src/curobo/geom/sdf/world_mesh.py replace the clear_cache() definition with:
+```bash
+def clear_cache(self):
+    self._wp_mesh_cache = {}
+    if self._mesh_tensor_list is not None:
+        self._mesh_tensor_list[2][:] = 0
+    if self._env_n_mesh is not None:
+        self._env_n_mesh[:] = 0
+    if self._env_mesh_names is not None:
+        for i in range(self.n_envs):
+            for j in range(len(self._env_mesh_names)):
+                self._env_mesh_names[i][j] = None
+
+    super().clear_cache()
+```
+
 ## Usage
 ** switch to benchmark/implementation for both repos
 ```bash
