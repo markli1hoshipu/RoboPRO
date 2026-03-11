@@ -129,8 +129,11 @@ class Bench_base_task(Base_Task):
     def stabilize_object(self, object):
         object.set_mass(1)
         rb = object.actor.components[1]
-        rb.set_linear_damping(5.0)
-        rb.set_angular_damping(20.0)
+        try:
+            rb.set_linear_damping(5.0)
+            rb.set_angular_damping(20.0)
+        except:
+            pass
 
     def load_camera(self, **kwags):
         """
