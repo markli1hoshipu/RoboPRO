@@ -11,7 +11,7 @@ Then follow installation instructions on [https://robotwin-platform.github.io/do
 
 Copy the benchmark/bench_assets/120_storage-rack folder into  customized_robotwin/assets/objects_bench
 
-Copy all the benchmark/bench_assets/embodiments/aloha-agilex yml files into customized_robotwin/assets/embodiments/aloha-agilex (will overwrite existing files)
+Copy all the benchmark/bench_assets/embodiments/aloha-agilex yml files into customized_robotwin/assets/embodiments/aloha-agilex (will overwrite existing files). You will need to update the paths in curobo_right.yml and curobo_left.yml
 
 ### Known Curobo Cache Issue
 In customized_robotwin/envs/curobo/src/curobo/geom/sdf/world_mesh.py replace the clear_cache() definition with:

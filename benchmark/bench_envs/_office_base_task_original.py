@@ -1,3 +1,4 @@
+# not currently used. Kept as a previous version for reference.
 import os
 import re
 import sapien.core as sapien
@@ -5,7 +6,7 @@ from sapien.render import clear_cache as sapien_clear_cache
 from sapien.utils.viewer import Viewer
 import numpy as np
 import gymnasium as gym
-import pdb
+import pdb  
 import toppra as ta
 import json
 import transforms3d as t3d
@@ -470,7 +471,7 @@ class Office_base_task_original(gym.Env):
                 z_offset=obj_offset,
                 z_max=obj_maxz,
                 prohibited_area=self.prohibited_area,
-                shelf=True,
+                constrained=False,
             )
             if not success or self.cluttered_obj is None:
                 trys += 1
