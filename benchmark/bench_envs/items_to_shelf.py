@@ -113,7 +113,7 @@ class items_to_shelf(Office_base_task):
             is_static=True,
         )
         self.target2_pose = self.target2.get_pose().p.tolist() + [-0.5, 0.5, 0.5, -0.5]
-        self.target2_pose[2] += 0.1 # raise target 0.02 meters
+        self.target2_pose[2] += 0.09 # raise target 0.02 meters
         self.add_prohibit_area(self.target2, padding=0.05, area=f"shelf0")
 
     def play_once(self):

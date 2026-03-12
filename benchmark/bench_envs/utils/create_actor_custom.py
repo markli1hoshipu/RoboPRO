@@ -69,4 +69,4 @@ def create_multiple_obj_actor(
     if name:
         actor.set_name(name)
     
-    return Simple_Actor(actor, scale)
+    return Simple_Actor(actor, scale=scale)

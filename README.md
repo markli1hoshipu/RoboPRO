@@ -79,10 +79,13 @@ The object schema for you to abstract is "{object schema}"
 ```
 ### Additional Notes for Task Generation
 - Run visualize_task_scene.py in customized_robotwin/script/bench_script for visualizing scenes
-
 - Do not name a new task with the same name as any existing task, including the original Robotwin tasks.
 
-Note: Current implementation supports Aloha-Agilex the best in terms of task set up. Attaching external objects to link is only defined in aloha yml. To do this for other embodiments:
+Note: Current implementation supports Aloha-Agilex. Attaching external objects to link is only defined in aloha yml. To do this for other embodiments:
 - New link in robot yaml: extra_links, collision_link_names, self_collision_ignore
 - Sphere placeholders in collision yaml: collision_spheres
+
+TODO:
+- Dynamically load updated embodiment yamls
+- Dynamically load updated assets
 

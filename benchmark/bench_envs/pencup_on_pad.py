@@ -16,7 +16,7 @@ class pencup_on_pad(Office_base_task):
 
     def load_actors(self):
         shelf_level = np.random.randint(0, 2)
-        zlim = self.shelf_heights[shelf_level]
+        zlim = self.shelf_heights[shelf_level]+0.04
         if shelf_level == 0:
             rand_pos = rand_pose(
                     xlim=[0.76,0.8],
@@ -67,7 +67,7 @@ class pencup_on_pad(Office_base_task):
             xlim=[0.05,0.38],
             # xlim=[0.4],
             # ylim=[0.05],
-            ylim=[-0.05,0.2],
+            ylim=[-0.05,0.125],
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
         )

@@ -106,6 +106,7 @@ class Office_base_task(Bench_base_task):
         self.save_freq = kwags.get("save_freq")
         self.world_pcd = None
 
+        self.key_objects = []
         self.size_dict = list()
         self.cluttered_objs = list()
         self.prohibited_area = {"table": [], "shelf0": [], "shelf1": []} # shelf 0 for lower shelf, shelf 1 for upper shelf
@@ -168,8 +169,8 @@ class Office_base_task(Bench_base_task):
         self.render_freq = render_freq
 
         self.robot.set_origin_endpose()
-        self.load_basic_office_items()
         self.load_actors()
+        self.load_basic_office_items()
 
         if self.cluttered_table:
             self.get_cluttered_surfaces()
@@ -204,7 +205,7 @@ class Office_base_task(Bench_base_task):
         self.stage_success_tag = False
 
     def create_static_elements(self, table_xy_bias=[0, 0], table_height=0.74):
-        # create furniture elements
+        # create static furniture elements
         self.table_xy_bias = table_xy_bias
         wall_texture, table_texture, floor_texture = None, None, None
         table_height += self.table_z_bias
@@ -288,144 +289,157 @@ class Office_base_task(Bench_base_task):
         self.collision_list.append((self.shelf, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex", shelf_scale))
     
     def load_basic_office_items(self):
-        # load office items: items that might be distractors but can't be placed anywhere random
-        # self.laptop_id = np.random.randint(0, 11)
-        # self.laptop_id = 0
-        # self.laptop: ArticulationActor = rand_create_sapien_urdf_obj(
-        #     scene=self,
-        #     modelname="015_laptop",
-        #     modelid=self.laptop_id,
-        #     xlim=[-0.3,0.3],
-        #     ylim=[0.2,0.15],
-        #     rotate_rand=True,
-        #     rotate_lim=[0, 0, np.pi / 4],
-        #     qpos=[0.7, 0, 0, 0.7],
-        #     fix_root_link=True,
-        # )
-        # limit = self.laptop.get_qlimits()[0]
-        # self.laptop.set_qpos([limit[0] + (limit[1] - limit[0]) * 0.2])
-        # self.laptop.set_mass(0.01)
-        # self.laptop.set_properties(1, 0)
-        # self.add_prohibit_area(self.laptop, padding=0.01)
-        screen_id = np.random.choice([0, 1, 2, 3])
-        self.screen = rand_create_actor(
-            self,
-            xlim=[-0.2,0.2],
-            ylim=[0.05,0.175],
-            modelname="097_screen",
-            rotate_rand=True,
-            rotate_lim=[0, 0.5, 0],
-            qpos=[0.7071, 0.7071, 0, 0],
-            convex=True,
-            model_id=screen_id,
-            is_static=False,
-        )
-        self.screen.set_mass(0.1)
-        self.add_prohibit_area(self.screen, padding=0.01)
-        # ------------------------------------------------------------
-        plant_id = 0
-        rand_pos = rand_pose(
-            xlim=[-0.35, 0.35],
-            ylim=[0.25, 0.3],
-            qpos=[0.5, 0.5, 0.5, 0.5],
-            rotate_rand=True,
-            rotate_lim=[0, 1, 0],
-        )
-        while abs(rand_pos.p[0]) < 0.25:
-            rand_pos = rand_pose(
-                xlim=[-0.35, 0.35],
-                ylim=[0.2, 0.3],
-                qpos=[0.5, 0.5, 0.5, 0.5],
-                rotate_rand=True,
-                rotate_lim=[0, 1, 0],
-            )
-
-        self.plant = create_actor(
-            scene=self,
-            pose=rand_pos,
-            modelname="120_plant",
-            convex=True,
-            model_id=plant_id,
-        )
-        self.plant.set_mass(1)
-        self.add_prohibit_area(self.plant, padding=0.01)
-        # ------------------------------------------------------------
-        keyboard_id = np.random.choice([0, 1, 2, 3])
-        self.keyboard = rand_create_actor(
-            self,
-            xlim=[-0.2,0.2],
-            ylim=[-0.25,-0.05],
-            modelname="116_keyboard",
-            rotate_rand=True,
-            rotate_lim=[0, 0.5, 0],
-            qpos=[0.7071, 0.7071, 0, 0],
-            convex=True,
-            model_id=keyboard_id,
-            is_static=False,
-        )
-        self.keyboard.set_mass(0.1)
-        self.add_prohibit_area(self.keyboard, padding=0.01)
-        # ------------------------------------------------------------
-        mouse_id = np.random.choice([0, 1, 2], 1)[0]
+        # load office items: items that are always placed as obstacles ie key obstacles
         size_dict = list()
-        success = False
-        for i in range(10):
-            success, self.mouse = rand_create_cluttered_actor(
-                scene=self.scene,
-                xlim=[-0.3,0.3],
-                ylim=[-0.25,-0.05],
-                zlim=[0.741],
-                modelname="047_mouse",
-                modelid=mouse_id,
-                modeltype="glb",
-                qpos=[0.0, 0.0, 0.7071, 0.7071],
-                rotate_rand=True,
-                rotate_lim=[0, 1, 0],
-                size_dict=size_dict,
-                obj_radius=0.045,
-                z_offset=0,
-                z_max=0.04,
-                prohibited_area=self.prohibited_area["table"],
-                constrained=False,
-                is_static=False,
-            )
+        if "screen" not in self.key_objects:
+            screen_id = np.random.choice([0, 1, 2, 3])
+            for i in range(10):
+                success, self.screen = rand_create_cluttered_actor(
+                    scene=self.scene,
+                    xlim=[-0.2,0.2],
+                    ylim=[0.05,0.22],
+                    zlim=[0.741],
+                    modelname="097_screen",
+                    modelid=screen_id,
+                    modeltype="glb",
+                    qpos=[0.7071, 0.7071, 0, 0],
+                    rotate_rand=True,
+                    rotate_lim=[0, 0.5, 0],
+                    size_dict=size_dict,
+                    obj_radius=0.08,
+                    z_offset=0,
+                    z_max=0.35,
+                    prohibited_area=self.prohibited_area["table"],
+                    constrained=False,
+                    is_static=False,
+                )
+                if success:
+                    break
             if success:
-                break
-        if not success:
-            raise ValueError("Failed to create mouse")
-        self.mouse.set_mass(0.05)
-        self.add_prohibit_area(self.mouse, padding=0.01)
+                self.screen.set_mass(0.1)
+                self.add_prohibit_area(self.screen, padding=0.01)
+                self.collision_list.append((self.screen, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/097_screen/collision/base{screen_id}.glb", [1,1,1]))
         # ------------------------------------------------------------
-        stand_id = np.random.choice([0,1,2,3,4,5,6], 1)[0]
-        success = False
-        for i in range(10):
-            success, self.phone_stand = rand_create_cluttered_actor(
-                scene=self.scene,
-                xlim=[-0.3,0.3],
-                ylim=[-0.25,-0.05],
-                zlim=[0.741],
-                modelname="078_phonestand",
-                modelid=stand_id,
-                modeltype="glb",
-                qpos=[0.7071, 0.7071, 0.0, 0.0],
-                rotate_rand=True,
-                rotate_lim=[0, 1, 0],
-                size_dict=size_dict,
-                obj_radius=0.03,
-                z_offset=0,
-                z_max=0.1,
-                prohibited_area=self.prohibited_area["table"],
-                constrained=False,
-                is_static=False,
-            )
+        if "plant" not in self.key_objects:
+            plant_id = 0
+            for i in range(10):
+                success, self.plant = rand_create_cluttered_actor(
+                    scene=self.scene,
+                    xlim=[-0.35,0.35],
+                    ylim=[0.2, 0.3],
+                    zlim=[0.741],
+                    modelname="120_plant",
+                    modelid=plant_id,
+                    modeltype="glb",
+                    qpos=[0.5, 0.5, 0.5, 0.5],
+                    rotate_rand=True,
+                    rotate_lim=[0, 1, 0],
+                    size_dict=size_dict,
+                    obj_radius=0.03,
+                    z_offset=0,
+                    z_max=0.25,
+                    prohibited_area=self.prohibited_area["table"],
+                    constrained=False,
+                    is_static=False,
+                )
+                if success:
+                    break
             if success:
-                break
-        if not success:
-            raise ValueError("Failed to create phone stand")
-        self.phone_stand.set_mass(0.05)
-        self.add_prohibit_area(self.phone_stand, padding=0.01)
+                self.plant.set_mass(1)
+                self.add_prohibit_area(self.plant, padding=0.01)
+                self.collision_list.append((self.plant, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/120_plant/collision/base{plant_id}.glb", [1,1,1]))
+        # ------------------------------------------------------------
+        if "keyboard" not in self.key_objects:
+            keyboard_id = np.random.choice([0, 1, 2, 3])
+            for i in range(10):
+                success, self.keyboard = rand_create_cluttered_actor(
+                    scene=self.scene,
+                    xlim=[-0.2,0.2],
+                    ylim=[-0.3,-0.05],
+                    zlim=[0.741],
+                    modelname="116_keyboard",
+                    modelid=keyboard_id,
+                    modeltype="glb",
+                    qpos=[0.7071, 0.7071, 0, 0],
+                    rotate_rand=True,
+                    rotate_lim=[0, 0.5, 0],
+                    size_dict=size_dict,
+                    obj_radius=0.12,
+                    z_offset=0,
+                    z_max=0.03,
+                    prohibited_area=self.prohibited_area["table"],
+                    constrained=False,
+                    is_static=False,
+                )
+                if success:
+                    break
+            if success:
+                self.keyboard.set_mass(0.1)
+                self.add_prohibit_area(self.keyboard, padding=0.01)
+                self.collision_list.append((self.keyboard, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/116_keyboard/collision/base{keyboard_id}.glb", [1,1,1]))
+        # # ------------------------------------------------------------
+        # if "mouse" not in self.key_objects:
+        #     mouse_id = np.random.choice([0, 1, 2], 1)[0]
+        #     success = False
+        #     for i in range(10):
+        #         success, self.mouse = rand_create_cluttered_actor(
+        #             scene=self.scene,
+        #             xlim=[-0.3,0.3],
+        #             ylim=[-0.25,-0.05],
+        #             zlim=[0.741],
+        #             modelname="047_mouse",
+        #             modelid=mouse_id,
+        #             modeltype="glb",
+        #             qpos=[0.0, 0.0, 0.7071, 0.7071],
+        #             rotate_rand=True,
+        #             rotate_lim=[0, 1, 0],
+        #             size_dict=size_dict,
+        #             obj_radius=0.045,
+        #             z_offset=0,
+        #             z_max=0.04,
+        #             prohibited_area=self.prohibited_area["table"],
+        #             constrained=False,
+        #             is_static=False,
+        #         )
+        #         if success:
+        #             break
+        #     if success:
+        #         self.mouse.set_mass(0.05)
+        #         self.add_prohibit_area(self.mouse, padding=0.01)
+        #         self.collision_list.append((self.mouse, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/047_mouse/collision/base{mouse_id}.glb", [1,1,1]))
+        # # ------------------------------------------------------------
+        # if "phone_stand" not in self.key_objects:
+        #     stand_id = np.random.choice([0,1,2,3,4,5,6], 1)[0]
+        #     success = False
+        #     for i in range(10):
+        #         success, self.phone_stand = rand_create_cluttered_actor(
+        #             scene=self.scene,
+        #             xlim=[-0.3,0.3],
+        #             ylim=[-0.25,-0.05],
+        #             zlim=[0.741],
+        #             modelname="078_phonestand",
+        #             modelid=stand_id,
+        #             modeltype="glb",
+        #             qpos=[0.7071, 0.7071, 0.0, 0.0],
+        #             rotate_rand=True,
+        #             rotate_lim=[0, 1, 0],
+        #             size_dict=size_dict,
+        #             obj_radius=0.04,
+        #             z_offset=0,
+        #             z_max=0.1,
+        #             prohibited_area=self.prohibited_area["table"],
+        #             constrained=False,
+        #             is_static=False,
+        #         )
+        #         if success:
+        #             break
+        #     if success:
+        #         self.phone_stand.set_mass(0.05)
+        #         self.add_prohibit_area(self.phone_stand, padding=0.01)
+        #         self.collision_list.append((self.phone_stand, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/078_phonestand/collision/base{stand_id}.glb", [1,1,1]))
     
     def get_cluttered_surfaces(self):
+        # clutter surfaces with additional random obstacles
         # table ------------------------------------------------------
         xlim = [-0.59, 0.59]
         ylim = [-0.34, 0.34]
@@ -449,87 +463,6 @@ class Office_base_task(Bench_base_task):
         self.clutter_surface(xlim=xlim, ylim=ylim, zlim=zlim, object_names=self.short_obstacles, prohibited_area=self.prohibited_area["shelf0"], obstacle_count=3)
         zlim = [self.shelf_heights[1]]
         self.clutter_surface(xlim=xlim, ylim=ylim, zlim=zlim, object_names=self.short_obstacles, prohibited_area=self.prohibited_area["shelf1"], obstacle_count=3)
-    
-    def clutter_surface(self, xlim, ylim, zlim, object_names, prohibited_area, obstacle_count):
-        self.record_cluttered_objects = []  # record cluttered objects
-        self.size_dict = list()
-
-        if np.random.rand() < self.clean_background_rate:
-            return
-
-        task_objects_list = []
-        for entity in self.scene.get_all_actors():
-            actor_name = entity.get_name()
-            if actor_name == "":
-                continue
-            if actor_name in ["table", "wall", "ground"]:
-                continue
-            task_objects_list.append(actor_name)
-
-        self.obj_names, self.cluttered_item_info = get_cluttered_objects_subset(object_names, task_objects_list)
-
-        success_count = 0
-        max_try = 50
-        trys = 0
-        placed_objects = []
-
-        while success_count < obstacle_count and trys < max_try:
-            obj = np.random.randint(len(self.obj_names))
-            obj_name = self.obj_names[obj]
-            if obj_name in self.unstable_objects or obj_name in placed_objects:
-                continue
-            obj_idx = np.random.randint(len(self.cluttered_item_info[obj_name]["ids"]))
-            obj_idx = self.cluttered_item_info[obj_name]["ids"][obj_idx]
-            obj_radius = self.cluttered_item_info[obj_name]["params"][obj_idx]["radius"]
-            obj_offset = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
-            obj_maxz = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_max"]
-
-            success, self.cluttered_obj = rand_create_cluttered_actor(
-                self.scene,
-                xlim=xlim,
-                ylim=ylim,
-                zlim=zlim,
-                modelname=obj_name,
-                modelid=obj_idx,
-                modeltype=self.cluttered_item_info[obj_name]["type"],
-                rotate_rand=True,
-                rotate_lim=[0, 0, math.pi],
-                size_dict=self.size_dict,
-                obj_radius=obj_radius,
-                z_offset=obj_offset,
-                z_max=obj_maxz,
-                prohibited_area=prohibited_area,
-                is_static=False,
-                constrained=False,
-            )
-            if not success or self.cluttered_obj is None:
-                trys += 1
-                continue
-            self.cluttered_obj.set_name(f"{obj_name}")
-
-            # manage stability as distractors
-            self.stabilize_object(self.cluttered_obj)
-
-            self.cluttered_objs.append(self.cluttered_obj)
-            pose = self.cluttered_obj.get_pose().p.tolist()
-            pose.append(obj_radius)
-            self.size_dict.append(pose)
-            success_count += 1
-            self.record_cluttered_objects.append({"object_type": obj_name, "object_index": obj_idx})
-            placed_objects.append(obj_name)
-
-            # add to collision list--------------------------------------------------------------------------------
-            if self.cluttered_item_info[obj_name]["type"] == "urdf":
-                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
-            else:
-                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
-            self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale))
-
-        if success_count < obstacle_count:
-            print(f"Warning: Only {success_count} cluttered objects are placed on the surface.")
-
-        self.size_dict = None
-        self.cluttered_objs = []
     
     def load_table_obstacles_in_line(self, spacing=0.10, ground_y=-5.0, ground_z=0.02):
         """Load all table_obstacles that are available into the scene in a line on the ground at y=ground_y, spacing (m) apart. Used for debugging."""
