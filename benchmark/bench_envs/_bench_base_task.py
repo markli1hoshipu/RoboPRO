@@ -637,19 +637,28 @@ class Bench_base_task(Base_Task):
         """Updates CuRobo Collision World Model with new collision objects"""
         collision_dict = {"mesh": {}, "cuboid": {}}
         for actor, collision_path, scale in self.collision_list:
-            if type(actor) == Simple_Actor: #built from multiple obj files
-                name_prefix = actor.get_name()
-                pose = actor.get_pose()
-                np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                convex_collision_dict = self.collision_dict_from_convex_obj_dir(
-                    collision_path,
-                    pose=np_pose,
-                    scale=actor.scale,
-                    name_prefix = name_prefix
-                )
-                collision_dict["mesh"] = (
-                    collision_dict["mesh"] | convex_collision_dict["mesh"]
-                )
+            if type(actor) == Simple_Actor:
+                if os.path.isdir(collision_path): # if actor is made from multiple obj files
+                    name_prefix = actor.get_name()
+                    pose = actor.get_pose()
+                    np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                    convex_collision_dict = self.collision_dict_from_convex_obj_dir(
+                        collision_path,
+                        pose=np_pose,
+                        scale=actor.scale,
+                        name_prefix = name_prefix
+                    )
+                    collision_dict["mesh"] = (
+                        collision_dict["mesh"] | convex_collision_dict["mesh"]
+                    )
+                else:
+                    pose = actor.get_pose()
+                    np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                    collision_dict["mesh"][f"{actor.get_name()}_{self.seed}"] = {
+                        "file_path": collision_path,
+                        "pose": np_pose,
+                        "scale": actor.scale,
+                    }
             else:
                 if type(actor) == ArticulationActor or type(actor) == Actor:
                     pose = actor.get_pose()
@@ -659,16 +668,6 @@ class Bench_base_task(Base_Task):
                         "pose": np_pose,
                         "scale": actor.scale,
                     }
-                # else:
-                #     pose = actor.get_pose()
-                #     np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                #     collision_dict["mesh"][f"{actor.name}_{self.seed}"] = {
-                #         "file_path": collision_path,
-                #         "pose": np_pose,
-                #         "scale": scale,
-                #     }
-
-
         self.robot.update_world(collision_dict)
     
     def collision_dict_from_convex_obj_dir(
@@ -720,7 +719,7 @@ class Bench_base_task(Base_Task):
             if getattr(m, "faces", None) is None or len(m.faces) == 0:
                 continue
 
-            part_name = f"{name_prefix}_{i}_{p.stem}"
+            part_name = f"{name_prefix}_{i}_{p.stem}_{self.seed}"
             collision_dict["mesh"][part_name] = {
                 "file_path": str(p),
                 "pose": list(pose),
