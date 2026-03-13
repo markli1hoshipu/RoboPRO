@@ -41,6 +41,8 @@ class Bench_base_task(Base_Task):
     Base task for all benchmark tasks. Mimics robotwin base task, with some functionality changes
     """
 
+    FURNITURE_NAMES = {"table", "wall", "ground"}
+
     def __init__(self):
         pass
 
@@ -225,6 +227,107 @@ class Bench_base_task(Base_Task):
             rb.set_angular_damping(20.0)
         except:
             pass
+
+    # =========================================================== Collision Metrics ===========================================================
+
+    def _init_collision_metrics(self):
+        """Reset collision tracking state. Call early in _init_task_env_ before load_actors()."""
+        self.target_object_names: set[str] = set()
+        self.collision_metrics = {
+            "robot_to_furniture": 0,
+            "robot_to_static_object": 0,
+            "target_to_static_object": 0,
+            "robot_to_furniture_steps": 0,
+            "robot_to_static_object_steps": 0,
+            "target_to_static_object_steps": 0,
+        }
+
+    def _get_target_object_names(self) -> set[str]:
+        """Return the names of target objects for this task.
+        Must be overridden by every concrete task subclass.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} must override _get_target_object_names()"
+        )
+
+    def _build_collision_name_sets(self):
+        """
+        Build name sets for collision detection. Must be called after all actors
+        (robot, furniture, target objects, static objects, clutter) are loaded.
+        """
+        self.robot_link_names = set(
+            link.get_name() for link in
+            self.robot.left_entity.get_links() + self.robot.right_entity.get_links()
+        )
+        self.furniture_names = set(self.FURNITURE_NAMES)
+        self.target_object_names = self._get_target_object_names()
+
+        all_actor_names = {
+            entity.get_name() for entity in self.scene.get_all_actors()
+            if entity.get_name()
+        }
+        
+        self.static_object_names = all_actor_names - (self.furniture_names | self.target_object_names)
+
+    def check_collisions(self):
+        """
+        Query PhysX contacts after scene.step() and accumulate collision counts.
+        Categories:
+          - robot_to_furniture:      robot link <-> furniture (table, wall, shelf, ground)
+          - robot_to_static_object:  robot link <-> movable static objects (screen, clutter, etc.)
+          - target_to_static_object: target object <-> movable static objects (held obj bumping things)
+        Only contacts with non-zero impulse (actual force exchange) are counted.
+        """
+        contacts = self.scene.get_contacts()
+
+        step_has_furniture = False
+        step_has_static = False
+        step_has_target_static = False
+
+        for contact in contacts:
+            name0 = contact.bodies[0].entity.name
+            name1 = contact.bodies[1].entity.name
+
+            has_impulse = any(
+                np.linalg.norm(point.impulse) > 1e-6
+                for point in contact.points
+            )
+            if not has_impulse:
+                continue
+
+            is_robot_0 = name0 in self.robot_link_names
+            is_robot_1 = name1 in self.robot_link_names
+            is_furniture_0 = name0 in self.furniture_names
+            is_furniture_1 = name1 in self.furniture_names
+            is_target_0 = name0 in self.target_object_names
+            is_target_1 = name1 in self.target_object_names
+            is_static_0 = name0 in self.static_object_names
+            is_static_1 = name1 in self.static_object_names
+
+            if (is_robot_0 and is_furniture_1) or (is_robot_1 and is_furniture_0):
+                self.collision_metrics["robot_to_furniture"] += 1
+                step_has_furniture = True
+
+            if (is_robot_0 and is_static_1) or (is_robot_1 and is_static_0):
+                self.collision_metrics["robot_to_static_object"] += 1
+                step_has_static = True
+
+            if (is_target_0 and is_static_1) or (is_target_1 and is_static_0):
+                self.collision_metrics["target_to_static_object"] += 1
+                step_has_target_static = True
+
+        if step_has_furniture:
+            self.collision_metrics["robot_to_furniture_steps"] += 1
+        if step_has_static:
+            self.collision_metrics["robot_to_static_object_steps"] += 1
+        if step_has_target_static:
+            self.collision_metrics["target_to_static_object_steps"] += 1
+
+    def get_collision_metrics(self):
+        """Return a copy of current collision metrics dict."""
+        return dict(self.collision_metrics)
+
+    # =========================================================== Camera ===========================================================
 
     def load_camera(self, **kwags):
         """
@@ -619,7 +722,10 @@ class Bench_base_task(Base_Task):
 
             self.scene.step()
             self._update_render()
-                
+
+            if hasattr(self, 'robot_link_names'):
+                self.check_collisions()
+
             if self.check_success():
                 self.eval_success = True
                 self.get_obs() # update obs
