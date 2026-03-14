@@ -144,10 +144,14 @@ class Office_base_task(Bench_base_task):
             "119_mini-chalkboard"
         ]
         self.record_cluttered_objects = list()  # record cluttered objects info
+        self.cluttered_objects_info = get_cluttered_objects_info()
 
         self.eval_success = False
         self.table_z_bias = (np.random.uniform(low=-self.random_table_height, high=0) + table_height_bias)  # TODO
-        self.shelf_heights = [0.845, 1.265] # heights of the shelf levels
+        self.office_info = {
+            "shelf_heights":[0.9, 1.13], # heights of the shelf levels
+            "shelf_area":[0.84, 0.26], # x,y area 
+        }
         self.need_plan = kwags.get("need_plan", True)
         self.left_joint_path = kwags.get("left_joint_path", [])
         self.right_joint_path = kwags.get("right_joint_path", [])
@@ -276,57 +280,115 @@ class Office_base_task(Bench_base_task):
             texture_id=self.table_texture,
         )
 
-        shelf_scale = [0.6, 0.87, 0.4]
-        self.shelf = create_multiple_obj_actor(
+        # shelf_scale = [0.6, 0.87, 0.4]
+        # self.shelf = create_multiple_obj_actor(
+        #     scene=self.scene,
+        #     pose=sapien.Pose(p=[0.9, -0.42, -0.07], q=[0.5, 0.5, 0.5, 0.5]),
+        #     visual_path=f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/storage_rack_02.gltf",
+        #     collision_path=f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex",
+        #     scale=shelf_scale,
+        #     is_static=True,
+        #     name="120_storage-rack"
+        # )
+        # self.collision_list.append((self.shelf, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex", shelf_scale))
+        # ------------------------------------------------------------
+        depth = 0.28
+        shelf_scale = [2.3,0.86,1.8] # length, height, depth
+        pose = [-0.12,depth,table_height+0.27]
+        self.shelf = create_glb_actor(
             scene=self.scene,
-            pose=sapien.Pose(p=[0.9, -0.42, -0.07], q=[0.5, 0.5, 0.5, 0.5]),
-            visual_path=f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/storage_rack_02.gltf",
-            collision_path=f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex",
+            pose=sapien.Pose(p=pose, q=[0.7071, 0.7071, 0.0, 0.0]),
+            model_name="121_wall-shelf",
             scale=shelf_scale,
+            convex=False,
             is_static=True,
-            name="shelf"
+            mass=2
         )
-        self.collision_list.append((self.shelf, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex", shelf_scale))
+        self.collision_list.append((self.shelf, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/121_wall-shelf/cc0_wall_shelf_4.glb", shelf_scale))
+        xmin = pose[0] - self.office_info["shelf_area"][0]/2 - 0.03
+        xmax = pose[0] + self.office_info["shelf_area"][0]/2 + 0.03
+        ymin = pose[1] - self.office_info["shelf_area"][1]/2 - 0.02
+        ymax = pose[1] + self.office_info["shelf_area"][1]/2 + 0.02
+        self.prohibited_area["table"].append([xmin, ymin, xmax, ymax])
+        # ------------------------------------------------------------
+        self.cabinet = create_sapien_urdf_obj(
+            scene=self,
+            modelname="036_cabinet",
+            modelid=46653,
+            pose=sapien.Pose(p=[0.47,depth,table_height], q=[0.7071, 0,0,0.7071]),
+            fix_root_link=True,
+        )
+        self.add_prohibit_area(self.cabinet, padding=0.01)
+        self.cabinet.set_mass(0.5)
     
     def load_basic_office_items(self):
         # load office items: items that are always placed as obstacles ie key obstacles
         size_dict = list()
-        if "screen" not in self.key_objects:
-            screen_id = np.random.choice([0, 1, 2, 3])
+        if "015_laptop" not in self.key_objects:
+            laptop_id = np.random.randint(0, 11)
+            laptop_id = 1
             for i in range(10):
-                success, self.screen = rand_create_cluttered_actor(
+                success, self.laptop = rand_create_cluttered_actor(
                     scene=self.scene,
-                    xlim=[-0.2,0.2],
-                    ylim=[0.05,0.22],
+                    xlim=[-0.4,0.4],
+                    ylim=[0.06],
                     zlim=[0.741],
-                    modelname="097_screen",
-                    modelid=screen_id,
-                    modeltype="glb",
-                    qpos=[0.7071, 0.7071, 0, 0],
+                    modelname="015_laptop",
+                    modelid=laptop_id,
+                    modeltype="sapien_urdf",
                     rotate_rand=True,
-                    rotate_lim=[0, 0.5, 0],
+                    rotate_lim=[0, 0, np.pi / 4],
+                    qpos=[0.7, 0, 0, 0.7],
                     size_dict=size_dict,
-                    obj_radius=0.08,
+                    obj_radius=0.06,
                     z_offset=0,
-                    z_max=0.35,
+                    z_max=0.1,
                     prohibited_area=self.prohibited_area["table"],
                     constrained=False,
-                    is_static=False,
+                    is_static=True,
                 )
                 if success:
                     break
             if success:
-                self.screen.set_mass(0.1)
-                self.add_prohibit_area(self.screen, padding=0.01)
-                self.collision_list.append((self.screen, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/097_screen/collision/base{screen_id}.glb", [1,1,1]))
+                self.laptop.set_mass(0.1)
+                self.add_prohibit_area(self.laptop, padding=0.01)
+                # self.collision_list.append((self.laptop, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/015_laptop/9912/textured_objs", [1,1,1]))
+        # if "screen" not in self.key_objects:
+        #     screen_id = np.random.choice([0, 1, 2, 3])
+        #     for i in range(10):
+        #         success, self.screen = rand_create_cluttered_actor(
+        #             scene=self.scene,
+        #             xlim=[-0.2,0.2],
+        #             ylim=[-0.05],
+        #             zlim=[0.741],
+        #             modelname="097_screen",
+        #             modelid=screen_id,
+        #             modeltype="glb",
+        #             qpos=[0.7071, 0.7071, 0, 0],
+        #             rotate_rand=True,
+        #             rotate_lim=[0, 0.5, 0],
+        #             size_dict=size_dict,
+        #             obj_radius=0.08,
+        #             z_offset=0,
+        #             z_max=0.35,
+        #             prohibited_area=self.prohibited_area["table"],
+        #             constrained=False,
+        #             is_static=False,
+        #         )
+        #         if success:
+        #             break
+        #     if success:
+        #         self.screen.set_mass(0.1)
+        #         self.add_prohibit_area(self.screen, padding=0.01)
+        #         self.collision_list.append((self.screen, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/097_screen/collision/base{screen_id}.glb", [1,1,1]))
         # ------------------------------------------------------------
         if "plant" not in self.key_objects:
             plant_id = 0
             for i in range(10):
                 success, self.plant = rand_create_cluttered_actor(
                     scene=self.scene,
-                    xlim=[-0.35,0.35],
-                    ylim=[0.2, 0.3],
+                    xlim=[-0.5, 0.5],
+                    ylim=[0,0.13],
                     zlim=[0.741],
                     modelname="120_plant",
                     modelid=plant_id,
@@ -336,8 +398,8 @@ class Office_base_task(Bench_base_task):
                     rotate_lim=[0, 1, 0],
                     size_dict=size_dict,
                     obj_radius=0.03,
-                    z_offset=0,
-                    z_max=0.25,
+                    z_offset=self.cluttered_objects_info["120_plant"]["params"][f"{plant_id}"]["z_offset"],
+                    z_max=self.cluttered_objects_info["120_plant"]["params"][f"{plant_id}"]["z_max"],
                     prohibited_area=self.prohibited_area["table"],
                     constrained=False,
                     is_static=False,
@@ -354,7 +416,7 @@ class Office_base_task(Bench_base_task):
             for i in range(10):
                 success, self.keyboard = rand_create_cluttered_actor(
                     scene=self.scene,
-                    xlim=[-0.2,0.2],
+                    xlim=[-0.25,0.25],
                     ylim=[-0.3,-0.05],
                     zlim=[0.741],
                     modelname="116_keyboard",
@@ -364,9 +426,9 @@ class Office_base_task(Bench_base_task):
                     rotate_rand=True,
                     rotate_lim=[0, 0.5, 0],
                     size_dict=size_dict,
-                    obj_radius=0.12,
-                    z_offset=0,
-                    z_max=0.03,
+                    obj_radius=self.cluttered_objects_info["116_keyboard"]["params"][f"{keyboard_id}"]["radius"],
+                    z_offset=self.cluttered_objects_info["116_keyboard"]["params"][f"{keyboard_id}"]["z_offset"],
+                    z_max=self.cluttered_objects_info["116_keyboard"]["params"][f"{keyboard_id}"]["z_max"],
                     prohibited_area=self.prohibited_area["table"],
                     constrained=False,
                     is_static=False,
@@ -449,23 +511,19 @@ class Office_base_task(Bench_base_task):
         ylim[0] += self.table_xy_bias[1]
         ylim[1] += self.table_xy_bias[1]
         zlim = np.array(zlim) + self.table_z_bias
-        if self.obstacle_height == "short":
-            object_names = self.short_obstacles
-        elif self.obstacle_height == "tall":
-            object_names = self.tall_obstacles
-        else:
-            raise ValueError(f"Invalid obstacle height: {self.obstacle_height}")
+        
+        object_names = self.short_obstacles + self.tall_obstacles
         self.clutter_surface(xlim=xlim, ylim=ylim, zlim=zlim, object_names=object_names, prohibited_area=self.prohibited_area["table"], obstacle_count=self.obstacle_density)
-        # shelves ----------------------------------------------------
-        xlim = [self.shelf.get_pose().p[0]-0.1, self.shelf.get_pose().p[0]+0.1]
-        ylim = [self.shelf.get_pose().p[1]-0.3, self.shelf.get_pose().p[1]+0.3]
-        zlim = [self.shelf_heights[0]]
-        self.clutter_surface(xlim=xlim, ylim=ylim, zlim=zlim, object_names=self.short_obstacles, prohibited_area=self.prohibited_area["shelf0"], obstacle_count=3)
-        zlim = [self.shelf_heights[1]]
-        self.clutter_surface(xlim=xlim, ylim=ylim, zlim=zlim, object_names=self.short_obstacles, prohibited_area=self.prohibited_area["shelf1"], obstacle_count=3)
+        # # shelves ----------------------------------------------------
+        # xlim = [self.shelf.get_pose().p[0]-0.1, self.shelf.get_pose().p[0]+0.1]
+        # ylim = [self.shelf.get_pose().p[1]-0.3, self.shelf.get_pose().p[1]+0.3]
+        # zlim = [self.shelf_heights[0]]
+        # self.clutter_surface(xlim=xlim, ylim=ylim, zlim=zlim, object_names=self.short_obstacles, prohibited_area=self.prohibited_area["shelf0"], obstacle_count=3)
+        # zlim = [self.shelf_heights[1]]
+        # self.clutter_surface(xlim=xlim, ylim=ylim, zlim=zlim, object_names=self.short_obstacles, prohibited_area=self.prohibited_area["shelf1"], obstacle_count=3)
     
     def load_table_obstacles_in_line(self, spacing=0.10, ground_y=-5.0, ground_z=0.02):
-        """Load all table_obstacles that are available into the scene in a line on the ground at y=ground_y, spacing (m) apart. Used for debugging."""
+        """Used for debugging. Load all table_obstacles that are available into the scene in a line on the ground at y=ground_y, spacing (m) apart."""
         task_objects_list = []
         for entity in self.scene.get_all_actors():
             actor_name = entity.get_name()
@@ -518,13 +576,6 @@ class Office_base_task(Bench_base_task):
             if obj is None:
                 continue
             obj.set_name(obj_name)
-            # self.stabilize_object(obj)
-            # self.record_cluttered_objects.append({"object_type": obj_name, "object_index": obj_idx})
-            # if model_type == "urdf":
-            #     path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
-            # else:
-            #     path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
-            # self.collision_list.append((obj, path, obj.scale))
     
     def add_extra_cameras(self):
         self.cameras.add_extra_cameras(f"{os.environ['BENCH_ROOT']}/bench_assets/embodiments/office_config.yml")

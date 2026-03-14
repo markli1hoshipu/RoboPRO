@@ -1,7 +1,7 @@
 # if you want to modify the config, please check the following tutorial first:
 # https://robotwin-platform.github.io/doc/usage/configurations.html
 render_freq: 0
-episode_num: 3
+episode_num: 5
 use_seed: false
 save_freq: 15
 embodiment: [aloha-agilex]
@@ -9,7 +9,7 @@ language_num: 100
 domain_randomization:
   random_background: true
   cluttered_table: true
-  obstacle_height: short
+  # obstacle_height: short
   obstacle_density: 6
   clean_background_rate: 0.02
   random_head_camera_dis: 0
