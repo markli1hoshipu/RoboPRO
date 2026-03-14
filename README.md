@@ -9,6 +9,8 @@ git submodule update --init --recursive
 ```
 Then follow installation instructions on [https://robotwin-platform.github.io/doc/usage/robotwin-install.html](https://robotwin-platform.github.io/doc/usage/robotwin-install.html) 
 
+** switch to benchmark/implementation for both repos
+
 Copy the benchmark/bench_assets/120_storage-rack folder into  customized_robotwin/assets/objects_bench
 
 Copy all the benchmark/bench_assets/embodiments/aloha-agilex yml files into customized_robotwin/assets/embodiments/aloha-agilex (will overwrite existing files). You will need to update the paths in curobo_right.yml and curobo_left.yml
@@ -31,7 +33,6 @@ def clear_cache(self):
 ```
 
 ## Usage
-** switch to benchmark/implementation for both repos
 ```bash
 cd customized_robotwin
 ```

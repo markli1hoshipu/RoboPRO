@@ -44,10 +44,8 @@ class mouse_on_pad(Office_base_task):
         )
         self.mouse.set_mass(0.05)
 
-        if rand_pos.p[0] > 0:
-            xlim = [0]
-        else:
-            xlim = [0]
+        xlim=[0]
+        
         target_rand_pose = rand_pose(
             xlim=xlim,
             ylim=[-0.23, 0.05],

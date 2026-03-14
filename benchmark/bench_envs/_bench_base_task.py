@@ -743,10 +743,12 @@ class Bench_base_task(Base_Task):
         """Updates CuRobo Collision World Model with new collision objects"""
         collision_dict = {"mesh": {}, "cuboid": {}}
         for actor, collision_path, scale in self.collision_list:
-            if type(actor) == Simple_Actor:
                 if os.path.isdir(collision_path): # if actor is made from multiple obj files
                     name_prefix = actor.get_name()
-                    pose = actor.get_pose()
+                    if name_prefix == "036_cabinet" or name_prefix == "015_laptop":
+                        pose = actor.get_link_pose("link_0")
+                    else:
+                        pose = actor.get_pose()
                     np_pose = np.concatenate([pose.p, pose.q]).tolist()
                     convex_collision_dict = self.collision_dict_from_convex_obj_dir(
                         collision_path,
@@ -761,19 +763,10 @@ class Bench_base_task(Base_Task):
                     pose = actor.get_pose()
                     np_pose = np.concatenate([pose.p, pose.q]).tolist()
                     collision_dict["mesh"][f"{actor.get_name()}_{self.seed}"] = {
-                        "file_path": collision_path,
-                        "pose": np_pose,
-                        "scale": actor.scale,
-                    }
-            else:
-                if type(actor) == ArticulationActor or type(actor) == Actor:
-                    pose = actor.get_pose()
-                    np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                    collision_dict["mesh"][f"{actor.get_name()}_{self.seed}"] = {
-                        "file_path": collision_path,
-                        "pose": np_pose,
-                        "scale": actor.scale,
-                    }
+                            "file_path": collision_path,
+                            "pose": np_pose,
+                            "scale": actor.scale,
+                        }
         self.robot.update_world(collision_dict)
     
     def collision_dict_from_convex_obj_dir(
