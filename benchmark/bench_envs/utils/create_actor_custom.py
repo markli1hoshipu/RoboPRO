@@ -42,7 +42,7 @@ def create_glb_actor(
         glb_path = glb_files[0]
 
     if isinstance(scale, (int, float)):
-        scale = (float(scale), float(scale), float(scale))
+        scale = [float(scale), float(scale), float(scale)]
 
     builder = scene.create_actor_builder()
     if is_static:
@@ -68,7 +68,7 @@ def create_multiple_obj_actor(
     pose: sapien.Pose,
     visual_path: str,
     collision_path: str = None,
-    scale: float = 1.0,
+    scale = [1.0, 1.0, 1.0],
     is_static: bool = False,
     name: str = None,
 ):
