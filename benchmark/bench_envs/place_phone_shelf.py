@@ -27,10 +27,10 @@ class place_phone_shelf(Office_base_task):
 
         self.phone_id = np.random.choice([0, 1, 2, 4], 1)[0]
         phone_pose = rand_pose(
-            # xlim = [-0.0],
-            xlim = [0,0.35],
-            # ylim=[0.05],
-            ylim=[-0.23, 0.05],
+            xlim = [0,0.1],
+            # xlim = [0,0.35],
+            ylim=[-0.2,0.08],
+            # ylim=[-0.23, 0.05],
             qpos=ori_quat[self.phone_id],
             rotate_rand=True,
             rotate_lim=[0, 0.7, 0],
@@ -45,11 +45,12 @@ class place_phone_shelf(Office_base_task):
         self.phone.set_mass(0.01)
 
         stand_pose = rand_pose(
-                xlim=[self.shelf.get_pose().p[0]-0.1],
-                ylim=[self.shelf.get_pose().p[1]-0.24,self.shelf.get_pose().p[1]+0.24],
-                zlim=[self.shelf_heights[shelf_level]+0.01],
-                qpos=[0.5, 0.5, -0.5, -0.5],
-                rotate_rand=False,
+                xlim = [self.phone.get_pose().p[0]+0.25,0.55],
+                # ylim=[0.05],
+                ylim=[-0.15,0.08],
+                qpos=[0.7071, 0.7071, 0.0, 0.0],
+                rotate_rand=True,
+                rotate_lim=[0, np.pi / 6, 0],
             )
 
         self.stand_id = np.random.choice([1, 2], 1)[0]
@@ -59,19 +60,22 @@ class place_phone_shelf(Office_base_task):
             modelname="078_phonestand",
             convex=True,
             model_id=self.stand_id,
-            is_static=False,
+            is_static=True,
         )
-        self.stand.set_mass(1)
+        self.stand.set_mass(2)
+        self.collision_list.append((self.stand, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/078_phonestand/collision/base{self.stand_id}.glb", [1,1,1]))
         self.add_prohibit_area(self.phone, padding=0.08, area="table")
-        self.add_prohibit_area(self.stand, padding=0.06, area=f"shelf{shelf_level}")
+        self.add_prohibit_area(self.stand, padding=0.06, area=f"table")
 
         #  ---------------------------------------------------------------------
         self.id_list = [i for i in range(20)]
         self.bottle_id = np.random.choice(self.id_list)
+        center_x = (self.phone.get_pose().p[0] + self.stand.get_pose().p[0]) / 2
+        center_y = (self.phone.get_pose().p[1] + self.stand.get_pose().p[1]) / 2
         self.bottle = rand_create_actor(
             self,
-            xlim=[self.phone.get_pose().p[0]+0.15],
-            ylim=[self.phone.get_pose().p[1]-0.01],
+            xlim=[center_x-0.03,center_x+0.03],
+            ylim=[center_y-0.03,center_y+0.03],
             modelname="001_bottle",
             rotate_rand=True,
             rotate_lim=[0, 1, 0],
@@ -81,10 +85,7 @@ class place_phone_shelf(Office_base_task):
             scale = [0.14, 0.14, 0.14],
         )
         
-        self.bottle.set_mass(1)
-        rb = self.bottle.actor.components[1]
-        rb.set_linear_damping(5.0)
-        rb.set_angular_damping(20.0)
+        self.stabilize_object(self.bottle)
         self.add_prohibit_area(self.bottle, padding=0.04, area="table")
         self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb", [0.14, 0.14, 0.14]))
 
