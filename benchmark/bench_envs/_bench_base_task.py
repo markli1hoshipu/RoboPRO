@@ -126,13 +126,13 @@ class Bench_base_task(Base_Task):
     def get_cluttered_surfaces(self):
         pass
     
-    def clutter_surface(self, xlim, ylim, zlim, object_names, prohibited_area, obstacle_count):
+    def clutter_surface(self, xlim, ylim, zlim, env_name, prohibited_area, obstacle_count):
         """
         Produce clutter on a given surface.
         - xlim: x-axis limits of the surface
         - ylim: y-axis limits of the surface
         - zlim: z-axis limits of the surface
-        - object_names: names of the objects that will be sampled from
+        - env_name: environment key in task_objects.yml (e.g. "office"); obstacle list and ids are read from that file
         - prohibited_area: areas that are prohibited from being cluttered
         - obstacle_count: number of obstacles to be placed
         """
@@ -152,7 +152,7 @@ class Bench_base_task(Base_Task):
                 continue
             task_objects_list.append(actor_name)
 
-        self.obj_names, self.cluttered_item_info = get_cluttered_objects_subset(object_names, task_objects_list)
+        cluttered_item_info, obj_names = get_cluttered_objects_subset(env_name, task_objects_list)
 
         success_count = 0
         max_try = 50
@@ -160,15 +160,16 @@ class Bench_base_task(Base_Task):
         placed_objects = []
 
         while success_count < obstacle_count and trys < max_try:
-            obj = np.random.randint(len(self.obj_names))
-            obj_name = self.obj_names[obj]
+            obj = np.random.randint(len(obj_names))
+            obj_name = obj_names[obj]
             if obj_name in self.unstable_objects or obj_name in placed_objects:
                 continue
-            obj_idx = np.random.randint(len(self.cluttered_item_info[obj_name]["ids"]))
-            obj_idx = self.cluttered_item_info[obj_name]["ids"][obj_idx]
-            obj_radius = self.cluttered_item_info[obj_name]["params"][obj_idx]["radius"]
-            obj_offset = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
-            obj_maxz = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_max"]
+            obj_idx = np.random.randint(len(cluttered_item_info[obj_name]["ids"]))
+            obj_idx = cluttered_item_info[obj_name]["ids"][obj_idx]
+            obj_radius = cluttered_item_info[obj_name]["params"][obj_idx]["radius"]
+            obj_offset = cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
+            obj_maxz = cluttered_item_info[obj_name]["params"][obj_idx]["z_max"]
+            scale = cluttered_item_info[obj_name]["params"][obj_idx]["scale"]
 
             success, self.cluttered_obj = rand_create_cluttered_actor(
                 self.scene,
@@ -177,7 +178,8 @@ class Bench_base_task(Base_Task):
                 zlim=zlim,
                 modelname=obj_name,
                 modelid=obj_idx,
-                modeltype=self.cluttered_item_info[obj_name]["type"],
+                scale=scale,
+                modeltype=cluttered_item_info[obj_name]["type"],
                 rotate_rand=True,
                 rotate_lim=[0, 0, math.pi],
                 size_dict=self.size_dict,
@@ -205,7 +207,7 @@ class Bench_base_task(Base_Task):
             placed_objects.append(obj_name)
 
             # add to collision list--------------------------------------------------------------------------------
-            if self.cluttered_item_info[obj_name]["type"] == "urdf":
+            if cluttered_item_info[obj_name]["type"] == "urdf":
                 path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
             else:
                 path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"

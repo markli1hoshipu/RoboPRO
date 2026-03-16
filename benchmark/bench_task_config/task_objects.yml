@@ -10,13 +10,13 @@ office:
     017_calculator: [0,1,2,3,4,5]
     023_tissue-box: [0,1,2,3,4,5,6]
     048_stapler: [0,1,2,3,4,5,6]
-    055_small-speaker: [0,1,2,3]
+    055_small-speaker: [1,2,3]
     073_rubikscube: [0,2]
     089_globe: [2,3]
     099_fan: [0,4]
     100_seal: [0,1,6]
     120_plant: [0]
-  study:
+study:
   targets:
   obstacles:
 kitchens:
