@@ -40,12 +40,13 @@ class Bench_base_task(Base_Task):
     """
     Base task for all benchmark tasks. Mimics robotwin base task, with some functionality changes
     """
-
     FURNITURE_NAMES = {"table", "wall", "ground"}
+    # Gripper links excluded from robot-to-furniture/static collision metrics (expected contact during manipulation)
+    GRIPPER_LINK_NAMES = {"fr_link7", "fr_link8", "fl_link7", "fl_link8"}
     # Collision force threshold (N): ignore contacts with avg force below this.
-    COLLISION_FORCE_THRESHOLD_N = 400.0
+    COLLISION_FORCE_THRESHOLD_N = 10.0
     # Static object pose thresholds: only count robot/target-to-static collisions when
-    # the static object has moved beyond these (from episode start).
+    # the static object has moved beyond these from the previous step.
     STATIC_OBJECT_POSITION_THRESHOLD_M = 0.01   # 1 cm
     STATIC_OBJECT_ORIENTATION_THRESHOLD_RAD = 0.1  # ~5.7 deg
 
@@ -284,31 +285,31 @@ class Bench_base_task(Base_Task):
         
         self.static_object_names = all_actor_names - (self.furniture_names | self.target_object_names)
 
-        # Store reference poses for static objects (used to filter collisions by pose change)
-        self.static_object_pose_ref = {}
+        # Store previous-step poses for static objects (used to filter collisions by step-to-step pose change)
+        self.static_object_pose_prev = {}
         for entity in self.scene.get_all_actors():
             name = entity.get_name()
             if name in self.static_object_names:
                 pose = entity.get_pose()
-                self.static_object_pose_ref[name] = (
+                self.static_object_pose_prev[name] = (
                     np.array(pose.p, dtype=np.float64),
                     np.array(pose.q, dtype=np.float64),
                 )
 
     def _static_object_has_significant_pose_change(self, name: str) -> bool:
-        """Return True if the static object has moved/rotated beyond thresholds since episode start."""
-        ref = self.static_object_pose_ref.get(name)
-        if ref is None:
+        """Return True if the static object has moved/rotated beyond thresholds since the previous step."""
+        prev = self.static_object_pose_prev.get(name)
+        if prev is None:
             return True  # unknown object, count the collision
-        ref_p, ref_q = ref
+        prev_p, prev_q = prev
         entity = next((e for e in self.scene.get_all_actors() if e.get_name() == name), None)
         if entity is None:
             return True
         curr = entity.get_pose()
         curr_p = np.array(curr.p, dtype=np.float64)
         curr_q = np.array(curr.q, dtype=np.float64)
-        pos_delta = float(np.linalg.norm(curr_p - ref_p))
-        qdot = abs(float(np.dot(curr_q, ref_q)))
+        pos_delta = float(np.linalg.norm(curr_p - prev_p))
+        qdot = abs(float(np.dot(curr_q, prev_q)))
         ang_delta = 2 * np.arccos(min(1.0, qdot))
         return (
             pos_delta >= self.STATIC_OBJECT_POSITION_THRESHOLD_M
@@ -323,7 +324,7 @@ class Bench_base_task(Base_Task):
           - robot_to_static_object:  robot link <-> movable static objects (screen, clutter, etc.)
           - target_to_static_object: target object <-> movable static objects (held obj bumping things)
         Furniture: only count contacts with impulse above threshold.
-        Static objects: only count when static object has significant pose change (e.g. knocked over, fallen).
+        Static objects: only count when static object has significant pose change from previous step (e.g. knocked over, fallen).
         Populates self.filtered_contacts_for_log with contact points that passed filters (for debug/logging).
         """
         contacts = self.scene.get_contacts()
@@ -344,6 +345,8 @@ class Bench_base_task(Base_Task):
 
             is_robot_0 = name0 in self.robot_link_names
             is_robot_1 = name1 in self.robot_link_names
+            is_gripper_0 = name0 in self.GRIPPER_LINK_NAMES
+            is_gripper_1 = name1 in self.GRIPPER_LINK_NAMES
             is_furniture_0 = name0 in self.furniture_names
             is_furniture_1 = name1 in self.furniture_names
             is_target_0 = name0 in self.target_object_names
@@ -355,15 +358,15 @@ class Bench_base_task(Base_Task):
             count_static = False
             count_target_static = False
 
-            # Furniture: require impulse (actual force exchange)
-            if (is_robot_0 and is_furniture_1) or (is_robot_1 and is_furniture_0):
+            # Furniture: require impulse (actual force exchange); exclude gripper links (expected contact)
+            if ((is_robot_0 and is_furniture_1 and not is_gripper_0) or (is_robot_1 and is_furniture_0 and not is_gripper_1)):
                 if has_impulse:
                     self.collision_metrics["robot_to_furniture"] += 1
                     step_has_furniture = True
                     count_furniture = True
 
-            # Static objects: only check pose change (e.g. object knocked over / fallen)
-            if (is_robot_0 and is_static_1) or (is_robot_1 and is_static_0):
+            # Static objects: only check pose change (e.g. object knocked over / fallen); exclude gripper links
+            if ((is_robot_0 and is_static_1 and not is_gripper_0) or (is_robot_1 and is_static_0 and not is_gripper_1)):
                 static_name = name1 if is_static_1 else name0
                 if self._static_object_has_significant_pose_change(static_name):
                     self.collision_metrics["robot_to_static_object"] += 1
@@ -402,6 +405,16 @@ class Bench_base_task(Base_Task):
             self.collision_metrics["robot_to_static_object_steps"] += 1
         if step_has_target_static:
             self.collision_metrics["target_to_static_object_steps"] += 1
+
+        # Update previous-step poses for next iteration (step-to-step pose change detection)
+        for entity in self.scene.get_all_actors():
+            name = entity.get_name()
+            if name in self.static_object_names:
+                pose = entity.get_pose()
+                self.static_object_pose_prev[name] = (
+                    np.array(pose.p, dtype=np.float64),
+                    np.array(pose.q, dtype=np.float64),
+                )
 
     def get_collision_metrics(self):
         """Return a copy of current collision metrics dict."""
@@ -803,7 +816,7 @@ class Bench_base_task(Base_Task):
             self.scene.step()
             self._update_render()
 
-            if hasattr(self, 'robot_link_names'):
+            if getattr(self, 'enable_collision_metrics', False) and hasattr(self, 'robot_link_names'):
                 self.check_collisions()
 
             if self.check_success():

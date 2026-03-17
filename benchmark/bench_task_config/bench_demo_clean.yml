@@ -23,7 +23,7 @@ camera:
 data_type:
   rgb: true
   third_view: false
-  depth: false
+  depth: true
   pointcloud: false
   observer: false
   endpose: true
@@ -33,6 +33,8 @@ data_type:
 pcd_down_sample_num: 1024
 pcd_crop: true
 save_path: ./data/bench_data
-clear_cache_freq: 3
+clear_cache_freq: 1
 collect_data: true
 eval_video_log: true
+# Data collection: no collision metrics. Set true for evaluation.
+enable_collision_metrics: true
