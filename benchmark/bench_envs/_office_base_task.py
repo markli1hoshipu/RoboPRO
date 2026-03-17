@@ -73,6 +73,7 @@ class Office_base_task(Bench_base_task):
         self.save_data = kwags.get("save_data", False)
         self.dual_arm = kwags.get("dual_arm", True)
         self.eval_mode = kwags.get("eval_mode", False)
+        self.enable_collision_metrics = kwags.get("enable_collision_metrics", False)
 
         self.need_topp = True  # TODO
 
@@ -183,7 +184,8 @@ class Office_base_task(Bench_base_task):
             self.load_basic_office_items()
             self.get_cluttered_surfaces()
 
-        self._build_collision_name_sets() # build collision name sets for collision metrics
+        if self.enable_collision_metrics:
+            self._build_collision_name_sets()  # build collision name sets for collision metrics
 
         is_stable, unstable_list = self.check_stable()
         if not is_stable:
