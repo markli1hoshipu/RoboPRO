@@ -17,17 +17,68 @@ office:
     100_seal: [0,1,6]
     120_plant: [0]
   study:
-  targets:
-  obstacles:
+    targets:
+      021_cup: [0,1,2,6,9]
+      039_mug: [0,11,7,5,9]
+      043_book: [0,1]
+      058_markpen: [0,1,3,4,5]
+      095_glue: [0,1,2,4,5]
+    obstacles:
+      012_plant-pot: [0,2,3]
+      023_tissue-box: [0,1,2,3,4,5,6]
+      045_sand-clock: [0,1,3]
+      057_toycar: [0,1,2,3,4,5]
+      080_pillbottle: [1,2,3,4,5]
+      086_woodenblock: [1,3,4]
+      090_trophy: [0,1,2]
+      094_rest: [0,1,2,3]
+      108_block: [1,2,5,3]
 kitchens:
   targets:
+    003_plate: [0]
+    006_hamburg: [0,1,2,3]
+    033_fork: [0]
+    034_knife: [0]
+    035_apple: [1]
+    075_bread: [0,1,3,4]
   obstacles:
+    029_olive-oil: [0,1,2,3,4]
+    065_soy-sauce: [0,1,2,3,4]
+    066_vinegar: [0,1,2]
+    072_electronicscale: [0,1,6]
+    088_windeglass: [0,1,2,3,4]
+    091_kettle: [0,1,2,3,4,5]
 kitchenl:
   targets:
+    001_bottle: [1,11,14,16,21]
+    038_milk-box: [0,1,2,3]
+    068_boxdrink: [0,1,2,3]
+    071_can: [0,1,2,5]
+    105_sauce-can: [0,4,5,6]
+    114_bottle: [4]
   obstacles:
+    025_chips-tub: [0,1,2,3]
+    028_roll-paper: [1,3]
+    029_olive-oil: [0,1,2,3,4]
+    031_jam-jar: [0,1,2,3,4]
+    064_msg: [0,1,2,3,4,5]
+    069_vegetable: [0,1,2,4,5,6]
+    091_kettle: [0,1,2,3,4,5]
+    107_soap: [0,1,2,3]
+    112_tea-box: [0,1,2,3,4,5]
 
 
 scales:
+  001_bottle:
+    "1": 0.08
+    "11": 0.08
+    "14": 0.08
+    "16": 0.08
+    "21": 0.08
+  003_plate:
+    "0": 0.02
+  006_hamburg: null
+  012_plant-pot: null
   015_laptop: null
   017_calculator:
     "0": 0.05
@@ -36,7 +87,55 @@ scales:
     "3": 0.05
     "4": 0.05
     "5": 0.05
+  021_cup: 
+    "0": 0.06
+    "1": 0.06
+    "2": 0.06
+    "9": 0.05
   023_tissue-box: null
+  025_chips-tub:
+    "0": [0.08,0.08, 0.04]
+    "1": 0.08
+    "2": 0.08
+    "3": 0.08
+  028_roll-paper: 
+    "1": 0.05
+    "3": 0.05
+  029_olive-oil: 
+    "0": 0.5
+    "1": 0.5
+    "2": 0.5
+    "3": 0.5
+    "4": 0.5
+  031_jam-jar: 
+    "0": 0.05
+    "1": 0.05
+    "2": 0.05
+    "3": 0.05
+    "4": 0.05
+  033_fork:
+    "0": 0.1 
+  034_knife:
+    "0": 0.1
+  035_apple: null
+  038_milk-box:
+    "0": 0.6
+    "1": 0.6
+    "2": 0.6
+    "3": 0.6
+  039_mug: 
+    "0": 0.05
+    "5": 0.05
+    "7": 0.06
+    "9": 0.06
+    "11": 0.6
+  043_book:
+    "0": 0.5
+    "1": 0.06
+  045_sand-clock:
+    "0": 0.05
+    "1": 0.05
+    "3": 0.06
   046_alarm-clock:
     "0": 0.05
     "1": 0.05
@@ -46,20 +145,95 @@ scales:
     "2": 0.3
   048_stapler: null
   055_small-speaker: null
+  057_toycar: null
+  058_markpen: 
+    "0": 0.05
+    "1": 0.05
+    "3": 0.05
+    "4": 0.05
+    "5": 0.05
+  059_pencup: null
   061_battery:
     "0": 0.03
     "1": 0.03
     "2": 0.03
     "3": 0.03
     "5": 0.03
+  064_msg: 
+    "0": 0.05
+    "1": 0.05
+    "2": 0.05
+    "3": 0.05
+    "4": 0.05
+    "5": 0.05
+  065_soy-sauce: 
+    "0": 0.5
+    "1": 0.5
+    "2": 0.5
+    "3": 0.5
+    "4": 0.5
+  066_vinegar: 
+    "0": 0.5
+    "1": 0.5
+    "2": 0.5
+  068_boxdrink: null
+  069_vagetable: 
+    "0": 0.05
+    "1": 0.05
+    "2": 0.05
+    "4": 0.05
+    "5": 0.05
+    "6": 0.05
+  071_can: null
+  072_electronicscale: null
   073_rubikscube: null
+  075_bread: null
   077_phone: null
   078_phonestand: null
+  080_pillbottle:
+    "1": 0.04
+    "2": 0.04
+    "3": 0.04
+    "4": 0.04
+    "5": 0.04
+  086_woodenblock: null
+  088_wineglass: 
+    "0": 0.4
+    "1": 0.4
+    "2": 0.4
+    "3": 0.4
+    "4": 0.4
   089_globe: null
+  090_trophy: null
+  091_kettle: null
   092_notebook: null
+  094_rest: null
+  095_glue:
+    "0": 0.05
+    "1": 0.05
+    "2": 0.05
+    "4": 0.05
+    "5": 0.05
   099_fan: null
   100_seal:
   101_milk-tea: null
+  105_sauce-can:
+    "0": 0.05
+    "4": 0.05
+    "5": 0.05
+    "6": 0.05
+  107_soap: 
+    "0": 0.04
+    "1": 0.04
+    "2": 0.04
+    "3": 0.04
+  108_block:
+    "1": 0.05
+    "2": 0.05
+    "3": 0.05
+    "5": 0.05
+  112_tea-box: null
+  114_bottle: null
   120_plant: null
   
   
