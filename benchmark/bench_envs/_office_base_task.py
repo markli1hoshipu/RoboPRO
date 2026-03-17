@@ -178,9 +178,9 @@ class Office_base_task(Bench_base_task):
 
         self.robot.set_origin_endpose()
         self.load_actors()
-        self.load_basic_office_items()
 
         if self.cluttered_table:
+            self.load_basic_office_items()
             self.get_cluttered_surfaces()
 
         self._build_collision_name_sets() # build collision name sets for collision metrics
@@ -518,8 +518,7 @@ class Office_base_task(Bench_base_task):
         ylim[1] += self.table_xy_bias[1]
         zlim = np.array(zlim) + self.table_z_bias
         
-        object_names = self.short_obstacles + self.tall_obstacles
-        self.clutter_surface(xlim=xlim, ylim=ylim, zlim=zlim, object_names=object_names, prohibited_area=self.prohibited_area["table"], obstacle_count=self.obstacle_density)
+        self.clutter_surface(xlim=xlim, ylim=ylim, zlim=zlim, env_name="office", prohibited_area=self.prohibited_area["table"], obstacle_count=self.obstacle_density)
         # # shelves ----------------------------------------------------
         # xlim = [self.shelf.get_pose().p[0]-0.1, self.shelf.get_pose().p[0]+0.1]
         # ylim = [self.shelf.get_pose().p[1]-0.3, self.shelf.get_pose().p[1]+0.3]
@@ -538,7 +537,7 @@ class Office_base_task(Bench_base_task):
             if actor_name in ["table", "wall", "ground"]:
                 continue
             task_objects_list.append(actor_name)
-        obj_names, cluttered_item_info = get_cluttered_objects_subset(self.tall_obstacles, task_objects_list)
+        cluttered_item_info, obj_names = get_cluttered_objects_subset("office", task_objects_list)
         if not obj_names:
             return
         n = len(obj_names)
