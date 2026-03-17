@@ -32,7 +32,7 @@ static_camera_list:
   type: D435
   position:
     - 0.0
-    - -0.4
+    - -0.45
     - 2.0
   forward:
     - 0

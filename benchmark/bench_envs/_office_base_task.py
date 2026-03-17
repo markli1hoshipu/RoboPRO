@@ -37,6 +37,9 @@ parent_directory = os.path.dirname(current_file_path)
 
 
 class Office_base_task(Bench_base_task):
+
+    FURNITURE_NAMES = {"table", "wall", "shelf", "ground"}
+
     def __init__(self):
         pass
 
@@ -91,7 +94,7 @@ class Office_base_task(Bench_base_task):
         self.plan_success = True
         self.step_lim = None
         self.fix_gripper = False
-        self.setup_scene()
+        self.setup_scene(**kwags)
 
         self.left_js = None
         self.right_js = None
@@ -161,6 +164,7 @@ class Office_base_task(Bench_base_task):
         self.instruction = None  # for Eval
 
         self.collision_list = [] # list of collision objects for curobo planner
+        self._init_collision_metrics()
 
         self.load_robot(**kwags)
         self.create_static_elements(table_xy_bias=table_xy_bias, table_height=0.74)
@@ -178,6 +182,8 @@ class Office_base_task(Bench_base_task):
         if self.cluttered_table:
             self.load_basic_office_items()
             self.get_cluttered_surfaces()
+
+        self._build_collision_name_sets() # build collision name sets for collision metrics
 
         is_stable, unstable_list = self.check_stable()
         if not is_stable:
