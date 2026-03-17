@@ -14,6 +14,9 @@ class pencup_on_pad(Office_base_task):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.pencup.get_name()}
+
     def load_actors(self):
         shelf_level = np.random.randint(0, 2)
         zlim = self.shelf_heights[shelf_level]+0.04

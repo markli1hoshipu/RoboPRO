@@ -15,6 +15,9 @@ class place_phone_shelf(Office_base_task):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.phone.get_name()}
+
     def load_actors(self):
         shelf_level = 0
         ori_quat = [
