@@ -94,7 +94,7 @@ class Office_base_task(Bench_base_task):
         self.plan_success = True
         self.step_lim = None
         self.fix_gripper = False
-        self.setup_scene()
+        self.setup_scene(**kwags)
 
         self.left_js = None
         self.right_js = None
