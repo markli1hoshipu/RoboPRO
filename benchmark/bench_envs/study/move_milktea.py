@@ -9,6 +9,123 @@ import glob
 import yaml
 import os
 
+def get_actor_boundingbox(entity):
+    all_points = []
+    try:
+        actor = entity.actor
+    except:
+        actor = entity
+    
+    entity_mat = actor.pose.to_transformation_matrix()
+    for comp in actor.get_components():
+        # Check if component has collision shapes (RigidBodyComponent)
+        if hasattr(comp, 'get_collision_shapes'):
+            for shape in comp.get_collision_shapes():
+                # 1. Get local vertices [N, 3]
+                try:
+                    local_v = shape.get_vertices() 
+                except:
+                    hs = shape.half_size  # e.g., [0.1, 0.1, 0.1]
+
+                    # 2. Define the 8 corners in the shape's local frame
+                    local_v = np.array([[x, y, z] for x in [-hs[0], hs[0]] 
+                                for y in [-hs[1], hs[1]] 
+                                for z in [-hs[2], hs[2]]])
+                try:
+                    local_v *= shape.scale
+                except:
+                    print("table does not have scale")
+                # 2. Get shape's offset relative to the entity center
+                shape_mat = shape.get_local_pose().to_transformation_matrix()
+                
+                # 3. Combine: Entity World * Shape Local
+                world_mat = entity_mat @ shape_mat
+                
+                # 4. Transform points to world space
+                homo_v = np.pad(local_v, ((0, 0), (0, 1)), constant_values=1)
+                world_v = (world_mat @ homo_v.T).T[:, :3]
+                all_points.append(world_v)
+
+    if not all_points:
+        return None, None
+
+    points_cloud = np.vstack(all_points)
+    return points_cloud.min(axis=0), points_cloud.max(axis=0)
+
+def get_position_limits(surface_obj, boundary_thr = 0.15, robot_reach_thr = 0.6,
+                       arm_x_pose = 0.15):
+    # Get generation limits
+    # Assumption is that the robot is centered with respect to the the surface area
+    try:
+        actor = surface_obj.actor
+    except:
+        actor = surface_obj
+    table_bb = get_actor_boundingbox(actor)
+    print(f"surface bb {table_bb}")
+
+    side_to_place = np.random.choice(["left", "right"])
+
+    if side_to_place == "left":
+        xmin = max((table_bb[0][0] + boundary_thr),  (-arm_x_pose - robot_reach_thr))
+        xmax = min((-arm_x_pose + robot_reach_thr), arm_x_pose)
+        xlim=[xmin, xmax ] # 0.9 is the range of reach for the robot arm
+    else:
+        xmax = min((table_bb[1][0] - boundary_thr),  (arm_x_pose + robot_reach_thr))
+        xmin = max((arm_x_pose - robot_reach_thr), -arm_x_pose)
+        xlim=[xmin, xmax] # 0.9 is the range of reach for the robot arm
+    ylim= [table_bb[0][1] + boundary_thr, table_bb[1][1]- boundary_thr]
+
+    return xlim, ylim, side_to_place
+
+
+def get_random_valid_placement(table_bounds, object_bounds, new_w, new_h):
+    tx1, tx2 = table_bounds[0]
+    ty1,ty2 = table_bounds[1]
+    
+    # 1. Generate candidate X and Y coordinates from all edges
+    # We also add a small buffer (0.01) if you want objects not to touch exactly
+    x_coords = sorted(list(set([tx1, tx2 - new_w] + [o for o in object_bounds if o <= tx2 - new_w] + [o for o in object_bounds if o <= tx2 - new_w])))
+    y_coords = sorted(list(set([ty1, ty2 - new_h] + [o for o in object_bounds if o <= ty2 - new_h] + [o for o in object_bounds if o <= ty2 - new_h])))
+
+    valid_spots = []
+
+    # 2. Collect ALL valid (x, y) coordinates
+    for x in x_coords:
+        for y in y_coords:
+            nx1, ny1, nx2, ny2 = x, y, x + new_w, y + new_h
+            
+            # Boundary check
+            if nx2 > tx2 or ny2 > ty2 or nx1 < tx1 or ny1 < ty1:
+                continue
+                
+            # Collision check against all existing objects
+            collision = False
+            for ox1, oy1, ox2, oy2 in object_bounds:
+                if not (nx2 <= ox1 or nx1 >= ox2 or ny2 <= oy1 or ny1 >= oy2):
+                    collision = True
+                    break
+            
+            if not collision:
+                valid_spots.append((nx1, ny1, nx2, ny2))
+
+    # 3. Pick one at random
+    if not valid_spots:
+        return None
+    
+    return np.random.choice(valid_spots)
+
+
+def get_collison_with_objs(object_bounds, obj_pose, x_thr, y_thr = None):
+
+    y_thr = y_thr or x_thr
+    for ob in object_bounds:
+        if (obj_pose.p[0] > ob[0][0] - x_thr and \
+            obj_pose.p[0] < ob[0][1] + x_thr) and \
+            (obj_pose.p[1] > ob[1][0] - y_thr and \
+                obj_pose.p[1] < ob[1][1] + y_thr):
+            return True
+    return False
+
 class move_milktea(Study_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
@@ -16,126 +133,130 @@ class move_milktea(Study_base_task):
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
-      
-        rand_pos = rand_pose(
-            xlim=[-0.45, 0.45],
-            ylim=[-0.23, 0.05],
-            qpos=[0.5, 0.5, 0.5, 0.5],
-            rotate_rand=True,
-            rotate_lim=[0, 3.14, 0],
-        )
-        while abs(rand_pos.p[0]) < 0.3:
-            rand_pos = rand_pose(
-            xlim=[-0.45, 0.45],
-            ylim=[-0.23, 0.05],
-            qpos=[0.5, 0.5, 0.5, 0.5],
-            rotate_rand=True,
-            rotate_lim=[0, 3.14, 0],
-        )
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
+        
+        xlim, ylim, self.side_to_place = get_position_limits(self.table, boundary_thr=0.20)
+        
+        object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
 
-        self.target_name = "058_markpen"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
-        self.target_id = 1 # np.random.choice(task_objs['train']['study']['targets'][self.target_name])
-        self.target = create_actor(
+        for bb, o in zip(object_bounds, self.scene_objs):
+            print(o.get_name(), bb)
+        col_thr = 0.20
+        while True:
+            tar_obj_rand_pos = rand_pose(
+                xlim=xlim,
+                ylim=ylim,
+                qpos=[0.5, 0.5, 0.5, 0.5],
+                rotate_rand=True,
+                # rotate_lim=[0, 3.14, 0],
+            )
+            if not get_collison_with_objs(object_bounds, tar_obj_rand_pos, col_thr):
+                break
+                    
+            # if abs(tar_obj_rand_pos.p[0]) > 0.3:
+            #     break
+      
+        self.target_name = "021_cup"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
+        self.target_id = 0 #np.random.choice(task_objs['train']['study']['targets'][self.target_name])
+        
+        print(f"Generating {self.target_name} with id {self.target_id} at position {tar_obj_rand_pos}")
+
+        self.target_obj = create_actor(
             scene=self,
-            pose=rand_pos,
+            pose=tar_obj_rand_pos,
             modelname=self.target_name,
             convex=True,
             model_id= self.target_id ,
-            scale= None if task_objs['scales'].get(self.target_name) is None else  task_objs['scales'][self.target_name].get(str(self.target_id)) 
+            scale= None #if task_objs['scales'].get(self.target_name) is None else  task_objs['scales'][self.target_name].get(str(self.target_id)) 
         )
-        self.target.set_mass(0.05)
+        self.target_obj.set_mass(0.1)
 
-        print(f"Generated {self.target_name} with id {self.target_id} at position {rand_pos}")
 
-        target_pose = self.coaster.get_pose()
-        if rand_pos.p[0] > 0:
-            xlim = [0]
-        else:
-            xlim = [0]
-        target_rand_pose = rand_pose(
-            xlim=xlim,
-            ylim=[-0.23, 0.05],
-            qpos=[1, 0, 0, 0],
-            rotate_rand=False,
+
+        # Create destination object
+        self.des_obj_name = "043_book"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
+        self.des_obj_id = 0 # np.random.choice(task_objs['train']['study']['targets'][self.des_obj_name])
+
+
+        target_bb = get_actor_boundingbox(self.target_obj)
+        object_bounds.append(target_bb)
+        print(f"\033[31m{self.target_name} bounding box {target_bb}\033[0m")
+
+        # Select a random pose for the target object
+
+        tar_sep_thr = 0.2
+        while True:
+            des_obj_rand_pos = rand_pose(
+                xlim=xlim, #[-0.45, 0.45],
+                ylim=ylim, #[-0.23, 0.05],
+                qpos=[0.5, 0.5, 0.5, 0.5],
+                rotate_rand=True,
+                # rotate_lim=[0,0, 3.14],
+            )
+
+            if not get_collison_with_objs(object_bounds, des_obj_rand_pos, col_thr):
+            # and \
+            #     (des_obj_rand_pos.p[0] < target_bb[0][0] - tar_sep_thr  or \
+            #      des_obj_rand_pos.p[0] > target_bb[1][0] + tar_sep_thr):
+                break
+
+
+
+            # if (des_obj_rand_pos.p[0] < target_bb[0][0] - 0.05 or \
+            #      des_obj_rand_pos.p[0] > target_bb[0][1] + 0.05) and \
+            #     (des_obj_rand_pos.p[1] < target_bb[1][0] - 0.05 or \
+            #         des_obj_rand_pos.p[1] > target_bb[1][1] + 0.05):
+            #     break
+
+        print(f"Generating {self.des_obj_name} with id {self.des_obj_id} at position {des_obj_rand_pos}")
+
+
+        self.des_obj = create_actor(
+            scene=self,
+            pose=des_obj_rand_pos,
+            modelname=self.des_obj_name,
+            convex=True,
+            model_id= self.des_obj_id ,
+            scale= None if task_objs['scales'].get(self.des_obj_name) is None else  \
+                task_objs['scales'][self.des_obj_name].get(str(self.des_obj_id)) 
         )
-        self.add_prohibit_area(self.target, padding=0.12, area="table")
-        self.add_prohibit_area(self.coaster, padding=0.12, area="table")
+        self.des_obj.set_mass(0.05)
 
-        self.target_pose = self.coaster.get_pose().p.tolist() + [0, 0, 0, 1]
+
+        des_bb = get_actor_boundingbox(self.des_obj.actor)
+        p = self.des_obj.get_pose().p.tolist() 
+        p[-1] = des_bb[1][-1]
+        self.des_obj_pose = p + [0, 0, 0, 1]
+        print(f"Placement destination pose {self.des_obj_pose}")
+
+
+        self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
+        self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
+
+     
       
-        # colors = {
-        #     "Red": (1, 0, 0),
-        #     "Green": (0, 1, 0),
-        #     "Blue": (0, 0, 1),
-        #     "Yellow": (1, 1, 0),
-        #     "Cyan": (0, 1, 1),
-        #     "Magenta": (1, 0, 1),
-        #     "Black": (0, 0, 0),
-        #     "Gray": (0.5, 0.5, 0.5),
-        # }
-
-        # color_items = list(colors.items())
-        # color_index = np.random.choice(len(color_items))
-        # self.color_name, self.color_value = color_items[color_index]
-
-        # half_size = [0.035, 0.065, 0.0005]
-        # self.target = create_box(
-        #     scene=self,
-        #     pose=target_rand_pose,
-        #     half_size=half_size,
-        #     color=self.color_value,
-        #     name="box",
-        #     is_static=True,
-        # )
-        # self.add_prohibit_area(self.target, padding=0.12, area="table")
-        # self.add_prohibit_area(self.mouse, padding=0.03, area="table")
-        # # Construct target pose with position from target object and identity orientation
-        # self.target_pose = self.target.get_pose().p.tolist() + [0, 0, 0, 1]
-
-        # # ------------------------------------------------------------
-        # center_x = (self.mouse.get_pose().p[0] + self.target.get_pose().p[0]) / 2
-        # center_y = (self.mouse.get_pose().p[1] + self.target.get_pose().p[1]) / 2
-        # id_list = [i for i in range(4)]
-        # self.milk_box_id = np.random.choice(id_list)
-        # self.milk_box = rand_create_actor(
-        #     self,
-        #     xlim=[center_x],
-        #     ylim=[center_y],
-        #     modelname="038_milk-box",
-        #     rotate_rand=True,
-        #     rotate_lim=[0, 1, 0],
-        #     qpos=[0.66, 0.66, -0.25, -0.25],
-        #     convex=True,
-        #     model_id=self.milk_box_id,
-        # )
-        
-        # self.milk_box.set_mass(0.1)
-        # self.add_prohibit_area(self.milk_box, padding=0.1, area="table")
-        # self.collision_list.append((self.milk_box, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.milk_box_id}.glb", [1,1,1]))
-
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag("right" if self.target.get_pose().p[0] > 0 else "left")
+        arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
 
         # Grasp the mouse with the selected arm
-        self.move(self.grasp_actor(self.target, arm_tag=arm_tag, pre_grasp_dis=0.1))
+        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.1))
 
         # Lift the mouse upward by 0.1 meters in z-direction
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
 
-        self.attach_object(self.target, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
+        self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
 
         # Place the mouse at the target location with alignment constraint
         self.move(
             self.place_actor(
-                self.target,
+                self.target_obj,
                 arm_tag=arm_tag,
-                target_pose=self.target_pose,
+                target_pose= self.des_obj_pose,
                 constrain="align",
                 pre_dis=0.07,
-                dis=0.005,
+                dis=0.02,
             ))
 
         # Record information about the objects and arm used in the task
@@ -147,9 +268,9 @@ class move_milktea(Study_base_task):
         return self.info
 
     def check_success(self):
-        target_pose = self.target.get_pose().p
-        target_qpose = np.abs(self.target.get_pose().q)
-        target_des_pos = self.target.get_pose().p
+        target_pose = self.target_obj.get_pose().p
+        target_qpose = np.abs(self.target_obj.get_pose().q)
+        target_des_pos = self.target_obj.get_pose().p
         eps1 = 0.015
         eps2 = 0.012
 

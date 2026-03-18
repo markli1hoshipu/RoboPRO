@@ -71,7 +71,7 @@ class Study_base_task(Bench_base_task):
         self.save_data = kwags.get("save_data", False)
         self.dual_arm = kwags.get("dual_arm", True)
         self.eval_mode = kwags.get("eval_mode", False)
-
+        self.scene_objs = []
         self.need_topp = True  # TODO
 
         # Random
@@ -255,13 +255,15 @@ class Study_base_task(Bench_base_task):
                     scale=param.get("scale"),
                     model_id= param.get('model_id', 0),
                     is_static=param.get('is_static', True)
-            )
+                )
+                self.scene_objs.append(value)
+                self.add_prohibit_area(value, padding=0.12, area="table")
+
             elif param.get("obj_type", "actor") == "table":
-                
                 value= create_table(
                         self.scene,
                         pose=pose,
-                        length=param.get("length", 1.7),
+                        length=param.get("length", 1.2),
                         width=param.get("width", 0.7),
                         height=param.get("height", table_height),
                         thickness=param.get("tickness", 0.05),
