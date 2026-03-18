@@ -294,16 +294,63 @@ class Kitchen_base_large(Bench_base_task):
             is_static=True,
         )
 
-        self.table = create_table(
-            self.scene,
-            sapien.Pose(p=[table_xy_bias[0], table_xy_bias[1], table_height]),
-            length=1.2,
-            width=0.7,
-            height=table_height,
-            thickness=0.05,
-            is_static=True,
-            texture_id=self.table_texture,
+        # Unified countertop (single static body).
+        # Keep name `table` and place so the top surface is at `table_height`,
+        # matching the previous create_table(...) semantics.
+        counter_length = 1.2
+        counter_width = 0.7
+        counter_thickness = 0.05
+        tabletop_pose = sapien.Pose([0.0, 0.0, -counter_thickness / 2])
+        tabletop_half_size = [counter_length / 2, counter_width / 2, counter_thickness / 2]
+
+        # Add a recessed base volume under the top so it reads like a real
+        # countertop/cabinet block, while leaving a front "toe-kick" gap so
+        # the robot can get closer.
+        front_recess = 0.12
+        base_height = max(0.0, table_height - counter_thickness)
+        base_depth = max(0.0, counter_width - front_recess)
+        base_half_size = [counter_length / 2, base_depth / 2, base_height / 2]
+        # Local frame: actor origin is at the top surface (world z = table_height).
+        # Shift the base backward (+y) so the front edge is recessed.
+        base_pose = sapien.Pose(
+            [0.0, front_recess / 2, -(counter_thickness / 2 + base_height / 2)]
         )
+
+        counter_builder = self.scene.create_actor_builder()
+        counter_builder.set_physx_body_type("static")
+        counter_builder.add_box_collision(
+            pose=tabletop_pose,
+            half_size=tabletop_half_size,
+            material=self.scene.default_physical_material,
+        )
+        if base_height > 1e-6 and base_depth > 1e-6:
+            counter_builder.add_box_collision(
+                pose=base_pose,
+                half_size=base_half_size,
+                material=self.scene.default_physical_material,
+            )
+        if self.table_texture is not None:
+            texturepath = f"./assets/background_texture/{self.table_texture}.png"
+            texture2d = sapien.render.RenderTexture2D(texturepath)
+            material = sapien.render.RenderMaterial()
+            material.set_base_color_texture(texture2d)
+            material.base_color = [1, 1, 1, 1]
+            material.metallic = 0.1
+            material.roughness = 0.3
+            counter_builder.add_box_visual(pose=tabletop_pose, half_size=tabletop_half_size, material=material)
+            # Slightly different roughness for the base so it doesn't look like a floating slab.
+            base_material = sapien.render.RenderMaterial(base_color=[0.55, 0.47, 0.38, 1])
+            base_material.metallic = 0.0
+            base_material.roughness = 0.8
+            if base_height > 1e-6 and base_depth > 1e-6:
+                counter_builder.add_box_visual(pose=base_pose, half_size=base_half_size, material=base_material)
+        else:
+            counter_builder.add_box_visual(pose=tabletop_pose, half_size=tabletop_half_size, material=(1, 1, 1))
+            if base_height > 1e-6 and base_depth > 1e-6:
+                counter_builder.add_box_visual(pose=base_pose, half_size=base_half_size, material=(0.55, 0.47, 0.38))
+
+        counter_builder.set_initial_pose(sapien.Pose(p=[table_xy_bias[0], table_xy_bias[1], table_height]))
+        self.table = counter_builder.build(name="table")
 
         # Place static appliances on the table front edge.
         self._load_fridge_on_table(table_height, table_xy_bias)
