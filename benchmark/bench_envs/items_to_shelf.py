@@ -14,6 +14,9 @@ class items_to_shelf(Office_base_task):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.tea_box.get_name(), self.cube.get_name()}
+
     def load_actors(self):
         rand_pos = rand_pose(
             xlim=[0.1,0.4],

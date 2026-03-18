@@ -1,7 +1,7 @@
 # if you want to modify the config, please check the following tutorial first:
 # https://robotwin-platform.github.io/doc/usage/configurations.html
 render_freq: 0
-episode_num: 3
+episode_num: 100
 use_seed: false
 save_freq: 15
 embodiment: [aloha-agilex]
@@ -9,7 +9,7 @@ language_num: 100
 domain_randomization:
   random_background: true
   cluttered_table: true
-  obstacle_height: short
+  # obstacle_height: short
   obstacle_density: 6
   clean_background_rate: 0.02
   random_head_camera_dis: 0
@@ -25,7 +25,7 @@ camera:
 data_type:
   rgb: true
   third_view: false
-  depth: false
+  depth: true
   pointcloud: false
   observer: false
   endpose: true
@@ -35,6 +35,8 @@ data_type:
 pcd_down_sample_num: 1024
 pcd_crop: true
 save_path: ./data/bench_data
-clear_cache_freq: 5
+clear_cache_freq: 3
 collect_data: true
 eval_video_log: true
+# Evaluation: enable collision metrics. Set false for data collection.
+enable_collision_metrics: true

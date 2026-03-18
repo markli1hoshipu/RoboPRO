@@ -9,6 +9,8 @@ git submodule update --init --recursive
 ```
 Then follow installation instructions on [https://robotwin-platform.github.io/doc/usage/robotwin-install.html](https://robotwin-platform.github.io/doc/usage/robotwin-install.html) 
 
+** switch to benchmark/implementation for both repos
+
 Copy the benchmark/bench_assets/120_storage-rack folder into  customized_robotwin/assets/objects_bench
 
 Copy all the benchmark/bench_assets/embodiments/aloha-agilex yml files into customized_robotwin/assets/embodiments/aloha-agilex (will overwrite existing files). You will need to update the paths in curobo_right.yml and curobo_left.yml
@@ -31,7 +33,6 @@ def clear_cache(self):
 ```
 
 ## Usage
-** switch to benchmark/implementation for both repos
 ```bash
 cd customized_robotwin
 ```
@@ -41,12 +42,26 @@ Run the following commands every session to set env vars:
 source set_env.sh
 export ROBOTWIN_BENCH_TASK="bench" # bench if you want to work with benchmark tasks, anything else if you are working with the original robotwin tasks
 ```
----
+
 Run commands in the same way you would run them for the original Robotwin. Refer to this [usage guide](https://robotwin-platform.github.io/doc/usage/index.html).
 
 Run the following script to make sure everything is set up properly:
 ```bash
 python script/bench_script/visualize_task_scene.py mouse_on_pad bench_demo_clean --rollout --seed 0
+```
+
+## Data collection example
+```bash
+bash collect_data.sh ${task_name} ${task_config} ${gpu_id}
+# Clean Data Example: bash collect_data.sh beat_block_hammer demo_clean 0
+# bash collect_data.sh click_alarmclock demo_clean 0
+# bash collect_data.sh click_alarmclock demo_randomized 0
+bash collect_data.sh mouse_on_pad bench_demo_clean 0
+bash collect_data.sh pencup_on_pad bench_demo_clean 0
+bash collect_data.sh pencup_on_pad bench_demo_randomized 1
+######
+bash collect_data.sh place_phone_shelf bench_demo_clean 0
+bash collect_data.sh place_phone_shelf bench_demo_randomized 1
 ```
 
 ## For Creating New Benchmark Tasks

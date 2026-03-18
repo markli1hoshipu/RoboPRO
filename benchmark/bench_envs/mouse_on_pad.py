@@ -14,6 +14,9 @@ class mouse_on_pad(Office_base_task):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.mouse.get_name()}
+
     def load_actors(self):
         rand_pos = rand_pose(
             xlim=[-0.45, 0.45],
@@ -41,10 +44,8 @@ class mouse_on_pad(Office_base_task):
         )
         self.mouse.set_mass(0.05)
 
-        if rand_pos.p[0] > 0:
-            xlim = [0]
-        else:
-            xlim = [0]
+        xlim=[0]
+        
         target_rand_pose = rand_pose(
             xlim=xlim,
             ylim=[-0.23, 0.05],
