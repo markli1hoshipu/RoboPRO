@@ -257,6 +257,22 @@ class Bench_base_task(Base_Task):
         Uses get_cluttered_objects_subset_2, which separates obstacle names into
         short and tall groups while sharing a single cluttered_objects_info dict.
         """
+        # # for viewing area estimation
+        # for area in prohibited_area:
+        #     x_min = area[0]
+        #     x_max = area[2]
+        #     y_min = area[1]
+        #     y_max = area[3]
+        #     half_size = [(x_max-x_min)/2, (y_max-y_min)/2, 0.0005]
+        #     target = create_box(
+        #         scene=self,
+        #         pose=sapien.Pose([x_min+half_size[0], y_min+half_size[1], 0.74], [1,0,0,0]),
+        #         half_size=half_size,
+        #         color=(1, 0, 0),
+        #         name=f"_collision",
+        #         is_static=True,
+        #     )
+
         # record cluttered objects
         self.record_cluttered_objects = []
         self.size_dict = []
@@ -275,7 +291,7 @@ class Bench_base_task(Base_Task):
             task_objects_list.append(actor_name)
 
         cluttered_item_info, obj_names_short, obj_names_tall = get_cluttered_objects_subset_2(
-            env_name, task_objects_list
+            env_name, self.sample_d, task_objects_list
         )
 
         success_count = 0
@@ -325,17 +341,13 @@ class Bench_base_task(Base_Task):
                 obj_list = obj_names_tall
 
             if not obj_list:
-                trys += 1
-                continue
+                break
 
             obj = np.random.randint(len(obj_list))
             obj_name = obj_list[obj]
 
             # Randomly choose an index within available ids for this object
             ids_for_obj = cluttered_item_info[obj_name]["ids"]
-            if not ids_for_obj:
-                trys += 1
-                continue
 
             rand_idx = np.random.randint(len(ids_for_obj))
             obj_idx = ids_for_obj[rand_idx]
@@ -391,7 +403,7 @@ class Bench_base_task(Base_Task):
             self.record_cluttered_objects.append(
                 {"object_type": obj_name, "object_index": obj_idx}
             )
-            placed_objects.setdefault(obj_name, []).append(obj_idx)
+            placed_objects[obj_name].append(obj_idx)
 
             # add to collision list
             if cluttered_item_info[obj_name]["type"] == "urdf":
@@ -667,18 +679,6 @@ class Bench_base_task(Base_Task):
         # add_robot_visual_box(self, [x_min, y_min, actor_matrix[3, 3]])
         # add_robot_visual_box(self, [x_max, y_max, actor_matrix[3, 3]])
         self.prohibited_area[area].append([x_min, y_min, x_max, y_max])
-        # # for viewing area estimation
-        # half_size = [(x_max-x_min)/2, (y_max-y_min)/2, 0.0005]
-        # actor_pose.q = [1,0,0,0]
-        # actor_pose.p = [actor_pose.p[0], actor_pose.p[1], 0.74]
-        # target = create_box(
-        #     scene=self,
-        #     pose=actor_pose,
-        #     half_size=half_size,
-        #     color=(1, 0, 0),
-        #     name=f"{actor.get_name()}_collision",
-        #     is_static=True,
-        # )
 
     def choose_grasp_pose(
         self,
