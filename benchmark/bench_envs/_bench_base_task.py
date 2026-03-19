@@ -172,14 +172,15 @@ class Bench_base_task(Base_Task):
         success_count = 0
         max_try = 50
         trys = 0
-        placed_objects = []
+        placed_objects = {name: [] for name in obj_names}
 
         while success_count < obstacle_count and trys < max_try:
             obj = np.random.randint(len(obj_names))
             obj_name = obj_names[obj]
-            if obj_name in self.unstable_objects or obj_name in placed_objects:
-                continue
+
             obj_idx = np.random.randint(len(cluttered_item_info[obj_name]["ids"]))
+            if obj_name in self.unstable_objects or obj_idx in placed_objects[obj_name]:
+                continue
             obj_idx = cluttered_item_info[obj_name]["ids"][obj_idx]
             obj_radius = cluttered_item_info[obj_name]["params"][obj_idx]["radius"]
             obj_offset = cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
@@ -219,7 +220,7 @@ class Bench_base_task(Base_Task):
             self.size_dict.append(pose)
             success_count += 1
             self.record_cluttered_objects.append({"object_type": obj_name, "object_index": obj_idx})
-            placed_objects.append(obj_name)
+            placed_objects[obj_name].append(obj_idx)
 
             # add to collision list--------------------------------------------------------------------------------
             if cluttered_item_info[obj_name]["type"] == "urdf":
@@ -228,8 +229,204 @@ class Bench_base_task(Base_Task):
                 path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
             self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale))
 
+            # # for viewing radius estimation
+            # half_size = [obj_radius, obj_radius, 0.0005]
+            # pose = self.cluttered_obj.get_pose()
+            # pose.q = [1,0,0,0]
+            # target = create_box(
+            #     scene=self,
+            #     pose=pose,
+            #     half_size=half_size,
+            #     color=(1, 0, 0),
+            #     name=f"{obj_name}_collision",
+            #     is_static=True,
+            # )
+
         # if success_count < obstacle_count:
         #     print(f"Warning: Only {success_count} cluttered objects are placed on the surface.")
+
+        self.size_dict = None
+        self.cluttered_objs = []
+    
+    def clutter_surface_2(self, xlim, ylim, zlim, env_name, prohibited_area, obstacle_count):
+        """
+        Produce clutter on a given surface, drawing 30%% of objects from the
+        "short" obstacles and 70%% from the "tall" obstacles as defined in
+        benchmark/bench_task_config/task_objects.yml for the given env.
+
+        Uses get_cluttered_objects_subset_2, which separates obstacle names into
+        short and tall groups while sharing a single cluttered_objects_info dict.
+        """
+        # # for viewing area estimation
+        # for area in prohibited_area:
+        #     x_min = area[0]
+        #     x_max = area[2]
+        #     y_min = area[1]
+        #     y_max = area[3]
+        #     half_size = [(x_max-x_min)/2, (y_max-y_min)/2, 0.0005]
+        #     target = create_box(
+        #         scene=self,
+        #         pose=sapien.Pose([x_min+half_size[0], y_min+half_size[1], 0.74], [1,0,0,0]),
+        #         half_size=half_size,
+        #         color=(1, 0, 0),
+        #         name=f"_collision",
+        #         is_static=True,
+        #     )
+
+        # record cluttered objects
+        self.record_cluttered_objects = []
+        self.size_dict = []
+
+        if np.random.rand() < self.clean_background_rate:
+            return
+
+        # collect objects already on the scene
+        task_objects_list = []
+        for entity in self.scene.get_all_actors():
+            actor_name = entity.get_name()
+            if actor_name == "":
+                continue
+            if actor_name in ["table", "wall", "ground"]:
+                continue
+            task_objects_list.append(actor_name)
+
+        cluttered_item_info, obj_names_short, obj_names_tall = get_cluttered_objects_subset_2(
+            env_name, self.sample_d, task_objects_list
+        )
+
+        success_count = 0
+        max_try = 50
+        trys = 0
+
+        # Track which specific model ids have been placed per object name
+        placed_objects = {name: [] for name in cluttered_item_info.keys()}
+
+        # Precompute desired counts by group (may not be reached if placement fails)
+        short_target = int(round(0.3 * obstacle_count))
+        tall_target = obstacle_count - short_target
+
+        short_count = 0
+        tall_count = 0
+
+        # Build flat lists for sampling indices within each group
+        obj_names_short = list(obj_names_short)
+        obj_names_tall = list(obj_names_tall)
+
+        # If one group is empty, fall back to the other
+        if not obj_names_short and not obj_names_tall:
+            return
+
+        while success_count < obstacle_count and trys < max_try:
+            # Decide which group to sample from for this attempt
+            if not obj_names_short:
+                group = "tall"
+            elif not obj_names_tall:
+                group = "short"
+            else:
+                # Prefer to fill up to targets with 30% short / 70% tall
+                if short_count < short_target and tall_count < tall_target:
+                    # sample with 0.3 / 0.7 probability
+                    group = "short" if np.random.rand() < 0.3 else "tall"
+                elif short_count < short_target:
+                    group = "short"
+                elif tall_count < tall_target:
+                    group = "tall"
+                else:
+                    # both groups reached their nominal target; continue with 0.3/0.7 split
+                    group = "short" if np.random.rand() < 0.3 else "tall"
+
+            if group == "short":
+                obj_list = obj_names_short
+            else:
+                obj_list = obj_names_tall
+
+            if not obj_list:
+                break
+
+            obj = np.random.randint(len(obj_list))
+            obj_name = obj_list[obj]
+
+            # Randomly choose an index within available ids for this object
+            ids_for_obj = cluttered_item_info[obj_name]["ids"]
+
+            rand_idx = np.random.randint(len(ids_for_obj))
+            obj_idx = ids_for_obj[rand_idx]
+
+            if obj_name in self.unstable_objects or obj_idx in placed_objects.get(obj_name, []):
+                trys += 1
+                continue
+
+            obj_radius = cluttered_item_info[obj_name]["params"][obj_idx]["radius"]
+            obj_offset = cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
+            obj_maxz = cluttered_item_info[obj_name]["params"][obj_idx]["z_max"]
+            scale = cluttered_item_info[obj_name]["params"][obj_idx]["scale"]
+
+            success, self.cluttered_obj = rand_create_cluttered_actor(
+                self.scene,
+                xlim=xlim,
+                ylim=ylim,
+                zlim=zlim,
+                modelname=obj_name,
+                modelid=obj_idx,
+                scale=scale,
+                modeltype=cluttered_item_info[obj_name]["type"],
+                rotate_rand=True,
+                rotate_lim=[0, 0, math.pi],
+                size_dict=self.size_dict,
+                obj_radius=obj_radius,
+                z_offset=obj_offset,
+                z_max=obj_maxz,
+                prohibited_area=prohibited_area,
+                is_static=False,
+                constrained=False,
+            )
+            if not success or self.cluttered_obj is None:
+                trys += 1
+                continue
+
+            self.cluttered_obj.set_name(f"{obj_name}")
+
+            # manage stability as distractors
+            self.stabilize_object(self.cluttered_obj)
+
+            self.cluttered_objs.append(self.cluttered_obj)
+            pose = self.cluttered_obj.get_pose().p.tolist()
+            pose.append(obj_radius)
+            self.size_dict.append(pose)
+            success_count += 1
+
+            if group == "short":
+                short_count += 1
+            else:
+                tall_count += 1
+
+            self.record_cluttered_objects.append(
+                {"object_type": obj_name, "object_index": obj_idx}
+            )
+            placed_objects[obj_name].append(obj_idx)
+
+            # add to collision list
+            if cluttered_item_info[obj_name]["type"] == "urdf":
+                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
+            else:
+                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
+            self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale))
+
+            # # for viewing radius estimation
+            # half_size = [obj_radius, obj_radius, 0.0005]
+            # pose = self.cluttered_obj.get_pose()
+            # pose.q = [1,0,0,0]
+            # target = create_box(
+            #     scene=self,
+            #     pose=pose,
+            #     half_size=half_size,
+            #     color=(1, 0, 0),
+            #     name=f"{obj_name}_collision",
+            #     is_static=True,
+            # )
+        
+        if success_count < obstacle_count:
+            print(f"Warning: Only {success_count} cluttered objects are placed on the surface.")
 
         self.size_dict = None
         self.cluttered_objs = []
@@ -460,7 +657,7 @@ class Bench_base_task(Base_Task):
             else:
                 actor_data = {}
 
-        scale: float = actor_data.get("scale", actor.scale)
+        scale = actor.scale
         origin_bounding_size = (np.array(actor_data.get("extents", [0.1, 0.1, 0.1])) * scale / 2)
         origin_bounding_pts = (np.array([
             [-1, -1, -1],

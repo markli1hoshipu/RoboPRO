@@ -10,7 +10,7 @@ domain_randomization:
   random_background: true
   cluttered_table: true
   # obstacle_height: short
-  obstacle_density: 6
+  obstacle_density: 15
   clean_background_rate: 0.02
   random_head_camera_dis: 0
   random_table_height: 0.03
