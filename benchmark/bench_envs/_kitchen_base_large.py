@@ -11,6 +11,7 @@ import json
 import transforms3d as t3d
 from collections import OrderedDict
 import torch, random
+import xml.etree.ElementTree as ET
 
 from bench_envs._bench_base_task import Bench_base_task
 from envs.utils import *
@@ -39,6 +40,123 @@ parent_directory = os.path.dirname(current_file_path)
 class Kitchen_base_large(Bench_base_task):
     def __init__(self):
         pass
+
+    def apply_srdf_collisions(self, articulation, srdf_path: Path) -> None:
+        """
+        Apply SRDF <disable_collisions link1="..." link2="..."/> by directly
+        editing PhysX collision-group bitmasks on collision shapes.
+
+        This does not rely on URDFLoader's srdf kwargs (which may not exist
+        in the local SAPIEN build).
+        """
+        if srdf_path is None:
+            return
+        if not srdf_path.exists():
+            return
+
+        try:
+            tree = ET.parse(str(srdf_path))
+            root = tree.getroot()
+        except Exception as e:
+            return
+
+        disable_tags = root.findall(".//disable_collisions")
+        parsed_pairs: list[tuple[str, str, str]] = []
+        for tag in disable_tags:
+            link1_name = tag.get("link1")
+            link2_name = tag.get("link2")
+            reason = tag.get("reason", "")
+            if link1_name and link2_name:
+                parsed_pairs.append((link1_name, link2_name, reason))
+
+        if not parsed_pairs:
+            return
+
+        # Map SRDF link names to actual SAPIEN articulation link objects.
+        link_map = {}
+        try:
+            for link in articulation.get_links():
+                link_map[link.get_name()] = link
+        except Exception as e:
+            return
+
+        # Only touch links that appear in at least one SRDF pair.
+        involved = set()
+        for l1, l2, _ in parsed_pairs:
+            involved.add(l1)
+            involved.add(l2)
+
+        # Cache collision shapes per link name.
+        link_shapes: dict[str, list] = {}
+        for link_name in sorted(involved):
+            link_obj = link_map.get(link_name)
+            if link_obj is None:
+                continue
+
+            shapes = None
+            try:
+                if hasattr(link_obj, "get_collision_shapes") and callable(getattr(link_obj, "get_collision_shapes")):
+                    shapes = link_obj.get_collision_shapes()
+                elif hasattr(link_obj, "collision_shapes"):
+                    cs = getattr(link_obj, "collision_shapes")
+                    shapes = cs() if callable(cs) else cs
+            except Exception as e:
+                shapes = None
+
+            if shapes is None:
+                continue
+            link_shapes[link_name] = list(shapes)
+
+        if not link_shapes:
+            return
+
+        # Collision groups doc (SAPIEN/PhysX wrapper):
+        #   collide iff (g0 & other.g1) or (g1 & other.g0) AND NOT ((g2 & other.g2) and (g3 lower16 equal))
+        # So we:
+        # 1) set g3 lower16 to a constant for all shapes in this articulation (so ignore-id can match)
+        # 2) for each disabled link pair, set a unique bit in g2 on shapes of both links.
+        srdf_collision_id = 0xBEEF  # lower16 bits
+
+        def _apply_group_bit(shape, bit: int) -> None:
+            groups = shape.get_collision_groups()
+            if groups is None or len(groups) != 4:
+                raise RuntimeError(f"Unexpected collision groups format: {groups}")
+            g0, g1, g2, g3 = groups
+            g3_new = (int(g3) & 0xFFFF0000) | srdf_collision_id
+            g2_new = int(g2) | bit
+            shape.set_collision_groups([int(g0), int(g1), int(g2_new), int(g3_new)])
+
+        # First, normalize g3 lower16 for all touched shapes so that ignore checks can match.
+        for link_name, shapes in link_shapes.items():
+            for shape in shapes:
+                try:
+                    groups = shape.get_collision_groups()
+                    if groups is None or len(groups) != 4:
+                        continue
+                    g0, g1, g2, g3 = groups
+                    g3_new = (int(g3) & 0xFFFF0000) | srdf_collision_id
+                    shape.set_collision_groups([int(g0), int(g1), int(g2), int(g3_new)])
+                except Exception:
+                    # Don't fail the whole SRDF application for one bad shape.
+                    continue
+
+        # Apply unique ignore bits per disable_collisions pair.
+        # Note: if there are more pairs than we can represent safely, reuse may cause over-ignore.
+        for i, (link1_name, link2_name, reason) in enumerate(parsed_pairs):
+            if i >= 31:
+                return
+            ignore_bit = 1 << i
+            l1_shapes = link_shapes.get(link1_name, [])
+            l2_shapes = link_shapes.get(link2_name, [])
+            if not l1_shapes or not l2_shapes:
+                continue
+            try:
+                for shape in l1_shapes:
+                    _apply_group_bit(shape, ignore_bit)
+                for shape in l2_shapes:
+                    _apply_group_bit(shape, ignore_bit)
+            except Exception as e:
+                continue
 
     def _init_task_env_(self, table_xy_bias=[0, 0], table_height_bias=0, **kwags):
         """
@@ -517,6 +635,19 @@ class Kitchen_base_large(Bench_base_task):
             print(f"[Kitchen_base_large] cabinet URDF not found: {urdf_path}")
             return None
 
+        # If this URDF has an accompanying SRDF, use it to disable internal
+        # collisions between specified link pairs (e.g., fridge door vs frame).
+        srdf_path: Path | None = None
+        candidate_srdf = urdf_path.with_suffix(".srdf")
+        alt_candidate_srdf = None
+        if candidate_srdf.exists():
+            srdf_path = candidate_srdf
+        else:
+            # Fallback: <stem>.srdf in the same folder.
+            alt_candidate_srdf = urdf_path.parent / f"{urdf_path.stem}.srdf"
+            if alt_candidate_srdf.exists():
+                srdf_path = alt_candidate_srdf
+
         if json_file.exists():
             with open(json_file, "r", encoding="utf-8") as file:
                 model_data = json.load(file)
@@ -541,6 +672,9 @@ class Kitchen_base_large(Bench_base_task):
 
         try:
             articulation = loader.load_multiple(str(urdf_path))[0][0]
+
+            if srdf_path is not None:
+                self.apply_srdf_collisions(articulation, srdf_path)
         except Exception as e:
             print(f"[Kitchen_base_large] failed to load cabinet URDF {urdf_path}: {e}")
             return None
@@ -559,7 +693,9 @@ class Kitchen_base_large(Bench_base_task):
 
         # Match drive properties to other articulated objects
         for joint in articulation.get_joints():
-            joint.set_drive_properties(damping=1000, stiffness=0)
+            # Keep stiffness at 0 (position is handled via qpos), but avoid excessive
+            # damping that can cause jitter/instability for articulated doors.
+            joint.set_drive_properties(damping=10.0, stiffness=0)
 
         articulation.set_name(asset_dir_name)
         return ArticulationActor(articulation, model_data)
