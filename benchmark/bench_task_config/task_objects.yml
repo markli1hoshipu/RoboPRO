@@ -1,5 +1,5 @@
 # objects we sample for generating training data
-train:
+objects:
   office:
     targets:
       077_phone: [0,1,2,3]
@@ -80,7 +80,7 @@ train:
 
 
 # OOD tasks we sample for OOD inference scenarios only
-inference_ood:
+object_ood:
   office:
     targets:
       077_phone: [4]
@@ -147,7 +147,7 @@ scales:
     "4": 0.05
     "5": 0.05
   021_cup: 
-    "0": null #0.06
+    "0": 0.06
     "1": 0.06
     "2": 0.06
     "9": 0.05
@@ -189,7 +189,7 @@ scales:
     "9": 0.06
     "11": 0.6
   043_book:
-    "0": 0.5
+    "0": 0.8
     "1": 0.06
   045_sand-clock:
     "0": 0.05
@@ -206,7 +206,7 @@ scales:
   055_small-speaker: null
   057_toycar: null
   058_markpen: 
-    "0": 0.05
+    "0": 0.1
     "1": 0.05
     "3": 0.05
     "4": 0.05
