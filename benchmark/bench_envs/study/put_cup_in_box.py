@@ -53,7 +53,7 @@ def get_actor_boundingbox(entity):
     return points_cloud.min(axis=0), points_cloud.max(axis=0)
 
 def get_position_limits(surface_obj, boundary_thr = 0.15, robot_reach_thr = 0.6,
-                       arm_x_pose = 0.15):
+                       arm_x_pose = 0.15, side=None):
     # Get generation limits
     # Assumption is that the robot is centered with respect to the the surface area
     try:
@@ -63,7 +63,7 @@ def get_position_limits(surface_obj, boundary_thr = 0.15, robot_reach_thr = 0.6,
     table_bb = get_actor_boundingbox(actor)
     print(f"surface bb {table_bb}")
 
-    side_to_place = np.random.choice(["left", "right"])
+    side_to_place = side or np.random.choice(["left", "right"])
 
     if side_to_place == "left":
         xmin = max((table_bb[0][0] + boundary_thr),  (-arm_x_pose - robot_reach_thr))
@@ -126,7 +126,7 @@ def get_collison_with_objs(object_bounds, obj_pose, x_thr, y_thr = None):
             return True
     return False
 
-class move_milktea(Study_base_task):
+class put_cup_in_box(Study_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
@@ -136,13 +136,17 @@ class move_milktea(Study_base_task):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
         
-        xlim, ylim, self.side_to_place = get_position_limits(self.table, boundary_thr=0.20)
-        
+        xlim, ylim, self.side_to_place = get_position_limits(self.table, boundary_thr=0.20, side="left")
+       
+        print(xlim, ylim, self.side_to_place)
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
 
         for bb, o in zip(object_bounds, self.scene_objs):
             print(o.get_name(), bb)
-        col_thr = 0.20
+        # Threshold between the objects
+        col_thr = 0.15
+
+
         while True:
             tar_obj_rand_pos = rand_pose(
                 xlim=xlim,
@@ -158,7 +162,7 @@ class move_milktea(Study_base_task):
             #     break
       
         self.target_name = "021_cup"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
-        self.target_id = 0 #np.random.choice(task_objs['train']['study']['targets'][self.target_name])
+        self.target_id = np.random.choice(task_objs['objects']['study']['targets'][self.target_name])
         
         print(f"Generating {self.target_name} with id {self.target_id} at position {tar_obj_rand_pos}")
 
@@ -168,66 +172,17 @@ class move_milktea(Study_base_task):
             modelname=self.target_name,
             convex=True,
             model_id= self.target_id ,
-            scale= None #if task_objs['scales'].get(self.target_name) is None else  task_objs['scales'][self.target_name].get(str(self.target_id)) 
+            scale= None if task_objs['scales'].get(self.target_name) is None else  task_objs['scales'][self.target_name].get(str(self.target_id)) 
         )
         self.target_obj.set_mass(0.1)
-
-
-
         # Create destination object
-        self.des_obj_name = "043_book"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
-        self.des_obj_id = 0 # np.random.choice(task_objs['train']['study']['targets'][self.des_obj_name])
-
-
-        target_bb = get_actor_boundingbox(self.target_obj)
-        object_bounds.append(target_bb)
-        print(f"\033[31m{self.target_name} bounding box {target_bb}\033[0m")
-
-        # Select a random pose for the target object
-
-        tar_sep_thr = 0.2
-        while True:
-            des_obj_rand_pos = rand_pose(
-                xlim=xlim, #[-0.45, 0.45],
-                ylim=ylim, #[-0.23, 0.05],
-                qpos=[0.5, 0.5, 0.5, 0.5],
-                rotate_rand=True,
-                # rotate_lim=[0,0, 3.14],
-            )
-
-            if not get_collison_with_objs(object_bounds, des_obj_rand_pos, col_thr):
-            # and \
-            #     (des_obj_rand_pos.p[0] < target_bb[0][0] - tar_sep_thr  or \
-            #      des_obj_rand_pos.p[0] > target_bb[1][0] + tar_sep_thr):
-                break
-
-
-
-            # if (des_obj_rand_pos.p[0] < target_bb[0][0] - 0.05 or \
-            #      des_obj_rand_pos.p[0] > target_bb[0][1] + 0.05) and \
-            #     (des_obj_rand_pos.p[1] < target_bb[1][0] - 0.05 or \
-            #         des_obj_rand_pos.p[1] > target_bb[1][1] + 0.05):
-            #     break
-
-        print(f"Generating {self.des_obj_name} with id {self.des_obj_id} at position {des_obj_rand_pos}")
-
-
-        self.des_obj = create_actor(
-            scene=self,
-            pose=des_obj_rand_pos,
-            modelname=self.des_obj_name,
-            convex=True,
-            model_id= self.des_obj_id ,
-            scale= None if task_objs['scales'].get(self.des_obj_name) is None else  \
-                task_objs['scales'][self.des_obj_name].get(str(self.des_obj_id)) 
-        )
-        self.des_obj.set_mass(0.05)
-
+     
+        self.des_obj = self.box
 
         des_bb = get_actor_boundingbox(self.des_obj.actor)
         p = self.des_obj.get_pose().p.tolist() 
         p[-1] = des_bb[1][-1]
-        self.des_obj_pose = p + [0, 0, 0, 1]
+        self.des_obj_pose = p + [1, 0, 0, 0]
         print(f"Placement destination pose {self.des_obj_pose}")
 
 
@@ -236,15 +191,15 @@ class move_milktea(Study_base_task):
 
      
       
-    def play_once(self):
+    def play_once(self, z = 0.1, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
 
         # Grasp the mouse with the selected arm
-        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.1))
+        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
 
         # Lift the mouse upward by 0.1 meters in z-direction
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
 
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
 
@@ -254,9 +209,9 @@ class move_milktea(Study_base_task):
                 self.target_obj,
                 arm_tag=arm_tag,
                 target_pose= self.des_obj_pose,
-                constrain="align",
-                pre_dis=0.07,
-                dis=0.02,
+                constrain="auto",
+                pre_dis=pre_dis,
+                dis=dis,
             ))
 
         # Record information about the objects and arm used in the task

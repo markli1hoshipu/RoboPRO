@@ -11,7 +11,7 @@ scene_0:
     obj_type: actor
     p: [-0.40,-0,0.74]
     q: [0.5,0.5,0.5,0.5]
-    scale: [0.11,0.10,0.2]
+    scale: [0.11,0.07,0.2]
     model_id: 0
   # 059_pencup:
   #   obj_type: actor
