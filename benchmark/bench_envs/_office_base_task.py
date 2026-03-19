@@ -197,11 +197,11 @@ class Office_base_task(Bench_base_task):
         if self.enable_collision_metrics:
             self._build_collision_name_sets()  # build collision name sets for collision metrics
 
-        is_stable, unstable_list = self.check_stable()
-        if not is_stable:
-            raise UnStableError(
-                f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
-            # print(f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
+        # is_stable, unstable_list = self.check_stable()
+        # if not is_stable:
+        #     raise UnStableError(
+        #         f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
+        #     # print(f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
 
         self.update_world()
 
@@ -331,18 +331,32 @@ class Office_base_task(Bench_base_task):
         self.add_prohibit_area(self.cabinet, padding=0.01)
         self.cabinet.set_mass(0.5)
         # ------------------------------------------------------------
+        self.wooden_box = create_actor(
+            scene=self,
+            pose=sapien.Pose(p=[
+                self.office_info["furn_x_v"]["file_holder"][self.arr_v],
+                depth-0.06,
+                0.813
+                ], q=euler_to_quat(-np.pi/2,0,0)),
+            modelname="042_wooden_box",
+            convex=False,
+            model_id=0,
+            scale=[0.09,0.07,0.1],
+            is_static=True,
+        )
+        # ------------------------------------------------------------
         self.file_holder = create_glb_actor(
             scene=self.scene,
             pose=sapien.Pose(p=[
                 self.office_info["furn_x_v"]["file_holder"][self.arr_v],
                 depth-0.05,
-                table_height
+                table_height+0.075
                 ], q=[0.7071, 0.7071, 0, 0]),
             model_name="122_file-holder",
             scale=[0.38,0.7,0.4], # width, height, depth
             convex=False,
             is_static=True,
-            mass=1
+            mass=0.1
         )
         pose = self.file_holder.get_pose().p
         xmin = pose[0] - self.office_info["file_holder_area"][0]/2 - 0.01

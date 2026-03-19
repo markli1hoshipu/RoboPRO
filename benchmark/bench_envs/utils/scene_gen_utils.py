@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 
 def get_actor_boundingbox(entity):
     all_points = []
@@ -116,3 +117,9 @@ def get_collison_with_objs(object_bounds, obj_pose, x_thr, y_thr = None):
                 obj_pose.p[1] < ob[1][1] + y_thr):
             return True
     return False
+
+def euler_to_quat(roll, pitch, yaw):
+    r = R.from_euler('xyz', [roll, pitch, yaw])
+    q = r.as_quat()  # returns [x, y, z, w]
+    q = [q[3], q[0], q[1], q[2]] # return as [w, x, y, z]
+    return q
