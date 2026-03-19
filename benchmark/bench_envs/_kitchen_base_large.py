@@ -76,7 +76,6 @@ class Kitchen_base_large(Bench_base_task):
         # Random
         random_setting = kwags.get("domain_randomization")
         self.random_background = random_setting.get("random_background", False)
-        self.cluttered_table = random_setting.get("cluttered_table", False)
         self.clean_background_rate = random_setting.get("clean_background_rate", 1)
         self.random_head_camera_dis = random_setting.get("random_head_camera_dis", 0)
         self.random_table_height = random_setting.get("random_table_height", 0)
@@ -84,8 +83,6 @@ class Kitchen_base_large(Bench_base_task):
         self.crazy_random_light_rate = random_setting.get("crazy_random_light_rate", 0)
         self.crazy_random_light = (0 if not self.random_light else np.random.rand() < self.crazy_random_light_rate)
         self.random_embodiment = random_setting.get("random_embodiment", False)  # TODO
-        self.obstacle_height = random_setting.get("obstacle_height", "short")
-        self.obstacle_density = random_setting.get("obstacle_density", 3)
 
         self.file_path = []
         self.plan_success = True
@@ -106,9 +103,6 @@ class Kitchen_base_large(Bench_base_task):
         self.save_freq = kwags.get("save_freq")
         self.world_pcd = None
 
-        self.key_objects = []
-        self.size_dict = list()
-        self.cluttered_objs = list()
         # table: main countertop; shelf0/1: pantry rack shelves; fridge/cabinet: internal storage volumes
         self.prohibited_area = {
             "table": [],
@@ -117,34 +111,11 @@ class Kitchen_base_large(Bench_base_task):
             "fridge": [],
             "cabinet": [],
         }
-        self.unstable_objects = ["050_bell"] # objects that are not stable and should be avoided
-        # Kitchen-themed obstacles for optional clutter randomization
-        self.short_obstacles = [
-            "002_bowl",
-            "021_cup",
-            "022_cup-with-liquid",
-            "039_mug",
-            "071_can",
-            "075_bread",
-            "076_breadbasket",
-            "080_pillbottle",
-            "082_smallshovel",
-            "088_wineglass",
-            "091_kettle",
-            "100_seal",
-            "110_basket",
-        ]
-        self.tall_obstacles = [
-            "001_bottle",
-            "101_milk-tea",
-            "103_fruit",
-            "114_bottle",
-        ]
-        self.record_cluttered_objects = list()  # record cluttered objects info
+        # Base env currently does not spawn distractors; keep this for compatibility.
+        self.record_cluttered_objects = []
 
         self.eval_success = False
         self.table_z_bias = (np.random.uniform(low=-self.random_table_height, high=0) + table_height_bias)  # TODO
-        self.shelf_heights = [0.845, 1.265] # heights of the pantry rack shelf levels
         self.need_plan = kwags.get("need_plan", True)
         self.left_joint_path = kwags.get("left_joint_path", [])
         self.right_joint_path = kwags.get("right_joint_path", [])
@@ -179,14 +150,6 @@ class Kitchen_base_large(Bench_base_task):
             "drawer": {"modelname": "036_cabinet", "default_modelid": 46653},
         }
 
-        # Map semantic small-object roles to object codes
-        self.kitchen_small_object_assets = {
-            "bowl": {"modelname": "002_bowl"},
-            "bottle": {"modelname": "001_bottle"},
-            "milk_carton": {"modelname": "038_milk-box"},
-            "can": {"modelname": "071_can"},
-        }
-
         self.load_robot(**kwags)
         self.create_static_elements(table_xy_bias=table_xy_bias, table_height=0.74)
         self.load_camera(**kwags)
@@ -198,6 +161,7 @@ class Kitchen_base_large(Bench_base_task):
         self.render_freq = render_freq
 
         self.robot.set_origin_endpose()
+
         self.load_actors()
         # self.load_basic_kitchen_items()
         # if self.cluttered_table:
@@ -679,217 +643,5 @@ class Kitchen_base_large(Bench_base_task):
             return fallback
         return int(np.random.choice(ids))
 
-    def load_basic_kitchen_items(self):
-        # Always-present small kitchen items scattered on the countertop
-        size_dict = list()
-
-        # Bowls for stacking and placement
-        if "bowl" not in self.key_objects:
-            bowl_modelname = self.kitchen_small_object_assets["bowl"]["modelname"]
-            bowl_id = self._sample_model_id(bowl_modelname, fallback=0)
-            for i in range(10):
-                success, self.bowl = rand_create_cluttered_actor(
-                    scene=self.scene,
-                    xlim=[-0.4, 0.4],
-                    ylim=[-0.25, 0.25],
-                    zlim=[0.741],
-                    modelname=bowl_modelname,
-                    modelid=bowl_id,
-                    modeltype="glb",
-                    qpos=[0.5, 0.5, 0.5, 0.5],
-                    rotate_rand=True,
-                    rotate_lim=[0, 1, 0],
-                    size_dict=size_dict,
-                    obj_radius=0.06,
-                    z_offset=0,
-                    z_max=0.1,
-                    prohibited_area=self.prohibited_area["table"],
-                    constrained=False,
-                    is_static=False,
-                )
-                if success:
-                    break
-            if success:
-                self.bowl.set_mass(0.05)
-                self.add_prohibit_area(self.bowl, padding=0.01, area="table")
-
-        # Bottle
-        if "bottle" not in self.key_objects:
-            bottle_modelname = self.kitchen_small_object_assets["bottle"]["modelname"]
-            bottle_id = self._sample_model_id(bottle_modelname, fallback=0)
-            for i in range(10):
-                success, self.bottle = rand_create_cluttered_actor(
-                    scene=self.scene,
-                    xlim=[-0.4, 0.4],
-                    ylim=[-0.25, 0.25],
-                    zlim=[0.741],
-                    modelname=bottle_modelname,
-                    modelid=bottle_id,
-                    modeltype="glb",
-                    qpos=[0.7071, 0.7071, 0, 0],
-                    rotate_rand=True,
-                    rotate_lim=[0, 0.5, 0],
-                    size_dict=size_dict,
-                    obj_radius=0.05,
-                    z_offset=0,
-                    z_max=0.25,
-                    prohibited_area=self.prohibited_area["table"],
-                    constrained=False,
-                    is_static=False,
-                )
-                if success:
-                    break
-            if success:
-                self.bottle.set_mass(0.1)
-                self.add_prohibit_area(self.bottle, padding=0.01, area="table")
-
-        # Milk carton
-        if "milk_carton" not in self.key_objects:
-            milk_modelname = self.kitchen_small_object_assets["milk_carton"]["modelname"]
-            milk_id = self._sample_model_id(milk_modelname, fallback=0)
-            for i in range(10):
-                success, self.milk_carton = rand_create_cluttered_actor(
-                    scene=self.scene,
-                    xlim=[-0.4, 0.4],
-                    ylim=[-0.25, 0.25],
-                    zlim=[0.741],
-                    modelname=milk_modelname,
-                    modelid=milk_id,
-                    modeltype="glb",
-                    qpos=[0.66, 0.66, -0.25, -0.25],
-                    rotate_rand=True,
-                    rotate_lim=[0, 1, 0],
-                    size_dict=size_dict,
-                    obj_radius=0.05,
-                    z_offset=0,
-                    z_max=0.25,
-                    prohibited_area=self.prohibited_area["table"],
-                    constrained=False,
-                    is_static=False,
-                )
-                if success:
-                    break
-            if success:
-                self.milk_carton.set_mass(0.1)
-                self.add_prohibit_area(self.milk_carton, padding=0.01, area="table")
-
-        # Can
-        if "can" not in self.key_objects:
-            can_modelname = self.kitchen_small_object_assets["can"]["modelname"]
-            can_id = self._sample_model_id(can_modelname, fallback=0)
-            for i in range(10):
-                success, self.can = rand_create_cluttered_actor(
-                    scene=self.scene,
-                    xlim=[-0.4, 0.4],
-                    ylim=[-0.25, 0.25],
-                    zlim=[0.741],
-                    modelname=can_modelname,
-                    modelid=can_id,
-                    modeltype="glb",
-                    qpos=[0.5, 0.5, 0.5, 0.5],
-                    rotate_rand=True,
-                    rotate_lim=[0, 1, 0],
-                    size_dict=size_dict,
-                    obj_radius=0.04,
-                    z_offset=0,
-                    z_max=0.15,
-                    prohibited_area=self.prohibited_area["table"],
-                    constrained=False,
-                    is_static=False,
-                )
-                if success:
-                    break
-            if success:
-                self.can.set_mass(0.05)
-                self.add_prohibit_area(self.can, padding=0.01, area="table")
-    
-    def get_cluttered_surfaces(self):
-        # clutter surfaces with additional random obstacles
-        # table ------------------------------------------------------
-        xlim = [-0.59, 0.59]
-        ylim = [-0.34, 0.34]
-        zlim = [0.741]
-        xlim[0] += self.table_xy_bias[0]
-        xlim[1] += self.table_xy_bias[0]
-        ylim[0] += self.table_xy_bias[1]
-        ylim[1] += self.table_xy_bias[1]
-        zlim = np.array(zlim) + self.table_z_bias
-        if self.obstacle_height == "short":
-            object_names = self.short_obstacles
-        elif self.obstacle_height == "tall":
-            object_names = self.tall_obstacles
-        else:
-            raise ValueError(f"Invalid obstacle height: {self.obstacle_height}")
-        self.clutter_surface(xlim=xlim, ylim=ylim, zlim=zlim, object_names=object_names, prohibited_area=self.prohibited_area["table"], obstacle_count=self.obstacle_density)
-        # shelves ----------------------------------------------------
-        xlim = [self.shelf.get_pose().p[0]-0.1, self.shelf.get_pose().p[0]+0.1]
-        ylim = [self.shelf.get_pose().p[1]-0.3, self.shelf.get_pose().p[1]+0.3]
-        zlim = [self.shelf_heights[0]]
-        self.clutter_surface(xlim=xlim, ylim=ylim, zlim=zlim, object_names=self.short_obstacles, prohibited_area=self.prohibited_area["shelf0"], obstacle_count=3)
-        zlim = [self.shelf_heights[1]]
-        self.clutter_surface(xlim=xlim, ylim=ylim, zlim=zlim, object_names=self.short_obstacles, prohibited_area=self.prohibited_area["shelf1"], obstacle_count=3)
-    
-    def load_table_obstacles_in_line(self, spacing=0.10, ground_y=-5.0, ground_z=0.02):
-        """Load all table_obstacles that are available into the scene in a line on the ground at y=ground_y, spacing (m) apart. Used for debugging."""
-        task_objects_list = []
-        for entity in self.scene.get_all_actors():
-            actor_name = entity.get_name()
-            if actor_name == "":
-                continue
-            if actor_name in ["table", "wall", "ground"]:
-                continue
-            task_objects_list.append(actor_name)
-        obj_names, cluttered_item_info = get_cluttered_objects_subset(self.tall_obstacles, task_objects_list)
-        if not obj_names:
-            return
-        n = len(obj_names)
-        # Center the line along x: first object at x = -(n-1)*spacing/2, then x += spacing
-        x_start = -(n - 1) * spacing / 2.0
-        identity_quat = [1, 0, 0, 0]
-        for i, obj_name in enumerate(obj_names):
-            if obj_name in self.unstable_objects:
-                continue
-            ids = cluttered_item_info[obj_name]["ids"]
-            if not ids:
-                continue
-            obj_idx = ids[0]
-            info = cluttered_item_info[obj_name]
-            model_type = info["type"]
-            x_i = x_start + i * spacing
-            pose = sapien.Pose(
-                [
-                    x_i, ground_y, 
-                    ground_z + cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
-                ], 
-                identity_quat)
-            if model_type == "urdf":
-                obj = create_cluttered_urdf_obj(
-                    scene=self.scene,
-                    pose=pose,
-                    modelname=f"objects/objaverse/{obj_name}/{obj_idx}",
-                    fix_root_link=True,
-                    scale=1,
-                )
-            else:
-                obj = create_actor(
-                    scene=self.scene,
-                    pose=pose,
-                    modelname=obj_name,
-                    model_id=obj_idx,
-                    convex=True,
-                    is_static=True,
-                    scale = [1,1,1]
-                )
-            if obj is None:
-                continue
-            obj.set_name(obj_name)
-            # self.stabilize_object(obj)
-            # self.record_cluttered_objects.append({"object_type": obj_name, "object_index": obj_idx})
-            # if model_type == "urdf":
-            #     path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
-            # else:
-            #     path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
-            # self.collision_list.append((obj, path, obj.scale))
-    
     def add_extra_cameras(self):
         self.cameras.add_extra_cameras(f"{os.environ['BENCH_ROOT']}/bench_assets/embodiments/office_config.yml")
