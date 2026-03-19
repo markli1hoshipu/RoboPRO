@@ -41,6 +41,65 @@ class Kitchen_base_large(Bench_base_task):
     def __init__(self):
         pass
 
+    def _extract_intrinsic_scale(self, model_data: dict) -> float:
+        """
+        Extract a single (uniform) intrinsic scale value from a model_data dict.
+
+        The assets store scale either as a scalar or as a 3-vector; we use the
+        first component since kitchen furniture scaling is treated as uniform.
+        """
+        base = model_data.get("scale", 1.0)
+        if isinstance(base, (list, tuple)) and len(base) > 0:
+            return float(base[0])
+        return float(base)
+
+    def _get_asset_model_scale_create_actor(self, modelname: str, model_id: int = 0) -> float:
+        """
+        Intrinsic scale from `assets/objects/<modelname>/model_data<model_id>.json`.
+
+        `create_actor.py` treats the `scale=` argument as absolute.
+        The kitchen env historically used `*_left_scale` as a multiplier, so we
+        multiply by this intrinsic scale to preserve the intended sizes.
+        """
+        modeldir = Path("assets/objects") / modelname
+        json_file = modeldir / f"model_data{model_id}.json"
+        try:
+            with open(json_file, "r", encoding="utf-8") as f:
+                model_data = json.load(f)
+        except Exception:
+            return 1.0
+
+        return self._extract_intrinsic_scale(model_data)
+
+    def _get_asset_model_scale_sapien_urdf(self, modelname: str, modelid: int = 0) -> float:
+        """
+        Intrinsic scale from `assets/objects/<modelname>/<variant>/model_data.json`.
+
+        Matches the variant selection logic in `create_sapien_urdf_obj`.
+        """
+        modeldir = Path("assets/objects") / modelname
+        try:
+            model_list = [m for m in modeldir.iterdir() if m.is_dir() and m.name != "visual"]
+            def _variant_sort_key(p: Path) -> int:
+                m = re.search(r"\d+", p.name)
+                return int(m.group()) if m else 0
+            model_list = sorted(
+                model_list,
+                key=_variant_sort_key,
+            )
+            if not model_list:
+                return 1.0
+            idx = int(modelid)
+            idx = max(0, min(idx, len(model_list) - 1))
+            chosen = model_list[idx]
+            json_file = chosen / "model_data.json"
+            with open(json_file, "r", encoding="utf-8") as f:
+                model_data = json.load(f)
+        except Exception:
+            return 1.0
+
+        return self._extract_intrinsic_scale(model_data)
+
     def apply_srdf_collisions(self, articulation, srdf_path: Path) -> None:
         """
         Apply SRDF <disable_collisions link1="..." link2="..."/> by directly
@@ -482,11 +541,16 @@ class Kitchen_base_large(Bench_base_task):
 
         pose_microwave = sapien.Pose([x_microwave, y_front, z_microwave], microwave_quat)
         try:
+            intrinsic_scale = self._get_asset_model_scale_sapien_urdf(
+                modelname="044_microwave",
+                modelid=0,
+            )
+            final_scale = intrinsic_scale * float(self.microwave_left_scale)
             microwave_actor = create_sapien_urdf_obj(
                 scene=self,
                 pose=pose_microwave,
                 modelname="044_microwave",
-                scale=self.microwave_left_scale,
+                scale=final_scale,
                 modelid=0,
                 fix_root_link=True,
             )
@@ -496,6 +560,9 @@ class Kitchen_base_large(Bench_base_task):
 
         if microwave_actor is not None:
             self.microwave_left = microwave_actor
+            # Ensure cached config scaling matches the physical scaling we applied.
+            if isinstance(self.microwave_left.config, dict):
+                self.microwave_left.config["scale"] = float(final_scale)
             self.microwave_left.set_name("microwave_center")
             self.add_prohibit_area(self.microwave_left, padding=0.01, area="table")
 
@@ -513,17 +580,25 @@ class Kitchen_base_large(Bench_base_task):
         basket_quat = [bqw, bqx, bqy, bqz]
 
         pose_basket = sapien.Pose([x_right, y_front, z_basket], basket_quat)
+        intrinsic_scale = self._get_asset_model_scale_create_actor(modelname="110_basket", model_id=0)
+        final_scale = intrinsic_scale * float(self.basket_right_scale)
         basket_actor = create_actor(
             scene=self.scene,
             pose=pose_basket,
             modelname="110_basket",
-            scale=[self.basket_right_scale] * 3,
+            # `create_actor.py` treats `scale=` as absolute, so multiply
+            # by intrinsic model_data scale to keep historical multiplier semantics.
+            scale=final_scale,
             is_static=True,
             convex=False,
             model_id=0,
         )
         if basket_actor is not None:
             self.basket_right = basket_actor
+            # Ensure cached config scaling matches the physical scaling we applied.
+            if isinstance(self.basket_right.config, dict):
+                # For create_actor, model_data["scale"] is usually [sx, sy, sz].
+                self.basket_right.config["scale"] = [float(final_scale)] * 3
             self.basket_right.set_name("basket_right")
             self.add_prohibit_area(self.basket_right, padding=0.01, area="table")
 
@@ -595,6 +670,60 @@ class Kitchen_base_large(Bench_base_task):
             return
         self.fridge_left.set_qpos(self.fridge_open_qpos)
 
+    def set_fridge_open_angle_deg(self, angle_deg: float, open_span_deg: float = 180.0) -> None:
+        """
+        Set the fridge door to a target opening angle.
+
+        This linearly interpolates articulation `qpos` between the canonical
+        closed state (`fridge_closed_qpos`) and the canonical fully-open state
+        (`fridge_open_qpos`), assuming the fully-open pose corresponds to
+        `open_span_deg` degrees of rotation.
+        """
+        if getattr(self, "fridge_closed_qpos", None) is None:
+            return
+        if getattr(self, "fridge_open_qpos", None) is None:
+            return
+        if not hasattr(self, "fridge_left") or self.fridge_left is None:
+            return
+        if open_span_deg <= 0:
+            return
+
+        angle_deg = float(angle_deg)
+        open_span_deg = float(open_span_deg)
+        angle_deg = max(0.0, min(angle_deg, open_span_deg))
+        ratio = angle_deg / open_span_deg
+
+        closed = np.asarray(self.fridge_closed_qpos, dtype=float)
+        open_qpos = np.asarray(self.fridge_open_qpos, dtype=float)
+
+        if closed.shape != open_qpos.shape:
+            # Shape mismatch shouldn't happen, but keep a safe fallback.
+            self.fridge_left.set_qpos(open_qpos if ratio >= 0.5 else closed)
+            return
+
+        delta = open_qpos - closed
+        # Only interpolate joints that actually move between closed/open.
+        movable = np.abs(delta) > 1e-6
+        new_qpos = closed.copy()
+        new_qpos[movable] = closed[movable] + ratio * delta[movable]
+        self.fridge_left.set_qpos(new_qpos)
+
+    def set_fridge_open_random_angle_between(
+        self,
+        min_angle_deg: float = 45.0,
+        max_angle_deg: float = 90.0,
+        open_span_deg: float = 180.0,
+    ) -> float:
+        """Randomly set fridge door angle between `min_angle_deg` and `max_angle_deg`."""
+        min_angle_deg = float(min_angle_deg)
+        max_angle_deg = float(max_angle_deg)
+        if max_angle_deg < min_angle_deg:
+            min_angle_deg, max_angle_deg = max_angle_deg, min_angle_deg
+
+        angle_deg = float(np.random.uniform(min_angle_deg, max_angle_deg))
+        self.set_fridge_open_angle_deg(angle_deg, open_span_deg=open_span_deg)
+        return angle_deg
+
     def is_fridge_open(self, threshold: float = 0.01) -> bool:
         """Return True if the fridge has moved significantly away from the closed configuration."""
         if getattr(self, "fridge_closed_qpos", None) is None:
@@ -605,6 +734,29 @@ class Kitchen_base_large(Bench_base_task):
         current = np.array(self.fridge_left.get_qpos(), dtype=float)
         diff = np.abs(current - self.fridge_closed_qpos)
         return np.max(diff) > threshold
+
+    def is_fridge_closed(self, threshold: float = 0.01) -> bool:
+        """Return True if the fridge is effectively in the closed configuration."""
+        if getattr(self, "fridge_closed_qpos", None) is None:
+            return False
+        if not hasattr(self, "fridge_left") or self.fridge_left is None:
+            return False
+        current = np.array(self.fridge_left.get_qpos(), dtype=float)
+        diff = np.abs(current - self.fridge_closed_qpos)
+        return float(np.max(diff)) <= float(threshold)
+
+    def is_fridge_fully_open(self, threshold: float = 0.01) -> bool:
+        """
+        Return True if the fridge is effectively in the canonical "fully open"
+        configuration (computed from articulation qlimits).
+        """
+        if getattr(self, "fridge_open_qpos", None) is None:
+            return False
+        if not hasattr(self, "fridge_left") or self.fridge_left is None:
+            return False
+        current = np.array(self.fridge_left.get_qpos(), dtype=float)
+        diff = np.abs(current - self.fridge_open_qpos)
+        return float(np.max(diff)) <= float(threshold)
 
     def _create_objects_bench_cabinet(
         self,
@@ -652,21 +804,36 @@ class Kitchen_base_large(Bench_base_task):
             with open(json_file, "r", encoding="utf-8") as file:
                 model_data = json.load(file)
             raw_scale = model_data.get("scale", 1.0)
-            # For URDF loader, use a scalar scale like other SAPIEN URDF assets.
-            if isinstance(raw_scale, (list, tuple)) and len(raw_scale) > 0:
-                scale_scalar = float(raw_scale[0])
+            extra_scale_f = float(extra_scale)
+
+            # Keep scaling semantics consistent with the rest of the codebase:
+            # - `loader.scale` drives the *physical* scaling of URDF geometry
+            # - `model_data["scale"]` drives how we scale cached points/extents
+            #   (e.g., via `add_prohibit_area`)
+            raw_scale_vec = np.array(raw_scale, dtype=float).reshape(-1)
+            if raw_scale_vec.size == 1:
+                raw_scale_vec = np.array([raw_scale_vec[0], raw_scale_vec[0], raw_scale_vec[0]], dtype=float)
+            elif raw_scale_vec.size >= 3:
+                raw_scale_vec = raw_scale_vec[:3]
             else:
-                scale_scalar = float(raw_scale)
+                raw_scale_vec = np.array([1.0, 1.0, 1.0], dtype=float)
+
+            scaled_scale_vec = raw_scale_vec * extra_scale_f
+            model_data["scale"] = scaled_scale_vec.tolist()
+
+            # URDFLoader expects a uniform scalar scale.
+            scale_scalar = float(scaled_scale_vec[0])
             trans_mat = np.array(model_data.get("transform_matrix", np.eye(4)))
         else:
             # Provide a minimal config so downstream code (e.g. add_prohibit_area) always
             # sees a dict instead of None.
-            model_data = {"scale": 1.0}
-            scale_scalar = 1.0
+            model_data = {"scale": [1.0, 1.0, 1.0]}
+            scale_scalar = float(extra_scale)
             trans_mat = np.eye(4)
 
         loader: sapien.URDFLoader = self.scene.create_urdf_loader()
-        loader.scale = scale_scalar * float(extra_scale)
+        # URDFLoader expects a uniform scalar scale.
+        loader.scale = float(scale_scalar)
         loader.fix_root_link = fix_root_link
         loader.load_multiple_collisions_from_file = True
 
@@ -698,7 +865,7 @@ class Kitchen_base_large(Bench_base_task):
             joint.set_drive_properties(damping=10.0, stiffness=0)
 
         articulation.set_name(asset_dir_name)
-        return ArticulationActor(articulation, model_data)
+        return ArticulationActor(articulation, model_data, scale=model_data.get("scale"))
 
     # Drawer-related APIs are deprecated and no longer used now that the
     # base kitchen does not spawn any drawer units. They are retained only

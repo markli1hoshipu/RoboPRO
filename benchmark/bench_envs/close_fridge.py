@@ -12,7 +12,9 @@ class close_fridge(Kitchen_base_large):
 
         # For a close-fridge task, start from an open configuration.
         self._init_fridge_states()
-        self.set_fridge_open()
+        # Initialize at a fixed 180-degree opening (fully open).
+        self.fridge_start_open_angle_deg = 180.0
+        self.set_fridge_open_angle_deg(self.fridge_start_open_angle_deg, open_span_deg=180.0)
 
     def load_actors(self):
         # No additional movable actors are required for simply closing the fridge.
@@ -27,6 +29,6 @@ class close_fridge(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        # Success if the fridge is effectively in the closed configuration.
-        return not self.is_fridge_open()
+        # Success if the fridge door is at (or very near) the canonical closed pose.
+        return self.is_fridge_closed()
 

@@ -27,7 +27,6 @@ class open_fridge(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        # Success if the fridge is in an open configuration relative to its
-        # canonical closed state.
-        return self.is_fridge_open()
+        # Success if the fridge door is at (or very near) the canonical fully-open pose.
+        return self.is_fridge_fully_open()
 
