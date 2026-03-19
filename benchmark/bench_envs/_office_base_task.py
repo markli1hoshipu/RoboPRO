@@ -154,8 +154,15 @@ class Office_base_task(Bench_base_task):
         self.eval_success = False
         self.table_z_bias = (np.random.uniform(low=-self.random_table_height, high=0) + table_height_bias)  # TODO
         self.office_info = {
+            "table_height": 0.74,
             "shelf_heights":[0.9, 1.13], # heights of the shelf levels
-            "shelf_area":[0.84, 0.26], # x,y area 
+            "shelf_area":[0.62, 0.26], # x,y area 
+            "file_holder_area":[0.22, 0.16], # x,y area 
+            "furn_x_v": { # x position of furniture for each arrangement version
+                "shelf": [-0.24,0,0.24],
+                "cabinet": [0.23,0.48,-0.48],
+                "file_holder": [0.48,-0.48,-0.23],
+            },
         }
         self.need_plan = kwags.get("need_plan", True)
         self.left_joint_path = kwags.get("left_joint_path", [])
@@ -168,8 +175,10 @@ class Office_base_task(Bench_base_task):
         self.collision_list = [] # list of collision objects for curobo planner
         self._init_collision_metrics()
 
+        self.arr_v = np.random.choice([-1,1], 1)[0] # which version to use for furniture arrangement
+
         self.load_robot(**kwags)
-        self.create_static_elements(table_xy_bias=table_xy_bias, table_height=0.74)
+        self.create_static_elements(table_xy_bias=table_xy_bias)
         self.load_camera(**kwags)
         self.robot.move_to_homestate()
 
@@ -217,11 +226,11 @@ class Office_base_task(Bench_base_task):
 
         self.stage_success_tag = False
 
-    def create_static_elements(self, table_xy_bias=[0, 0], table_height=0.74):
+    def create_static_elements(self, table_xy_bias=[0, 0]):
         # create static furniture elements
         self.table_xy_bias = table_xy_bias
         wall_texture, table_texture, floor_texture = None, None, None
-        table_height += self.table_z_bias
+        table_height = self.office_info["table_height"] + self.table_z_bias
 
         if self.random_background:
             texture_type = "seen" if not self.eval_mode else "unseen"
@@ -288,22 +297,10 @@ class Office_base_task(Bench_base_task):
             is_static=True,
             texture_id=self.table_texture,
         )
-
-        # shelf_scale = [0.6, 0.87, 0.4]
-        # self.shelf = create_multiple_obj_actor(
-        #     scene=self.scene,
-        #     pose=sapien.Pose(p=[0.9, -0.42, -0.07], q=[0.5, 0.5, 0.5, 0.5]),
-        #     visual_path=f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/storage_rack_02.gltf",
-        #     collision_path=f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex",
-        #     scale=shelf_scale,
-        #     is_static=True,
-        #     name="120_storage-rack"
-        # )
-        # self.collision_list.append((self.shelf, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/120_storage-rack/rack_convex", shelf_scale))
         # ------------------------------------------------------------
         depth = 0.28
-        shelf_scale = [2.3,0.86,1.8] # length, height, depth
-        pose = [-0.12,depth,table_height+0.27]
+        shelf_scale = [1.7,0.86,1.8] # length, height, depth
+        pose = [self.office_info["furn_x_v"]["shelf"][self.arr_v],depth,table_height+0.27]
         self.shelf = create_glb_actor(
             scene=self.scene,
             pose=sapien.Pose(p=pose, q=[0.7071, 0.7071, 0.0, 0.0]),
@@ -324,11 +321,36 @@ class Office_base_task(Bench_base_task):
             scene=self,
             modelname="036_cabinet",
             modelid=46653,
-            pose=sapien.Pose(p=[0.47,depth,table_height], q=[0.7071, 0,0,0.7071]),
+            pose=sapien.Pose(p=[
+                self.office_info["furn_x_v"]["cabinet"][self.arr_v],
+                depth,
+                table_height
+                ], q=[0.7071, 0,0,0.7071]),
             fix_root_link=True,
         )
         self.add_prohibit_area(self.cabinet, padding=0.01)
         self.cabinet.set_mass(0.5)
+        # ------------------------------------------------------------
+        self.file_holder = create_glb_actor(
+            scene=self.scene,
+            pose=sapien.Pose(p=[
+                self.office_info["furn_x_v"]["file_holder"][self.arr_v],
+                depth-0.05,
+                table_height
+                ], q=[0.7071, 0.7071, 0, 0]),
+            model_name="122_file-holder",
+            scale=[0.38,0.7,0.4], # width, height, depth
+            convex=False,
+            is_static=True,
+            mass=1
+        )
+        pose = self.file_holder.get_pose().p
+        xmin = pose[0] - self.office_info["file_holder_area"][0]/2 - 0.01
+        xmax = pose[0] + self.office_info["file_holder_area"][0]/2 + 0.01
+        ymin = pose[1] - self.office_info["file_holder_area"][1]/2
+        ymax = pose[1] + self.office_info["file_holder_area"][1]/2
+        self.prohibited_area["table"].append([xmin, ymin, xmax, ymax])
+        self.collision_list.append((self.file_holder, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/122_file-holder/base.glb", [1,1,1]))
     
     def load_basic_office_items(self):
         # load office items: items that are always placed as obstacles ie key obstacles
@@ -339,9 +361,9 @@ class Office_base_task(Bench_base_task):
             for i in range(10):
                 success, self.laptop = rand_create_cluttered_actor(
                     scene=self.scene,
-                    xlim=[-0.4,0.4],
+                    xlim=[-0.4, 0.4],
                     ylim=[0.06],
-                    zlim=[0.741],
+                    zlim=[self.office_info["table_height"]],
                     modelname="015_laptop",
                     modelid=laptop_id,
                     modeltype="sapien_urdf",
@@ -372,7 +394,7 @@ class Office_base_task(Bench_base_task):
                     scene=self.scene,
                     xlim=[-0.5, 0.5],
                     ylim=[0,0.11],
-                    zlim=[0.741],
+                    zlim=[self.office_info["table_height"]],
                     modelname="120_plant",
                     modelid=plant_id,
                     modeltype="glb",
@@ -400,7 +422,7 @@ class Office_base_task(Bench_base_task):
         # table ------------------------------------------------------
         xlim = [-0.59, 0.59]
         ylim = [-0.34, 0.34]
-        zlim = [0.741]
+        zlim = [self.office_info["table_height"]]
         xlim[0] += self.table_xy_bias[0]
         xlim[1] += self.table_xy_bias[0]
         ylim[0] += self.table_xy_bias[1]
