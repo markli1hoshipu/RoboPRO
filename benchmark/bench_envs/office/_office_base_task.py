@@ -9,6 +9,7 @@ import pdb
 import toppra as ta
 import json
 import transforms3d as t3d
+from transforms3d.euler import euler2quat
 from collections import OrderedDict
 import torch, random
 
@@ -339,7 +340,7 @@ class Office_base_task(Bench_base_task):
                 self.office_info["furn_x_v"]["file_holder"][self.arr_v],
                 depth-0.06,
                 0.813
-                ], q=euler_to_quat(-np.pi/2,0,0)),
+                ], q=euler2quat(-np.pi/2,0,0, axes='sxyz')),
             modelname="042_wooden_box",
             convex=False,
             model_id=0,

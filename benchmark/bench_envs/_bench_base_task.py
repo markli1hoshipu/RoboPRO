@@ -293,7 +293,6 @@ class Bench_base_task(Base_Task):
         cluttered_item_info, obj_names_short, obj_names_tall = get_cluttered_objects_subset_2(
             env_name, self.sample_d, task_objects_list
         )
-
         success_count = 0
         max_try = 50
         trys = 0

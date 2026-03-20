@@ -7,6 +7,7 @@ import math
 from envs._GLOBAL_CONFIGS import *
 from copy import deepcopy
 import glob
+from transforms3d.euler import euler2quat
 
 
 class place_notebook(Office_base_task):
@@ -23,7 +24,7 @@ class place_notebook(Office_base_task):
         pose[2] = 1.05
         self.book = create_actor(
             scene=self,
-            pose=sapien.Pose(p=pose, q=euler_to_quat(np.pi, 0, np.pi/2)),
+            pose=sapien.Pose(p=pose, q=euler2quat(np.pi, 0, np.pi/2, axes='sxyz')),
             modelname="043_book",
             convex=True,
             model_id=0,
@@ -39,7 +40,7 @@ class place_notebook(Office_base_task):
         self.move(self.grasp_actor(self.book, arm_tag=arm_tag, pre_grasp_dis=0.04, grasp_dis=0.02))
         # self.attach_object(self.book, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/043_book/collision/base0.glb", str(arm_tag))
 
-        self.target_pose = self.file_holder.get_pose().p.tolist() + euler_to_quat(np.pi, 0, 0)
+        self.target_pose = self.file_holder.get_pose().p.tolist() + euler2quat(np.pi, 0, 0, axes='sxyz')
         self.target_pose[2]+=0.1
         self.target_pose[1]-=0.1
 

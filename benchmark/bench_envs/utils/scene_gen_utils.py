@@ -1,4 +1,8 @@
 import numpy as np
+import os
+from pathlib import Path
+import yaml
+
 import sapien
 from transforms3d.euler import euler2quat
 from envs.utils.create_actor import create_actor
@@ -175,3 +179,34 @@ TEXT_COLOR = {"RED": '\033[31m',
 def print_c(text, color="WHITE"):
 
     print(f"{TEXT_COLOR[color]}{text}{TEXT_COLOR['RESET']}")
+def get_task_objects_config(task_cfg_path=None):
+    """
+    Load and return the complete benchmark/bench_task_config/task_objects.yml as a dict.
+
+    Args:
+        task_cfg_path (str | Path | None):
+            Optional explicit path to task_objects.yml.
+            If None, defaults to:
+            ${BENCH_ROOT}/bench_task_config/task_objects.yml
+
+    Returns:
+        dict: Full parsed YAML dictionary.
+    """
+    if task_cfg_path is None:
+        bench_root = os.environ.get("BENCH_ROOT")
+        if not bench_root:
+            raise RuntimeError("BENCH_ROOT is not set.")
+        task_cfg_path = Path(bench_root) / "bench_task_config" / "task_objects.yml"
+    else:
+        task_cfg_path = Path(task_cfg_path)
+
+    if not task_cfg_path.exists():
+        raise FileNotFoundError(f"task_objects.yml not found: {task_cfg_path}")
+
+    with open(task_cfg_path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+
+    if not isinstance(data, dict):
+        raise ValueError(f"Expected dict in {task_cfg_path}, got {type(data).__name__}")
+
+    return data
