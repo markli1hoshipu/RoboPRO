@@ -73,7 +73,7 @@ class Office_base_task(Bench_base_task):
         self.save_data = kwags.get("save_data", False)
         self.dual_arm = kwags.get("dual_arm", True)
         self.eval_mode = kwags.get("eval_mode", False)
-        self.sample_d = kwags.get("sample_d", "train")
+        self.sample_d = kwags.get("sample_d", "objects")
         self.enable_collision_metrics = kwags.get("enable_collision_metrics", False)
 
         self.need_topp = True  # TODO
@@ -155,6 +155,7 @@ class Office_base_task(Bench_base_task):
         self.table_z_bias = (np.random.uniform(low=-self.random_table_height, high=0) + table_height_bias)  # TODO
         self.office_info = {
             "table_height": 0.74,
+            "table_area":[1.2, 0.7], # x,y area 
             "shelf_heights":[0.9, 1.13], # heights of the shelf levels
             "shelf_area":[0.62, 0.26], # x,y area 
             "file_holder_area":[0.22, 0.16], # x,y area 
@@ -164,6 +165,7 @@ class Office_base_task(Bench_base_task):
                 "file_holder": [0.48,-0.48,-0.23],
             },
         }
+        self.item_info = get_task_objects_config()
         self.need_plan = kwags.get("need_plan", True)
         self.left_joint_path = kwags.get("left_joint_path", [])
         self.right_joint_path = kwags.get("right_joint_path", [])
@@ -197,11 +199,11 @@ class Office_base_task(Bench_base_task):
         if self.enable_collision_metrics:
             self._build_collision_name_sets()  # build collision name sets for collision metrics
 
-        # is_stable, unstable_list = self.check_stable()
-        # if not is_stable:
-        #     raise UnStableError(
-        #         f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
-        #     # print(f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
+        is_stable, unstable_list = self.check_stable()
+        if not is_stable:
+            raise UnStableError(
+                f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
+            # print(f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
 
         self.update_world()
 
@@ -368,68 +370,83 @@ class Office_base_task(Bench_base_task):
     
     def load_basic_office_items(self):
         # load office items: items that are always placed as obstacles ie key obstacles
+        entities = self.scene.get_all_actors()
+        arts = self.scene.get_all_articulations()
+        names = np.array([entity.get_name() for entity in entities])
+        art_names = np.array([art.get_name() for art in arts])
+        full_names = np.concatenate([names, art_names])
+
         size_dict = list()
-        if "015_laptop" not in self.key_objects:
-            laptop_id = np.random.randint(0, 11)
-            laptop_id = 1
-            for i in range(10):
-                success, self.laptop = rand_create_cluttered_actor(
-                    scene=self.scene,
-                    xlim=[-0.4, 0.4],
-                    ylim=[0.06],
-                    zlim=[self.office_info["table_height"]],
-                    modelname="015_laptop",
-                    modelid=laptop_id,
-                    modeltype="sapien_urdf",
-                    rotate_rand=True,
-                    rotate_lim=[0, 0, np.pi / 6],
-                    qpos=[0.7, 0, 0, 0.7],
-                    size_dict=size_dict,
-                    obj_radius=0.06,
-                    z_offset=0,
-                    z_max=0.1,
-                    prohibited_area=self.prohibited_area["table"],
-                    constrained=False,
-                    is_static=False,
-                )
-                if success:
-                    break
-            if success:
-                self.laptop.set_mass(0.1)
-                limit = self.laptop.get_qlimits()[0]
-                self.laptop.set_qpos([limit[0] + (limit[1] - limit[0]) * 0.9])
-                self.add_prohibit_area(self.laptop, padding=0.01)
-                # self.collision_list.append((self.laptop, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/015_laptop/9912/textured_objs", [1,1,1]))
+        if "015_laptop" not in full_names:
+            laptop_id = np.random.choice([9748,9912,9960,9968,9992,9996,10040,10098,10101,10125,10211])
+            laptop_id = 9912
+            laptop_file = {
+                9748: "original-97",
+                9912: "new-4",
+                9960: "new-0",
+                9968: "new-8",
+                9992: "new-1",
+                9996: "new-4",
+                10040: "new-5",
+                10098: "new-4",
+                10101: "new-1",
+                10125: "new-7",
+                10211: "new-1",
+            }
+            success, self.laptop = rand_create_cluttered_actor(
+                scene=self.scene,
+                xlim=[-0.4, 0.4],
+                ylim=[0.06],
+                zlim=[self.office_info["table_height"]],
+                modelname="015_laptop",
+                modelid=laptop_id,
+                modeltype="sapien_urdf",
+                rotate_rand=True,
+                rotate_lim=[0, 0, np.pi / 6],
+                qpos=[0.7, 0, 0, 0.7],
+                size_dict=size_dict,
+                obj_radius=0.06,
+                z_offset=0,
+                z_max=0.1,
+                prohibited_area=self.prohibited_area["table"],
+                constrained=False,
+                is_static=False,
+            )
+            if not success:
+                raise RuntimeError("Failed to load laptop")
+            self.laptop.set_mass(0.1)
+            limit = self.laptop.get_qlimits()[0]
+            self.laptop.set_qpos([limit[0] + (limit[1] - limit[0]) * 0.9])
+            self.add_prohibit_area(self.laptop, padding=0.01)
+            # self.collision_list.append((self.laptop, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/015_laptop/{laptop_id}/textured_objs/{laptop_file[laptop_id]}.obj", [1,1,1]))
         # ------------------------------------------------------------
-        if "plant" not in self.key_objects:
+        if "plant" not in full_names:
             plant_id = 0
-            for i in range(10):
-                success, self.plant = rand_create_cluttered_actor(
-                    scene=self.scene,
-                    xlim=[-0.5, 0.5],
-                    ylim=[0,0.11],
-                    zlim=[self.office_info["table_height"]],
-                    modelname="120_plant",
-                    modelid=plant_id,
-                    modeltype="glb",
-                    qpos=[0.5, 0.5, 0.5, 0.5],
-                    rotate_rand=True,
-                    rotate_lim=[0, 1, 0],
-                    size_dict=size_dict,
-                    obj_radius=0.03,
-                    z_offset=self.cluttered_objects_info["120_plant"]["params"][f"{plant_id}"]["z_offset"],
-                    z_max=self.cluttered_objects_info["120_plant"]["params"][f"{plant_id}"]["z_max"],
-                    prohibited_area=self.prohibited_area["table"],
-                    constrained=False,
-                    is_static=False,
-                )
-                if success:
-                    break
-            if success:
-                self.plant.set_mass(1)
-                pose = self.plant.get_pose().p
-                self.prohibited_area["table"].append([pose[0]-0.03, pose[1]-0.03, pose[0]+0.03, pose[1]+0.03]) # manual because plant extents are incorrect
-                self.collision_list.append((self.plant, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/120_plant/collision/base{plant_id}.glb", [1,1,1]))
+            success, self.plant = rand_create_cluttered_actor(
+                scene=self.scene,
+                xlim=[-0.5, 0.5],
+                ylim=[0,0.11],
+                zlim=[self.office_info["table_height"]],
+                modelname="120_plant",
+                modelid=plant_id,
+                modeltype="glb",
+                qpos=[0.5, 0.5, 0.5, 0.5],
+                rotate_rand=True,
+                rotate_lim=[0, 1, 0],
+                size_dict=size_dict,
+                obj_radius=0.03,
+                z_offset=self.cluttered_objects_info["120_plant"]["params"][f"{plant_id}"]["z_offset"],
+                z_max=self.cluttered_objects_info["120_plant"]["params"][f"{plant_id}"]["z_max"],
+                prohibited_area=self.prohibited_area["table"],
+                constrained=False,
+                is_static=False,
+            )
+            if not success:
+                raise RuntimeError("Failed to load plant")
+            self.plant.set_mass(1)
+            pose = self.plant.get_pose().p
+            self.prohibited_area["table"].append([pose[0]-0.03, pose[1]-0.03, pose[0]+0.03, pose[1]+0.03]) # manual because plant extents are incorrect
+            self.collision_list.append((self.plant, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/120_plant/collision/base{plant_id}.glb", [1,1,1]))
     
     def get_cluttered_surfaces(self):
         # clutter surfaces with additional random obstacles
