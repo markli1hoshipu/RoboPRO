@@ -19,6 +19,8 @@ import math
 from envs.robot import Robot
 from envs.camera import Camera
 from envs.utils.actor_utils import Actor, ArticulationActor
+from bench_envs.utils.scene_gen_utils import get_actor_boundingbox
+from bench_envs.utils.scene_gen_utils import print_c
 
 from copy import deepcopy
 import subprocess
@@ -32,6 +34,7 @@ import importlib
 from envs._GLOBAL_CONFIGS import *
 
 from typing import Optional, Literal
+from transforms3d.euler import euler2quat
 
 current_file_path = os.path.abspath(__file__)
 parent_directory = os.path.dirname(current_file_path)
@@ -71,7 +74,7 @@ class Study_base_task(Bench_base_task):
         self.save_data = kwags.get("save_data", False)
         self.dual_arm = kwags.get("dual_arm", True)
         self.eval_mode = kwags.get("eval_mode", False)
-
+        self.scene_objs = []
         self.need_topp = True  # TODO
 
         # Random
@@ -236,15 +239,13 @@ class Study_base_task(Bench_base_task):
             is_static=True,
         )
 
-        
-
         # Create scene specific elements
         with open(f"{os.environ['BENCH_ROOT']}/bench_envs/scene_configs/study.yaml", "r") as f:
             obj_config = yaml.safe_load(f)
         for obj, param in obj_config[f"scene_{self.scene_id}"].items():
             pose = sapien.Pose(
                     p = param.get("p", [*table_xy_bias, table_height]),
-                    q = param.get("q", [1,0,0,0])
+                    q = euler2quat(*[np.deg2rad(d) for d in param.get("q", [0,0,0])])
             )
             if param.get("obj_type", "actor") == "actor":
                 value = create_actor(
@@ -255,13 +256,15 @@ class Study_base_task(Bench_base_task):
                     scale=param.get("scale"),
                     model_id= param.get('model_id', 0),
                     is_static=param.get('is_static', True)
-            )
+                )
+                self.scene_objs.append(value)
+                self.add_prohibit_area(value, padding=0.12, area="table")
+
             elif param.get("obj_type", "actor") == "table":
-                
                 value= create_table(
                         self.scene,
                         pose=pose,
-                        length=param.get("length", 1.7),
+                        length=param.get("length", 1.2),
                         width=param.get("width", 0.7),
                         height=param.get("height", table_height),
                         thickness=param.get("tickness", 0.05),
@@ -270,8 +273,124 @@ class Study_base_task(Bench_base_task):
                     )
             setattr(self, obj.split("_")[-1], value)
 
-  
+    def create_static_elementsv2(self, table_xy_bias=[0, 0], table_height=0.74):
+        self.table_xy_bias = table_xy_bias
+        wall_texture, table_texture, floor_texture = None, None, None
+        table_height += self.table_z_bias
+
+        # Setup textures 
+        if self.random_background:
+            texture_type = "seen" if not self.eval_mode else "unseen"
+            directory_path = f"./assets/background_texture/{texture_type}"
+            file_count = len(
+                [name for name in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, name))])
+
+            # wall_texture, table_texture = np.random.randint(0, file_count), np.random.randint(0, file_count)
+            if texture_type == "seen":
+                wall_texture = np.random.randint(0, file_count)
+                table_texture = np.random.choice(
+                    # simple textures, not distracting
+                    [0,2,4,5,7,9,14,16,18,19]
+                    )
+                floor_texture = np.random.choice(
+                    # simple textures, not distracting
+                    [2,3,4,5,6,17,47,71,110]
+                    )
+            else:
+                wall_texture = np.random.randint(0, file_count)
+                table_texture = np.random.choice(
+                    # simple textures, not distracting
+                    [1,8,9,27,29,30,37,55]
+                    )
+                floor_texture = np.random.choice(
+                    # simple textures, not distracting
+                    [0,6,8,23,34,41,47,61,64]
+                    )
+
+            self.wall_texture = f"{texture_type}/{wall_texture}"
+            self.table_texture = f"{texture_type}/{table_texture}"
+            self.floor_texture = f"{texture_type}/{floor_texture}"
+            if np.random.rand() <= self.clean_background_rate:
+                self.wall_texture = None
+            if np.random.rand() <= self.clean_background_rate:
+                self.table_texture = None
+            if np.random.rand() <= self.clean_background_rate:
+                self.floor_texture = None
+        else:
+            self.wall_texture, self.table_texture, self.floor_texture = None, None, None
+
+        # Create room
+        self.floor = create_visual_textured_box(
+            self.scene,
+            sapien.Pose(p=[0, 0, 0]),
+            half_size=[2, 2, 0.005],
+            color=(0.85, 0.85, 0.85),
+            name="floor",
+            texture_id=self.floor_texture,
+        )
+
+        self.wall = create_box(
+            self.scene,
+            sapien.Pose(p=[0, 1, 1.5]),
+            half_size=[3, 0.6, 1.5],
+            color=(1, 0.9, 0.9),
+            name="wall",
+            texture_id=self.wall_texture,
+            is_static=True,
+        )
+        self.table = create_table(
+            self.scene,
+            sapien.Pose(p=[table_xy_bias[0], table_xy_bias[1], table_height]),
+            length=1.2,
+            width=0.7,
+            height=table_height,
+            thickness=0.05,
+            is_static=True,
+            texture_id=self.table_texture,
+        )
+        with open(f"{os.environ['BENCH_ROOT']}/bench_task_config/task_objects.yml", "r") as f:
+            obj_config = yaml.safe_load(f)
+        obj_name = "058_markpen"
+        obj = obj_config["scales"][obj_name]
+        max_num = len(obj)//2
+        for i, (obj_ins, param) in enumerate(obj.items()):
+            print(obj_name, obj_ins, param)
+
+            pose = sapien.Pose(
+                    p = [(-max_num* 0.2)+(i*0.2), 0, table_height],
+                    # q = [0.7171,0,0,0.7171] #[1,0,0,0]
+                    q = [1,0,0,0]
+
+            )
+            # try:
+            value = create_actor(
+                    scene=self,
+                    pose=pose,
+                    modelname=obj_name,
+                    convex= True,
+                    scale= param if param != 1 else None,
+                    model_id= int(obj_ins),
+                    is_static= True
+            )
+            bbox = get_actor_boundingbox(value.actor)
+            # print(dir(value.actor))
+            print(pose.p)
+            print(bbox)
+            if bbox[0][1] < pose.p[1]:
+                value.actor.set_pose(
+                    sapien.Pose(
+                        p = [pose.p[0], pose.p[1]+ pose.p[1]- bbox[0][1], pose.p[2]], 
+                        q = pose.q)
+                )
+            print([pose.p[0], pose.p[1]+ pose.p[1]- bbox[0][1], pose.p[2]])
+            # except:
+            #     print("didn't work")
+            #     continue
+            # setattr(self, f"{obj_name.split('_')[-1]}_{obj_ins}", value)
+        
    
+  
+    
     def get_cluttered_surfaces(self):
         self.get_cluttered_table()
 

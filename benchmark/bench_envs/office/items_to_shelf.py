@@ -1,5 +1,5 @@
 # from envs._base_task import Base_Task
-from bench_envs._office_base_task import Office_base_task
+from bench_envs.office._office_base_task import Office_base_task
 from envs.utils import *
 import sapien
 import math
@@ -79,7 +79,7 @@ class items_to_shelf(Office_base_task):
         target_rand_pose = rand_pose(
             xlim=[0.785],
             ylim=[self.shelf.get_pose().p[1]-0.16,self.shelf.get_pose().p[1]+0.16],
-            zlim = [self.shelf_heights[1]-0.015],
+            zlim = [self.office_info["shelf_heights"][1]-0.015],
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
         )
@@ -101,7 +101,7 @@ class items_to_shelf(Office_base_task):
         target_rand_pose = rand_pose(
             xlim=[0.785],
             ylim=[self.shelf.get_pose().p[1]-0.24,self.shelf.get_pose().p[1]+0.24],
-            zlim = [self.shelf_heights[0]-0.02],
+            zlim = [self.office_info["shelf_heights"][0]-0.02],
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
         )
@@ -179,4 +179,4 @@ class items_to_shelf(Office_base_task):
     def check_success(self):
         tea_box_pose = self.tea_box.get_pose().p
         rubics_cube_pose = self.cube.get_pose().p
-        return tea_box_pose[2]+0.03 > self.shelf_heights[1] and rubics_cube_pose[2] > self.shelf_heights[0]
+        return tea_box_pose[2]+0.03 > self.office_info["shelf_heights"][1] and rubics_cube_pose[2] > self.office_info["shelf_heights"][0]

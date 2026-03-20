@@ -1,5 +1,5 @@
 # from envs._base_task import Base_Task
-from bench_envs._office_base_task import Office_base_task
+from bench_envs.office._office_base_task import Office_base_task
 from envs.utils import *
 import sapien
 import math
@@ -77,7 +77,7 @@ class mouse_on_pad(Office_base_task):
             name="box",
             is_static=True,
         )
-        self.add_prohibit_area(self.target, padding=0.12, area="table")
+        self.add_prohibit_area(self.target, padding=0.06, area="table")
         self.add_prohibit_area(self.mouse, padding=0.03, area="table")
         # Construct target pose with position from target object and identity orientation
         self.target_pose = self.target.get_pose().p.tolist() + [0, 0, 0, 1]
@@ -100,7 +100,7 @@ class mouse_on_pad(Office_base_task):
         )
         
         self.milk_box.set_mass(0.1)
-        self.add_prohibit_area(self.milk_box, padding=0.1, area="table")
+        self.add_prohibit_area(self.milk_box, padding=0.01, area="table")
         self.collision_list.append((self.milk_box, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.milk_box_id}.glb", [1,1,1]))
 
     def play_once(self):
@@ -138,8 +138,8 @@ class mouse_on_pad(Office_base_task):
         mouse_pose = self.mouse.get_pose().p
         mouse_qpose = np.abs(self.mouse.get_pose().q)
         target_pos = self.target.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
+        eps1 = 0.04
+        eps2 = 0.04
 
         return (np.all(abs(mouse_pose[:2] - target_pos[:2]) < np.array([eps1, eps2]))
                 and (np.abs(mouse_qpose[2] * mouse_qpose[3] - 0.49) < eps1
