@@ -27,6 +27,7 @@ class open_fridge(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        # Success if the fridge door is at (or very near) the canonical fully-open pose.
+        # Success if the fridge door is at (or very near) the canonical fully-open pose
+        # (now capped by the URDF joint limit, i.e., 90 degrees max).
         return self.is_fridge_fully_open()
 

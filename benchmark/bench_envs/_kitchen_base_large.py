@@ -503,9 +503,9 @@ class Kitchen_base_large(Bench_base_task):
         # can be re-enabled later via _load_kitchen_appliances if needed.
 
     def _load_fridge_on_table(self, table_height: float, table_xy_bias):
-        """Place the static fridge on the left front edge of the table."""
+        """Place the static fridge on the right front edge of the table."""
         y_front = table_xy_bias[1] + 0.30
-        x_fridge = table_xy_bias[0] - 0.40
+        x_fridge = table_xy_bias[0] + 0.40
         z_fridge = table_height + 0.20
 
         fx_roll_deg, fx_pitch_deg, fx_yaw_deg = self.fridge_left_rot
@@ -567,9 +567,9 @@ class Kitchen_base_large(Bench_base_task):
             self.add_prohibit_area(self.microwave_left, padding=0.01, area="table")
 
     def _load_basket_on_table(self, table_height: float, table_xy_bias):
-        """Place the static basket on the right front edge of the table."""
+        """Place the static basket on the left front edge of the table."""
         y_front = table_xy_bias[1] + 0.30
-        x_right = table_xy_bias[0] + 0.45
+        x_right = table_xy_bias[0] - 0.45
         z_basket = table_height + 0.02
 
         br_roll_deg, br_pitch_deg, br_yaw_deg = self.basket_right_rot
@@ -670,7 +670,7 @@ class Kitchen_base_large(Bench_base_task):
             return
         self.fridge_left.set_qpos(self.fridge_open_qpos)
 
-    def set_fridge_open_angle_deg(self, angle_deg: float, open_span_deg: float = 180.0) -> None:
+    def set_fridge_open_angle_deg(self, angle_deg: float, open_span_deg: float = 90.0) -> None:
         """
         Set the fridge door to a target opening angle.
 
@@ -712,7 +712,7 @@ class Kitchen_base_large(Bench_base_task):
         self,
         min_angle_deg: float = 45.0,
         max_angle_deg: float = 90.0,
-        open_span_deg: float = 180.0,
+        open_span_deg: float = 90.0,
     ) -> float:
         """Randomly set fridge door angle between `min_angle_deg` and `max_angle_deg`."""
         min_angle_deg = float(min_angle_deg)
