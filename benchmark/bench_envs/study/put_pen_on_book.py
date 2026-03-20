@@ -13,34 +13,57 @@ from bench_envs.utils.scene_gen_utils import get_position_limits, get_actor_boun
 from bench_envs.utils.scene_gen_utils import print_c, place_actor
 from transforms3d.euler import euler2quat
 
-class put_cup_in_box(Study_base_task):
+
+class put_pen_on_book(Study_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
+        print_c(self.seed, "YELLOW")
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
         
-        xlim, ylim, self.side_to_place = get_position_limits(self.table, boundary_thr=0.20, side="left")
+        xlim, ylim, self.side_to_place = get_position_limits(self.table, boundary_thr=0.15, side="right")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
-  
-      
-        self.target_name = "021_cup"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
-        self.target_obj, self.target_id, self.target_pose = \
-        place_actor(self.target_name, self, col_thr=0.10, xlim=xlim, ylim=ylim, 
-                    qpos=(90,0,90), object_bounds=object_bounds, task_objs=task_objs,
-                     mass = 0.1, rotation=False)
         
-     
-        self.des_obj = self.box
+        self.target_name = "058_markpen"
+        self.target_obj, self.target_id, self.target_pose = \
+        place_actor(self.target_name, self, col_thr=0.10, xlim=xlim, ylim=ylim,
+                    qpos=(90,0,90),object_bounds= object_bounds,
+                     task_objs=task_objs,  obj_id = None, mass = 0.1,
+                         rotation=True, rotate_lim = [0, 0, 3.14])
+        tar_bb = get_actor_boundingbox(self.target_obj.actor)
+        object_bounds.append(tar_bb)
 
+        self.des_obj, self.des_obj_id, self.des_obj_pose = \
+            place_actor("043_book", self, col_thr=0.15, xlim=xlim,
+                        ylim= ylim, qpos=(90,0,90),
+                        object_bounds=object_bounds, task_objs=task_objs,
+                        obj_id = None, mass = 0.2, rotation=False)
+        
+        # Get the placement pose
         des_bb = get_actor_boundingbox(self.des_obj.actor)
         p = self.des_obj.get_pose().p.tolist() 
+       
+        print(f"target bb {tar_bb}")
+
+        tar_center = np.add(tar_bb[0], tar_bb[1])/2
+        print(f"tar_center {tar_center}")
+        offset = np.subtract(tar_center, self.target_obj.get_pose().p)
+        print(f"target_pose {self.target_obj.get_pose().p}")
+
+        print(f"offset {offset}")
+
+        print(f"original position {p}")
+        p = np.add(p, offset).tolist()
         p[-1] = des_bb[1][-1]
-        self.des_obj_pose = p + [1, 0, 0, 0]
+        print(f"adjusted position {p}")
+        self.des_obj_pose = p +  self.target_obj.get_pose().q.tolist()
+        #euler2quat(3.14,0,3.14).tolist() #
+
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
 
@@ -67,7 +90,7 @@ class put_cup_in_box(Study_base_task):
                 self.target_obj,
                 arm_tag=arm_tag,
                 target_pose= self.des_obj_pose,
-                constrain="auto",
+                constrain= "auto",
                 pre_dis=pre_dis,
                 dis=dis,
             ))

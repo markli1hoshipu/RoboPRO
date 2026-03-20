@@ -1,4 +1,8 @@
 import numpy as np
+import sapien
+from transforms3d.euler import euler2quat
+from envs.utils.create_actor import create_actor
+from envs.utils.rand_create_actor import rand_pose
 
 def get_actor_boundingbox(entity):
     all_points = []
@@ -25,7 +29,7 @@ def get_actor_boundingbox(entity):
                 try:
                     local_v *= shape.scale
                 except:
-                    print("table does not have scale")
+                    pass
                 # 2. Get shape's offset relative to the entity center
                 shape_mat = shape.get_local_pose().to_transformation_matrix()
                 
@@ -52,7 +56,6 @@ def get_position_limits(surface_obj, boundary_thr = 0.15, robot_reach_thr = 0.6,
     except:
         actor = surface_obj
     table_bb = get_actor_boundingbox(actor)
-    print(f"surface bb {table_bb}")
 
     side_to_place = side or np.random.choice(["left", "right"])
 
@@ -67,7 +70,6 @@ def get_position_limits(surface_obj, boundary_thr = 0.15, robot_reach_thr = 0.6,
     ylim= [table_bb[0][1] + boundary_thr, table_bb[1][1]- boundary_thr]
 
     return xlim, ylim, side_to_place
-
 
 def get_random_valid_placement(table_bounds, object_bounds, new_w, new_h):
     tx1, tx2 = table_bounds[0]
@@ -105,14 +107,71 @@ def get_random_valid_placement(table_bounds, object_bounds, new_w, new_h):
     
     return np.random.choice(valid_spots)
 
-
 def get_collison_with_objs(object_bounds, obj_pose, x_thr, y_thr = None):
 
     y_thr = y_thr or x_thr
     for ob in object_bounds:
-        if (obj_pose.p[0] > ob[0][0] - x_thr and \
-            obj_pose.p[0] < ob[0][1] + x_thr) and \
-            (obj_pose.p[1] > ob[1][0] - y_thr and \
-                obj_pose.p[1] < ob[1][1] + y_thr):
+        if  (ob[0][0] - x_thr <= obj_pose.p[0] <= ob[1][0] + x_thr) and \
+            (ob[0][1] - y_thr <= obj_pose.p[1] <= ob[1][1] + y_thr):
             return True
     return False
+
+def place_actor(obj_name, scene, task_objs, col_thr=0.15, object_bounds=None, 
+                obj_id = None, mass = 0.1,  xlim=None, ylim=None, obj_pose=None, 
+                qpos=(0,0,0), rotation=False, rotate_lim = (0,0,0)):
+    
+    if obj_pose is None:
+        # Threshold between the objects
+        while True:
+            obj_pose = rand_pose(
+                xlim=xlim,
+                ylim=ylim,
+                qpos=euler2quat(*[np.deg2rad(d) for d in qpos]), #[0.5, 0.5, 0.5, 0.5],
+                rotate_rand=rotation,
+                rotate_lim=rotate_lim,
+            )
+            if not get_collison_with_objs(object_bounds, obj_pose, col_thr):
+                break
+    if isinstance(obj_pose, list):
+        sapien.Pose(obj_pose[0],
+                    euler2quat(*[np.deg2rad(d) for d in obj_pose[1]]))
+    obj_id = obj_id or np.random.choice(task_objs['objects']['study']['targets'][obj_name])
+    
+    print_c(f"Generating {obj_name} with id {obj_id} at position {obj_pose}", "BLUE")
+
+    obj = create_actor(
+            scene=scene,
+            pose=obj_pose,
+            modelname=obj_name,
+            convex=True,
+            model_id= obj_id,
+            scale= None if task_objs['scales'].get(obj_name) is None else \
+                task_objs['scales'][obj_name].get(str(obj_id)) 
+    )
+    obj.set_mass(mass)
+    
+    # To compensate for the pose offset
+    bbox = get_actor_boundingbox(obj.actor)
+    if bbox[0][-1] < obj_pose.p[-1]:
+        new_p = [obj_pose.p[0], obj_pose.p[1], 
+                    2*obj_pose.p[2]- bbox[0][2]]
+        obj.actor.set_pose(
+            sapien.Pose(
+                p = new_p, 
+                q = obj_pose.q)
+        )
+        print_c(f"Pose adjusted to {new_p}", "YELLOW")
+    return obj, obj_id, obj.get_pose()
+
+
+TEXT_COLOR = {"RED": '\033[31m',
+            "GREEN": '\033[32m',
+            "BLUE": '\033[34m',
+            "RESET": '\033[0m',
+            "YELLOW": '\033[33m',
+            "MAGENTA": '\033[35m',
+            "CYON": '\033[36m',
+             "WHITE": '\033[37m'   }
+def print_c(text, color="WHITE"):
+
+    print(f"{TEXT_COLOR[color]}{text}{TEXT_COLOR['RESET']}")
