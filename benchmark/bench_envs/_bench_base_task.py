@@ -1034,8 +1034,10 @@ class Bench_base_task(Base_Task):
         for actor, collision_path, scale in self.collision_list:
                 if os.path.isdir(collision_path): # if actor is made from multiple obj files
                     name_prefix = actor.get_name()
-                    if name_prefix == "036_cabinet" or name_prefix == "015_laptop":
+                    if name_prefix == "036_cabinet":
                         pose = actor.get_link_pose("link_0")
+                    elif name_prefix == "015_laptop":
+                        pose = actor.get_link_pose("link_1")
                     else:
                         pose = actor.get_pose()
                     np_pose = np.concatenate([pose.p, pose.q]).tolist()
@@ -1051,11 +1053,16 @@ class Bench_base_task(Base_Task):
                 else:
                     pose = actor.get_pose()
                     np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                    collision_dict["mesh"][f"{actor.get_name()}_{self.seed}"] = {
+                    collision_dict["mesh"][f"{actor.get_name()}_{np_pose}"] = {
                             "file_path": collision_path,
                             "pose": np_pose,
                             "scale": actor.scale,
                         }
+        for name, dims, pose in self.cuboid_collision_list:
+            collision_dict["cuboid"][name] = {
+                "dims": dims,
+                "pose": pose,
+            }
         self.robot.update_world(collision_dict)
     
     def collision_dict_from_convex_obj_dir(

@@ -167,6 +167,7 @@ class Office_base_task(Bench_base_task):
             },
         }
         self.item_info = get_task_objects_config()
+        self.target_objects_info = get_target_objects_subset("office", self.sample_d)
         self.need_plan = kwags.get("need_plan", True)
         self.left_joint_path = kwags.get("left_joint_path", [])
         self.right_joint_path = kwags.get("right_joint_path", [])
@@ -176,6 +177,7 @@ class Office_base_task(Bench_base_task):
         self.instruction = None  # for Eval
 
         self.collision_list = [] # list of collision objects for curobo planner
+        self.cuboid_collision_list = [] # list of cuboid collision objects for curobo planner
         self._init_collision_metrics()
 
         self.arr_v = np.random.choice([-1,1], 1)[0] # which version to use for furniture arrangement
@@ -300,6 +302,7 @@ class Office_base_task(Bench_base_task):
             is_static=True,
             texture_id=self.table_texture,
         )
+        self.office_info["table_lims"] = [-self.office_info["table_area"][0]/2, -self.office_info["table_area"][1]/2, self.office_info["table_area"][0]/2, self.office_info["table_area"][1]/2]
         # ------------------------------------------------------------
         depth = 0.28
         shelf_scale = [1.7,0.86,1.8] # length, height, depth
@@ -314,11 +317,12 @@ class Office_base_task(Bench_base_task):
             mass=2
         )
         self.collision_list.append((self.shelf, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/121_wall-shelf/cc0_wall_shelf_4.glb", shelf_scale))
-        xmin = pose[0] - self.office_info["shelf_area"][0]/2 - 0.03
-        xmax = pose[0] + self.office_info["shelf_area"][0]/2 + 0.03
-        ymin = pose[1] - self.office_info["shelf_area"][1]/2 - 0.02
-        ymax = pose[1] + self.office_info["shelf_area"][1]/2 + 0.02
-        self.prohibited_area["table"].append([xmin, ymin, xmax, ymax])
+        xmin = pose[0] - self.office_info["shelf_area"][0]/2
+        xmax = pose[0] + self.office_info["shelf_area"][0]/2
+        ymin = pose[1] - self.office_info["shelf_area"][1]/2
+        ymax = pose[1] + self.office_info["shelf_area"][1]/2
+        self.office_info["shelf_lims"] = [xmin, ymin, xmax, ymax]
+        self.prohibited_area["table"].append([xmin-0.03, ymin-0.02, xmax+0.03, ymax+0.02])
         # ------------------------------------------------------------
         self.cabinet = create_sapien_urdf_obj(
             scene=self,
@@ -362,13 +366,14 @@ class Office_base_task(Bench_base_task):
             mass=0.1
         )
         pose = self.file_holder.get_pose().p
-        xmin = pose[0] - self.office_info["file_holder_area"][0]/2 - 0.01
-        xmax = pose[0] + self.office_info["file_holder_area"][0]/2 + 0.01
+        xmin = pose[0] - self.office_info["file_holder_area"][0]/2
+        xmax = pose[0] + self.office_info["file_holder_area"][0]/2
         ymin = pose[1] - self.office_info["file_holder_area"][1]/2
         ymax = pose[1] + self.office_info["file_holder_area"][1]/2
-        self.prohibited_area["table"].append([xmin, ymin, xmax, ymax])
+        self.office_info["file_holder_lims"] = [xmin, ymin, xmax, ymax]
+        self.prohibited_area["table"].append([xmin-0.01, ymin, xmax+0.01, ymax])
         self.collision_list.append((self.file_holder, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/122_file-holder/base.glb", [1,1,1]))
-    
+        
     def load_basic_office_items(self):
         # load office items: items that are always placed as obstacles ie key obstacles
         entities = self.scene.get_all_actors()
@@ -419,7 +424,11 @@ class Office_base_task(Bench_base_task):
             limit = self.laptop.get_qlimits()[0]
             self.laptop.set_qpos([limit[0] + (limit[1] - limit[0]) * 0.9])
             self.add_prohibit_area(self.laptop, padding=0.01)
-            # self.collision_list.append((self.laptop, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/015_laptop/{laptop_id}/textured_objs/{laptop_file[laptop_id]}.obj", [1,1,1]))
+            # custom collision because laptop has too many meshes
+            cuboid_pose = self.laptop.get_pose().p.tolist() + [1, 0, 0, 0]
+            cuboid_pose[1] += 0.04
+            cuboid_pose[2] = self.office_info["table_height"] + 0.07
+            self.cuboid_collision_list.append(("015_laptop", [0.2, 0.07, 0.14], cuboid_pose))
         # ------------------------------------------------------------
         if "plant" not in full_names:
             plant_id = 0
