@@ -2,6 +2,8 @@ from bench_envs._kitchen_base_large import Kitchen_base_large
 from envs.utils import *
 import sapien
 import math
+import numpy as np
+import transforms3d as t3d
 from envs._GLOBAL_CONFIGS import *
 from copy import deepcopy
 import glob
@@ -22,27 +24,76 @@ class open_cabinet(Kitchen_base_large):
         else:
             self.cabinet_closed_qpos = None
 
+    def pull_door_circularly(self, arm_tag, door_radius, total_open_angle=45.0, num_steps=30):
+        """
+        Execute a circular pull trajectory for a hinged cabinet door.
+        """
+        d_angle = np.deg2rad(total_open_angle) / num_steps
+        current_angle = 0.0
+
+        # Keep orientation anchored to the grasp-time TCP orientation.
+        start_pose = np.array(self.get_arm_pose(arm_tag), dtype=float)
+        start_q = start_pose[3:]
+
+        for _ in range(num_steps):
+            next_angle = current_angle + d_angle
+
+            # Arc displacement in x-y plane.
+            x_curr = door_radius * (1.0 - np.cos(current_angle))
+            y_curr = -door_radius * np.sin(current_angle)
+            x_next = door_radius * (1.0 - np.cos(next_angle))
+            y_next = -door_radius * np.sin(next_angle)
+
+            dx = x_next - x_curr
+            dy = y_next - y_curr
+
+            # Rotate TCP with the pulling arc around world z-axis.
+            dq_step = np.array(t3d.quaternions.axangle2quat([0.0, 0.0, 1.0], next_angle), dtype=float)
+            target_q = np.array(t3d.quaternions.qmult(dq_step, start_q), dtype=float)
+            target_q = target_q / max(np.linalg.norm(target_q), 1e-9)
+
+            self.move(
+                self.move_by_displacement(
+                    arm_tag=arm_tag,
+                    x=dx,
+                    y=dy,
+                    quat=target_q.tolist(),
+                )
+            )
+
+            current_angle = next_angle
+
     def play_once(self):
-        # Choose arm based on cabinet position (right if on right side, left otherwise)
-        cabinet_pose = self.cabinet.get_pose().p
-        arm_tag = ArmTag("right" if cabinet_pose[0] > 0 else "left")
-        self.arm_tag = arm_tag
+        # Provide a simple info mapping for downstream use
+        arm_tag = ArmTag("right")
 
-        # Ensure we have a baseline closed configuration
-        if not hasattr(self, "cabinet_closed_qpos") or self.cabinet_closed_qpos is None:
-            self._init_cabinet_states()
+        # Keep the initial TCP pose for downstream stages.
+        initial_tcp_pose = np.array(self.get_arm_pose(arm_tag), dtype=float)
+        initial_tcp_pos = initial_tcp_pose[:3].tolist()
+        initial_tcp_quat = initial_tcp_pose[3:]
 
-        # Grasp the cabinet door handle region
-        self.move(self.grasp_actor(self.cabinet, arm_tag=arm_tag, pre_grasp_dis=0.1))
+        # Rotate TCP by +90 degrees around the local/world y-axis before moving.
+        q_rot_y_90 = np.array(t3d.quaternions.axangle2quat([0.0, 1.0, 0.0], np.pi / 2.0), dtype=float)
+        rotated_tcp_quat = np.array(t3d.quaternions.qmult(q_rot_y_90, initial_tcp_quat), dtype=float)
+        rotated_tcp_quat = rotated_tcp_quat / max(np.linalg.norm(rotated_tcp_quat), 1e-9)
 
-        # Pull to open the cabinet door along the robot-facing direction
-        for _ in range(4):
-            self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.04))
+        # Move to the initial TCP pose and rotate by +90 degrees around the y-axis.
+        self.move(self.move_by_displacement(arm_tag=arm_tag, quat=rotated_tcp_quat.tolist()))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=-0.17, y=0.2, z=0.26))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.052))
+        self.move(self.close_gripper(arm_tag=arm_tag, pos=-0.1))
 
-        # Log basic info for downstream use
+        # Pull the cabinet door with a circular trajectory (same style as open_fridge).
+        self.pull_door_circularly(
+            arm_tag=arm_tag,
+            door_radius=0.17,
+            total_open_angle=22.5,
+            num_steps=15,
+        )
+
         self.info["info"] = {
-            "{A}": "036_cabinet/base46653",
-            "{a}": str(arm_tag),
+            "{A}": "122_cabinet_nkrgez",
+            "{tcp_init_pos}": str(initial_tcp_pos),
         }
         return self.info
 
