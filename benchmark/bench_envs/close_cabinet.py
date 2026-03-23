@@ -32,6 +32,12 @@ class close_cabinet(Kitchen_base_large):
 
     def play_once(self):
         # Provide a simple info mapping for downstream use
+        arm_tag = ArmTag("right")
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=0.2, y=0.1))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.35))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=-0.3, y=0.07))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.1))
+    
         self.info["info"] = {
             "{A}": "122_cabinet_nkrgez",
         }
