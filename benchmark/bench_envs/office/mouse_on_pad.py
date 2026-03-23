@@ -1,5 +1,5 @@
 # from envs._base_task import Base_Task
-from bench_envs._office_base_task import Office_base_task
+from bench_envs.office._office_base_task import Office_base_task
 from envs.utils import *
 import sapien
 import math

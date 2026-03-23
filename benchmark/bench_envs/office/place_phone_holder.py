@@ -1,6 +1,6 @@
 # Demo for placing phone on stand on shelf.
 # from envs._base_task import Base_Task
-from bench_envs._office_base_task import Office_base_task
+from bench_envs.office._office_base_task import Office_base_task
 from envs.utils import *
 import sapien
 import math
@@ -9,7 +9,7 @@ from copy import deepcopy
 import glob
 
 
-class place_phone_shelf(Office_base_task):
+class place_phone_holder(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}

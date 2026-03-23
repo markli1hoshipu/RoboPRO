@@ -1,5 +1,5 @@
 # from envs._base_task import Base_Task
-from bench_envs._office_base_task import Office_base_task
+from bench_envs.office._office_base_task import Office_base_task
 from envs.utils import *
 import sapien
 import math
@@ -19,23 +19,17 @@ class pencup_on_pad(Office_base_task):
 
     def load_actors(self):
         shelf_level = np.random.randint(0, 2)
-        zlim = self.shelf_heights[shelf_level]+0.04
-        if shelf_level == 0:
-            rand_pos = rand_pose(
-                    xlim=[0.76,0.8],
-                    ylim=[self.shelf.get_pose().p[1]-0.24,self.shelf.get_pose().p[1]+0.24],
-                    zlim=[zlim],
-                    qpos=[0.5, 0.5, -0.5, -0.5],
-                    rotate_rand=False,
-                )
-        else:
-            rand_pos = rand_pose(
-                    xlim=[0.76,0.8],
-                    ylim=[self.shelf.get_pose().p[1]-0.16,self.shelf.get_pose().p[1]+0.16],
-                    zlim=[zlim],
-                    qpos=[0.5, 0.5, -0.5, -0.5],
-                    rotate_rand=False,
-                )
+        shelf_level = 0
+        zlim = self.office_info["shelf_heights"][shelf_level]
+        rand_pos = rand_pose(
+                xlim=[self.office_info["shelf_lims"][0]+0.05, self.office_info["shelf_lims"][2]-0.05],
+                ylim=[self.office_info["shelf_lims"][1] + 0.055],
+                # xlim = [0.3],
+                # ylim = [0],
+                zlim=[zlim],
+                qpos=[0.5, 0.5, -0.5, -0.5],
+                rotate_rand=False,
+            )
 
         self.pencup_id = np.random.choice([0, 1, 2, 3, 5], 1)[0]
         # [3]
@@ -66,11 +60,13 @@ class pencup_on_pad(Office_base_task):
         self.pencup.set_mass(0.1)
         self.add_prohibit_area(self.pencup, padding=0.08, area=f"shelf{shelf_level}")
 
+        if self.pencup.get_pose().p[0] > 0:
+            xlim = [-0.05,self.office_info["table_lims"][2]-0.1]
+        else:
+            xlim = [self.office_info["table_lims"][0]+0.1, 0.05]
         target_rand_pose = rand_pose(
-            xlim=[0.05,0.38],
-            # xlim=[0.4],
-            # ylim=[0.05],
-            ylim=[-0.05,0.125],
+            xlim=xlim,
+            ylim=[-0.1,self.office_info["shelf_lims"][1]-0.1],
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
         )
@@ -101,7 +97,7 @@ class pencup_on_pad(Office_base_task):
         )
         self.add_prohibit_area(self.target, padding=0.08, area="table")
         # Construct target pose with position from target object and identity orientation
-        self.target_pose = self.target.get_pose().p.tolist() + [1,0,0,0]   # wxyz
+        self.target_pose = self.target.get_pose().p.tolist() + [0.5, 0.5, -0.5, -0.5]   # wxyz
         self.target_pose[2]+=0.05
 
         # ------------------------------------------------------------
@@ -109,8 +105,8 @@ class pencup_on_pad(Office_base_task):
         self.bottle_id = np.random.choice(self.id_list)
         self.bottle = rand_create_actor(
             self,
-            xlim=[self.target_pose[0]+0.18],
-            ylim=[self.target_pose[1]-0.1],
+            xlim=[self.target_pose[0]+0.18 if self.pencup.get_pose().p[0] > self.target_pose[0] else self.target_pose[0]-0.18],
+            ylim=[self.target_pose[1]],
             modelname="001_bottle",
             rotate_rand=True,
             rotate_lim=[0, 1, 0],
@@ -129,10 +125,10 @@ class pencup_on_pad(Office_base_task):
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag("right")
+        arm_tag = ArmTag("right") if self.pencup.get_pose().p[0] > 0 else ArmTag("left")
 
         # Grasp the cup with the selected arm
-        self.move(self.grasp_actor(self.pencup, arm_tag=arm_tag, pre_grasp_dis=0.08, contact_point_id=[0,1,2,5,6,7]))
+        self.move(self.grasp_actor(self.pencup, arm_tag=arm_tag, pre_grasp_dis=0.08, contact_point_id=4))
 
         self.attach_object(self.pencup, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/059_pencup/collision/base{self.pencup_id}.glb", str(arm_tag))
 
@@ -142,9 +138,10 @@ class pencup_on_pad(Office_base_task):
                 self.pencup,
                 arm_tag=arm_tag,
                 target_pose=self.target_pose,
-                constrain="align",
+                constrain="free",
                 pre_dis=0.01,
                 dis=0.005,
+                local_up_axis=[0,0,1]
             ))
 
         # Record information about the objects and arm used in the task
