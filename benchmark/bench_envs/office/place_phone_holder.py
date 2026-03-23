@@ -9,7 +9,7 @@ from copy import deepcopy
 import glob
 
 
-class place_phone_shelf(Office_base_task):
+class place_phone_holder(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}

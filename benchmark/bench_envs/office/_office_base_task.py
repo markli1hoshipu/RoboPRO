@@ -157,7 +157,7 @@ class Office_base_task(Bench_base_task):
         self.office_info = {
             "table_height": 0.74,
             "table_area":[1.2, 0.7], # x,y area 
-            "shelf_heights":[0.9, 1.13], # heights of the shelf levels
+            "shelf_heights":[0.9, 1.127], # heights of the shelf levels
             "shelf_area":[0.62, 0.26], # x,y area 
             "file_holder_area":[0.22, 0.16], # x,y area 
             "furn_x_v": { # x position of furniture for each arrangement version
@@ -180,7 +180,7 @@ class Office_base_task(Bench_base_task):
         self.cuboid_collision_list = [] # list of cuboid collision objects for curobo planner
         self._init_collision_metrics()
 
-        self.arr_v = np.random.choice([-1,1], 1)[0] # which version to use for furniture arrangement
+        self.arr_v = np.random.choice([0,1,2]) # which version to use for furniture arrangement
 
         self.load_robot(**kwags)
         self.create_static_elements(table_xy_bias=table_xy_bias)
@@ -461,8 +461,8 @@ class Office_base_task(Bench_base_task):
     def get_cluttered_surfaces(self):
         # clutter surfaces with additional random obstacles
         # table ------------------------------------------------------
-        xlim = [-0.59, 0.59]
-        ylim = [-0.34, 0.34]
+        xlim = [self.office_info["table_lims"][0], self.office_info["table_lims"][2]]
+        ylim = [self.office_info["table_lims"][1], self.office_info["table_lims"][3]]
         zlim = [self.office_info["table_height"]]
         xlim[0] += self.table_xy_bias[0]
         xlim[1] += self.table_xy_bias[0]
@@ -470,14 +470,26 @@ class Office_base_task(Bench_base_task):
         ylim[1] += self.table_xy_bias[1]
         zlim = np.array(zlim) + self.table_z_bias
         
-        self.clutter_surface_2(xlim=xlim, ylim=ylim, zlim=zlim, env_name="office", prohibited_area=self.prohibited_area["table"], obstacle_count=self.obstacle_density)
+        # collect objects already on the scene
+        task_objects_list = []
+        for entity in self.scene.get_all_actors():
+            actor_name = entity.get_name()
+            if actor_name == "":
+                continue
+            if actor_name in ["table", "wall", "ground"]:
+                continue
+            task_objects_list.append(actor_name)
+
+        cluttered_item_info, obj_names_short, obj_names_tall = get_cluttered_objects_subset(
+            "office", self.sample_d, task_objects_list
+        )
+
+        self.clutter_surface_split(xlim, ylim, zlim, self.prohibited_area["table"], self.obstacle_density, cluttered_item_info, obj_names_short, obj_names_tall)
         # # shelves ----------------------------------------------------
-        # xlim = [self.shelf.get_pose().p[0]-0.1, self.shelf.get_pose().p[0]+0.1]
-        # ylim = [self.shelf.get_pose().p[1]-0.3, self.shelf.get_pose().p[1]+0.3]
-        # zlim = [self.shelf_heights[0]]
-        # self.clutter_surface(xlim=xlim, ylim=ylim, zlim=zlim, object_names=self.short_obstacles, prohibited_area=self.prohibited_area["shelf0"], obstacle_count=3)
-        # zlim = [self.shelf_heights[1]]
-        # self.clutter_surface(xlim=xlim, ylim=ylim, zlim=zlim, object_names=self.short_obstacles, prohibited_area=self.prohibited_area["shelf1"], obstacle_count=3)
+        xlim = [self.office_info["shelf_lims"][0], self.office_info["shelf_lims"][2]]
+        ylim = [self.office_info["shelf_lims"][1], self.office_info["shelf_lims"][3]]
+        self.clutter_surface(xlim, ylim, [self.office_info["shelf_heights"][0]], self.prohibited_area["shelf0"], 5, cluttered_item_info, obj_names_short)
+        self.clutter_surface(xlim, ylim, [self.office_info["shelf_heights"][1]], self.prohibited_area["shelf1"], 5, cluttered_item_info, obj_names_short)
     
     def load_table_obstacles_in_line(self, spacing=0.10, ground_y=-5.0, ground_z=0.02):
         """Used for debugging. Load all table_obstacles that are available into the scene in a line on the ground at y=ground_y, spacing (m) apart."""

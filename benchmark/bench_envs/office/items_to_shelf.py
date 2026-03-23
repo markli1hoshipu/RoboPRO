@@ -25,10 +25,12 @@ class items_to_shelf(Office_base_task):
             rotate_rand=False,
             rotate_lim=[0, 3.14, 0],
         )
+        box_poses = [-0.3,0,0.3]
+        p_x = box_poses[self.arr_v]
         scale = [0.18,0.14,0.17]
         self.wooden_box = create_actor(
             scene=self,
-            pose=rand_pos,
+            pose=sapien.Pose(p=[p_x,-0.15,self.office_info["table_height"]], q=[0.7071, 0.7071, 0, 0]),
             modelname="042_wooden_box",
             convex=True,
             model_id=0,
@@ -75,11 +77,13 @@ class items_to_shelf(Office_base_task):
         self.tea_box.set_mass(0.1)
 
         # placement targets --------------------------------------------------
+        x_lims1 = [[self.office_info["shelf_lims"][0]+0.12, 0], [0, self.office_info["shelf_lims"][2]-0.12], [0, self.office_info["shelf_lims"][2]-0.12]]
+        x_lims2 = [[self.office_info["shelf_lims"][0]+0.12, 0], [self.office_info["shelf_lims"][0]+0.12, 0], [0, self.office_info["shelf_lims"][2]-0.12]] 
         # target 1, tea box placement target
         target_rand_pose = rand_pose(
-            xlim=[0.785],
-            ylim=[self.shelf.get_pose().p[1]-0.16,self.shelf.get_pose().p[1]+0.16],
-            zlim = [self.office_info["shelf_heights"][1]-0.015],
+            xlim=x_lims1[self.arr_v],
+            ylim=[self.office_info["shelf_lims"][1] + 0.055],
+            zlim = [self.office_info["shelf_heights"][1]-0.005],
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
         )
@@ -94,14 +98,14 @@ class items_to_shelf(Office_base_task):
             is_static=True,
         )
         self.target1_pose = self.target1.get_pose().p.tolist() + [0, 0, 0, 1]
-        self.target1_pose[2] += 0.04 # raise target 0.02 meters
+        self.target1_pose[2] += 0.03 # raise target 0.02 meters
         self.add_prohibit_area(self.target1, padding=0.05, area="shelf1")
 
         # target 2, rubics cube placement target
         target_rand_pose = rand_pose(
-            xlim=[0.785],
-            ylim=[self.shelf.get_pose().p[1]-0.24,self.shelf.get_pose().p[1]+0.24],
-            zlim = [self.office_info["shelf_heights"][0]-0.02],
+            xlim=x_lims2[self.arr_v],
+            ylim=[self.office_info["shelf_lims"][1] + 0.055],
+            zlim = [self.office_info["shelf_heights"][0]],
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
         )
@@ -115,68 +119,70 @@ class items_to_shelf(Office_base_task):
             name="target2",
             is_static=True,
         )
-        self.target2_pose = self.target2.get_pose().p.tolist() + [-0.5, 0.5, 0.5, -0.5]
-        self.target2_pose[2] += 0.09 # raise target 0.02 meters
+        self.target2_pose = self.target2.get_pose().p.tolist() + [0.7071, 0.7071, 0, 0]
+        self.target2_pose[2] += 0.05 # raise target 0.02 meters
         self.add_prohibit_area(self.target2, padding=0.05, area=f"shelf0")
 
     def play_once(self):
         arm_tag = ArmTag("right")
+        arms = [[arm_tag.opposite, arm_tag.opposite], [arm_tag, arm_tag.opposite], [arm_tag, arm_tag]]
+        arm = arms[self.arr_v]
 
         # tea box --------------------------------------------------
-        action = self.grasp_actor(self.tea_box, arm_tag=arm_tag, pre_grasp_dis=0.1, contact_point_id=5)
+        action = self.grasp_actor(self.tea_box, arm_tag=arm[0], pre_grasp_dis=0.1, contact_point_id=5)
         if action:
             action[1][1].target_pose[2] += 0.04 # grasp center of box
         self.move(action)
 
         # Lift the box upward by 0.1 meters in z-direction
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.06))
+        self.move(self.move_by_displacement(arm_tag=arm[0], z=0.06))
 
-        self.attach_object(self.tea_box, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/112_tea-box/collision/base{self.tea_box_id}.glb", str(arm_tag))
+        self.attach_object(self.tea_box, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/112_tea-box/collision/base{self.tea_box_id}.glb", str(arm[0]))
 
         self.move(
             self.place_actor(
                 self.tea_box,
-                arm_tag=arm_tag,
+                arm_tag=arm[0],
                 target_pose=self.target1_pose,
-                constrain="align",
+                constrain="free",
                 pre_dis=0.08,
                 dis=0.005,
             ))
-        self.detach_object(arms_tag=str(arm_tag))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, x=-0.08))
+        self.detach_object(arms_tag=str(arm[0]))
+        self.move(self.move_by_displacement(arm_tag=arm[0], y=-0.08))
 
         # rubics cube --------------------------------------------------
-        action = self.grasp_actor(self.cube, arm_tag=arm_tag, pre_grasp_dis=0.1, contact_point_id=3)
+        action = self.grasp_actor(self.cube, arm_tag=arm[1], pre_grasp_dis=0.1, contact_point_id=3)
         if action:
             action[1][1].target_pose[2] += 0.04 # grasp center of box
         self.move(action)
 
         # Lift the box upward by 0.1 meters in z-direction
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.06))
+        self.move(self.move_by_displacement(arm_tag=arm[1], z=0.06))
 
-        self.attach_object(self.cube, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/073_rubikscube/collision/base{self.cube_id}.glb", str(arm_tag))
+        self.attach_object(self.cube, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/073_rubikscube/collision/base{self.cube_id}.glb", str(arm[1]))
 
         self.move(
             self.place_actor(
                 self.cube,
-                arm_tag=arm_tag,
+                arm_tag=arm[1],
                 target_pose=self.target2_pose,
-                constrain="align",
+                constrain="free",
                 pre_dis=0.08,
                 dis=-0.02,
             ))
 
-        self.detach_object(arms_tag=str(arm_tag))
+        self.detach_object(arms_tag=str(arm[1]))
 
         # Record information about the objects and arm used in the task
         self.info["info"] = {
             "{A}": f"112_tea-box/base{self.tea_box_id}",
             "{B}": f"073_rubikscube/base{self.cube_id}",
-            "{a}": str(arm_tag),
+            # "{a}": str(arm_tag),
         }
         return self.info
 
     def check_success(self):
         tea_box_pose = self.tea_box.get_pose().p
         rubics_cube_pose = self.cube.get_pose().p
-        return tea_box_pose[2]+0.03 > self.office_info["shelf_heights"][1] and rubics_cube_pose[2] > self.office_info["shelf_heights"][0]
+        return tea_box_pose[2]+0.03 > self.office_info["shelf_heights"][1] and rubics_cube_pose[2]+0.03 > self.office_info["shelf_heights"][0]
