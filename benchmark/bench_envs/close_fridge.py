@@ -22,7 +22,6 @@ class close_fridge(Kitchen_base_large):
 
     def play_once(self):
         arm_tag = ArmTag("right")
-
         self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.20))
         self.move(self.move_by_displacement(arm_tag=arm_tag, x=+0.30))
         self.move(self.move_by_displacement(arm_tag=arm_tag, y=+0.30))
