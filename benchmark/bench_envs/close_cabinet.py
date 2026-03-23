@@ -20,23 +20,9 @@ class close_cabinet(Kitchen_base_large):
 
         # Capture the closed configuration before opening
         if hasattr(self, "cabinet") and self.cabinet is not None:
-            closed_qpos = np.array(self.cabinet.get_qpos(), dtype=float)
-            self.cabinet_closed_qpos = closed_qpos.copy()
-
-            # Compute an open configuration by moving each finite-interval joint to its upper limit
-            try:
-                qlimits = np.array(self.cabinet.get_qlimits(), dtype=float)  # shape (dof, 2)
-            except Exception:
-                qlimits = None
-
-            open_qpos = closed_qpos.copy()
-            if qlimits is not None and qlimits.shape[0] >= open_qpos.shape[0]:
-                for i in range(open_qpos.shape[0]):
-                    low, high = qlimits[i]
-                    if np.isfinite(low) and np.isfinite(high) and high > low:
-                        open_qpos[i] = high
-
-            self.cabinet.set_qpos(open_qpos)
+            self._init_cabinet_states()
+            # Start close-cabinet task from right-door-open state only.
+            self.set_cabinet_open()
         else:
             self.cabinet_closed_qpos = None
 
@@ -52,16 +38,6 @@ class close_cabinet(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        # Success: cabinet articulation has returned close to the recorded closed configuration
-        if self.cabinet is None:
-            return False
-        if not hasattr(self, "cabinet_closed_qpos") or self.cabinet_closed_qpos is None:
-            return False
-
-        current_qpos = np.array(self.cabinet.get_qpos(), dtype=float)
-        if current_qpos.shape != self.cabinet_closed_qpos.shape:
-            return False
-
-        delta = np.abs(current_qpos - self.cabinet_closed_qpos)
-        return np.max(delta) < 0.02
+        # Success: only right-door joint is back to closed.
+        return self.is_cabinet_closed(threshold=0.02)
 

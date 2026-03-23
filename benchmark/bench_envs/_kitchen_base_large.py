@@ -626,6 +626,104 @@ class Kitchen_base_large(Bench_base_task):
         if self.cabinet is not None:
             self.cabinet.set_name("cabinet")
             self.add_prohibit_area(self.cabinet, padding=0.02, area="cabinet")
+            self._init_cabinet_states()
+
+    # -----------------------
+    # Cabinet articulation state helpers
+    # -----------------------
+    def _get_cabinet_right_joint_index(self) -> int:
+        """
+        Return the right-door joint index for the cabinet articulation.
+
+        Convention for this asset: joint 0 is left door, joint 1 is right door.
+        Fall back to the last DOF if a different articulation shape is loaded.
+        """
+        if not hasattr(self, "cabinet") or self.cabinet is None:
+            return -1
+        try:
+            qpos = np.array(self.cabinet.get_qpos(), dtype=float)
+        except Exception:
+            return -1
+        if qpos.shape[0] <= 0:
+            return -1
+        if qpos.shape[0] >= 2:
+            return 1
+        return qpos.shape[0] - 1
+
+    def _init_cabinet_states(self):
+        """Initialize canonical closed/open states for right-door-only cabinet control."""
+        if not hasattr(self, "cabinet") or self.cabinet is None:
+            self.cabinet_closed_qpos = None
+            self.cabinet_open_qpos = None
+            self.cabinet_right_joint_idx = -1
+            return
+
+        qpos = np.array(self.cabinet.get_qpos(), dtype=float)
+        self.cabinet_right_joint_idx = self._get_cabinet_right_joint_index()
+        self.cabinet_closed_qpos = qpos.copy()
+
+        try:
+            qlimits = np.array(self.cabinet.get_qlimits(), dtype=float)
+        except Exception:
+            qlimits = None
+
+        open_qpos = qpos.copy()
+        idx = self.cabinet_right_joint_idx
+        if (
+            idx >= 0
+            and qlimits is not None
+            and qlimits.shape[0] > idx
+        ):
+            low, high = qlimits[idx]
+            if np.isfinite(low) and np.isfinite(high) and high > low:
+                open_qpos[idx] = high
+        self.cabinet_open_qpos = open_qpos
+
+    def set_cabinet_closed(self):
+        """Reset the cabinet right door to its canonical closed configuration."""
+        if getattr(self, "cabinet_closed_qpos", None) is None:
+            return
+        if not hasattr(self, "cabinet") or self.cabinet is None:
+            return
+        self.cabinet.set_qpos(np.array(self.cabinet_closed_qpos, dtype=float))
+
+    def set_cabinet_open(self):
+        """Set the cabinet right door to its canonical fully-open configuration."""
+        if getattr(self, "cabinet_open_qpos", None) is None:
+            return
+        if not hasattr(self, "cabinet") or self.cabinet is None:
+            return
+        self.cabinet.set_qpos(np.array(self.cabinet_open_qpos, dtype=float))
+
+    def is_cabinet_open(self, threshold: float = 0.02) -> bool:
+        """Return True if the right cabinet door is open beyond threshold."""
+        if not hasattr(self, "cabinet") or self.cabinet is None:
+            return False
+        if getattr(self, "cabinet_closed_qpos", None) is None:
+            return False
+        idx = getattr(self, "cabinet_right_joint_idx", -1)
+        if idx < 0:
+            return False
+        current = np.array(self.cabinet.get_qpos(), dtype=float)
+        closed = np.array(self.cabinet_closed_qpos, dtype=float)
+        if current.shape != closed.shape or current.shape[0] <= idx:
+            return False
+        return abs(float(current[idx] - closed[idx])) > float(threshold)
+
+    def is_cabinet_closed(self, threshold: float = 0.02) -> bool:
+        """Return True if the right cabinet door is effectively closed."""
+        if not hasattr(self, "cabinet") or self.cabinet is None:
+            return False
+        if getattr(self, "cabinet_closed_qpos", None) is None:
+            return False
+        idx = getattr(self, "cabinet_right_joint_idx", -1)
+        if idx < 0:
+            return False
+        current = np.array(self.cabinet.get_qpos(), dtype=float)
+        closed = np.array(self.cabinet_closed_qpos, dtype=float)
+        if current.shape != closed.shape or current.shape[0] <= idx:
+            return False
+        return abs(float(current[idx] - closed[idx])) <= float(threshold)
 
     # -----------------------
     # Fridge articulation state helpers

@@ -16,9 +16,9 @@ class open_cabinet(Kitchen_base_large):
 
     def load_actors(self):
         # No additional movable actors are needed for opening the cabinet.
-        # Record the closed joint configuration for success checking.
+        # Record right-door-only cabinet state for success checking.
         if hasattr(self, "cabinet") and self.cabinet is not None:
-            self.cabinet_closed_qpos = np.array(self.cabinet.get_qpos())
+            self._init_cabinet_states()
         else:
             self.cabinet_closed_qpos = None
 
@@ -30,7 +30,7 @@ class open_cabinet(Kitchen_base_large):
 
         # Ensure we have a baseline closed configuration
         if not hasattr(self, "cabinet_closed_qpos") or self.cabinet_closed_qpos is None:
-            self.cabinet_closed_qpos = np.array(self.cabinet.get_qpos())
+            self._init_cabinet_states()
 
         # Grasp the cabinet door handle region
         self.move(self.grasp_actor(self.cabinet, arm_tag=arm_tag, pre_grasp_dis=0.1))
@@ -47,16 +47,6 @@ class open_cabinet(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        # Success: cabinet articulation has deviated from its initial closed configuration
-        if self.cabinet is None:
-            return False
-        if not hasattr(self, "cabinet_closed_qpos") or self.cabinet_closed_qpos is None:
-            return False
-
-        current_qpos = np.array(self.cabinet.get_qpos())
-        if current_qpos.shape != self.cabinet_closed_qpos.shape:
-            return False
-
-        delta = np.abs(current_qpos - self.cabinet_closed_qpos)
-        return np.max(delta) > 0.02
+        # Success: only right-door joint has moved away from closed.
+        return self.is_cabinet_open(threshold=0.02)
 
