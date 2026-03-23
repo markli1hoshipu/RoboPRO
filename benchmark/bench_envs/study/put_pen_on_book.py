@@ -57,12 +57,9 @@ class put_pen_on_book(Study_base_task):
 
         print(f"offset {offset}")
 
-        print(f"original position {p}")
         p = np.add(p, offset).tolist()
         p[-1] = des_bb[1][-1]
-        print(f"adjusted position {p}")
         self.des_obj_pose = p +  self.target_obj.get_pose().q.tolist()
-        #euler2quat(3.14,0,3.14).tolist() #
 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
@@ -111,6 +108,5 @@ class put_pen_on_book(Study_base_task):
         eps2 = 0.012
 
         return (np.all(abs(target_pose[:2] - target_des_pos[:2]) < np.array([eps1, eps2]))
-                and (np.abs(target_qpose[2] * target_qpose[3] - 0.49) < eps1
-                     or np.abs(target_qpose[0] * target_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
+                and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
