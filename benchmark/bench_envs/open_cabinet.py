@@ -15,6 +15,59 @@ class open_cabinet(Kitchen_base_large):
         # Match collision-cache usage from other benchmark tasks
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
+        self._boost_gripper_handle_friction()
+
+    def _boost_gripper_handle_friction(self) -> None:
+        """
+        Increase contact friction specifically between robot gripper links and
+        cabinet doors/handles by assigning a high-friction physical material to
+        their collision shapes.
+        """
+        if not hasattr(self, "scene") or self.scene is None:
+            return
+
+        # Keep restitution at 0 to avoid bounce.
+        high_friction_mat = self.scene.create_physical_material(2.5, 2.5, 0.0)
+
+        def _set_link_shapes_material(link_obj) -> None:
+            if link_obj is None:
+                return
+            try:
+                if hasattr(link_obj, "get_collision_shapes"):
+                    shapes = link_obj.get_collision_shapes()
+                elif hasattr(link_obj, "collision_shapes"):
+                    cs = getattr(link_obj, "collision_shapes")
+                    shapes = cs() if callable(cs) else cs
+                else:
+                    return
+            except Exception:
+                return
+
+            for shape in list(shapes):
+                try:
+                    if hasattr(shape, "set_physical_material"):
+                        shape.set_physical_material(high_friction_mat)
+                except Exception:
+                    continue
+
+        # Robot gripper links (names are pre-collected in robot.gripper_name).
+        gripper_names = set(getattr(self.robot, "gripper_name", []))
+        for entity_name in ("left_entity", "right_entity"):
+            entity = getattr(self.robot, entity_name, None)
+            if entity is None:
+                continue
+            try:
+                for link in entity.get_links():
+                    if link.get_name() in gripper_names:
+                        _set_link_shapes_material(link)
+            except Exception:
+                continue
+
+        # Cabinet door links where the handle geometry lives.
+        if hasattr(self, "cabinet") and self.cabinet is not None:
+            for door_link_name in ("rightdoor", "leftdoor"):
+                door_link = self.cabinet.link_dict.get(door_link_name)
+                _set_link_shapes_material(door_link)
 
     def load_actors(self):
         # No additional movable actors are needed for opening the cabinet.
@@ -79,17 +132,24 @@ class open_cabinet(Kitchen_base_large):
 
         # Move to the initial TCP pose and rotate by +90 degrees around the y-axis.
         self.move(self.move_by_displacement(arm_tag=arm_tag, quat=rotated_tcp_quat.tolist()))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, x=-0.17, y=0.2, z=0.26))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.052))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=-0.17, y=0.2, z=0.30))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.054))
         self.move(self.close_gripper(arm_tag=arm_tag, pos=-0.1))
 
         # Pull the cabinet door with a circular trajectory (same style as open_fridge).
         self.pull_door_circularly(
             arm_tag=arm_tag,
-            door_radius=0.17,
-            total_open_angle=22.5,
-            num_steps=15,
+            door_radius=0.21,
+            total_open_angle=45,
+            num_steps=30,
         )
+
+        # Move back to the initial TCP pose and rotate by -90 degrees around the y-axis.
+        self.move(self.close_gripper(arm_tag=arm_tag, pos=1.0))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=0.05, y=-0.1))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=-0.25))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.2))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=0.25, y=-0.2))
 
         self.info["info"] = {
             "{A}": "122_cabinet_nkrgez",
