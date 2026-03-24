@@ -309,6 +309,22 @@ class Bench_base_task(Base_Task):
         """
         Produce clutter on a given surface
         """
+        # # for viewing area estimation
+        # for area in prohibited_area:
+        #     x_min = area[0]
+        #     x_max = area[2]
+        #     y_min = area[1]
+        #     y_max = area[3]
+        #     half_size = [(x_max-x_min)/2, (y_max-y_min)/2, 0.0005]
+        #     target = create_box(
+        #         scene=self,
+        #         pose=sapien.Pose([x_min+half_size[0], y_min+half_size[1], zlim[0]], [1,0,0,0]),
+        #         half_size=half_size,
+        #         color=(1, 0, 0),
+        #         name=f"_collision",
+        #         is_static=True,
+        #     )
+
         # record cluttered objects
         self.record_cluttered_objects = []
         self.size_dict = []
