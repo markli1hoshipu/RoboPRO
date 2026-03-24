@@ -64,7 +64,7 @@ class Study_base_task(Bench_base_task):
         torch.manual_seed(kwags.get("seed", 0))
         # random.seed(kwags.get('seed', 0))
         self.seed = kwags.get("seed", 0)
-
+        print_c(f"#### Seed value {self.seed} ####", "YELLOW")
         self.FRAME_IDX = 0
         self.task_name = kwags.get("task_name")
         self.save_dir = kwags.get("save_path", "data")

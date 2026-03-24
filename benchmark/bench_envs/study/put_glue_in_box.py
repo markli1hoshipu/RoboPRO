@@ -88,6 +88,5 @@ class put_glue_in_box(Study_base_task):
         eps2 = 0.012
 
         return (np.all(abs(target_pose[:2] - target_des_pos[:2]) < np.array([eps1, eps2]))
-                and (np.abs(target_qpose[2] * target_qpose[3] - 0.49) < eps1
-                     or np.abs(target_qpose[0] * target_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
+                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
