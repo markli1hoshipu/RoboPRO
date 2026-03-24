@@ -10,7 +10,7 @@ import glob
 from transforms3d.euler import euler2quat
 
 
-class place_notebook(Office_base_task):
+class grab_book(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 200, "obb": 3}
@@ -20,39 +20,36 @@ class place_notebook(Office_base_task):
         return set()
 
     def load_actors(self):
-        pose = self.file_holder.get_pose().p
-        pose[2] = 1.05
-        self.book = create_actor(
-            scene=self,
-            pose=sapien.Pose(p=pose, q=euler2quat(np.pi, 0, np.pi/2, axes='sxyz')),
+        level = np.random.choice([0,1])
+        model_id = 0
+        ylim = [self.shelf.get_pose().p[1]-0.07]
+        zlim = [self.office_info["shelf_heights"][level]+0.1]
+        xlims = [[self.office_info["shelf_lims"][0]+0.04, 0], [0, self.office_info["shelf_lims"][2]-0.04], [0, self.office_info["shelf_lims"][2]-0.04]]
+        self.book = rand_create_actor(
+            self,
+            xlim=xlims[self.arr_v],
+            ylim=ylim,
+            zlim=zlim,
             modelname="043_book",
+            rotate_rand=False,
+            qpos=euler2quat(np.pi, 0, np.pi/2, axes='sxyz'),
             convex=True,
-            model_id=0,
-            is_static=True,
-            scale = 0.5
+            model_id=model_id,
+            is_static=False,
+            scale = self.item_info['scales']['043_book'][f'{model_id}']
         )
+        self.book.set_mass(0.1)
+        center_x = self.book.get_pose().p[0] + 0.02
+        center_y = self.book.get_pose().p[1]
+        self.prohibited_area[f"shelf{level}"].append([center_x-0.025, center_y-0.06, center_x+0.025, center_y+0.06])
 
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag("left")
+        arm_tag = ArmTag("left") if self.book.get_pose().p[0] < 0 else ArmTag("right")
 
         self.move(self.grasp_actor(self.book, arm_tag=arm_tag, pre_grasp_dis=0.04, grasp_dis=0.02))
-        # self.attach_object(self.book, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/043_book/collision/base0.glb", str(arm_tag))
-
-        self.target_pose = self.file_holder.get_pose().p.tolist() + euler2quat(np.pi, 0, 0, axes='sxyz')
-        self.target_pose[2]+=0.1
-        self.target_pose[1]-=0.1
-
-        self.move(
-            self.place_actor(
-                self.book,
-                arm_tag=arm_tag,
-                target_pose=self.target_pose,
-                constrain="free",
-                pre_dis=0.01,
-                dis=0.005,
-            ))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.2))
 
         # Record information about the objects and arm used in the task
         # self.info["info"] = {

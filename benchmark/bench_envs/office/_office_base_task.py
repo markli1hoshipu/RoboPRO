@@ -157,9 +157,13 @@ class Office_base_task(Bench_base_task):
         self.office_info = {
             "table_height": 0.74,
             "table_area":[1.2, 0.7], # x,y area 
+            "table_lims": [],
             "shelf_heights":[0.9, 1.127], # heights of the shelf levels
             "shelf_area":[0.62, 0.26], # x,y area 
+            "shelf_lims": [],
             "file_holder_area":[0.22, 0.16], # x,y area 
+            "file_holder_lims": [],
+            "file_holder_heights": [0.82,0.942],
             "furn_x_v": { # x position of furniture for each arrangement version
                 "shelf": [-0.24,0,0.24],
                 "cabinet": [0.23,0.48,-0.48],
@@ -480,7 +484,7 @@ class Office_base_task(Bench_base_task):
                 continue
             task_objects_list.append(actor_name)
 
-        cluttered_item_info, obj_names_short, obj_names_tall = get_cluttered_objects_subset(
+        cluttered_item_info, obj_names_short, obj_names_tall = get_obstacle_objects_subset(
             "office", self.sample_d, task_objects_list
         )
 
@@ -501,7 +505,7 @@ class Office_base_task(Bench_base_task):
             if actor_name in ["table", "wall", "ground"]:
                 continue
             task_objects_list.append(actor_name)
-        cluttered_item_info, obj_names = get_cluttered_objects_subset("office", task_objects_list)
+        cluttered_item_info, obj_names = get_obstacle_objects_subset("office", task_objects_list)
         if not obj_names:
             return
         n = len(obj_names)

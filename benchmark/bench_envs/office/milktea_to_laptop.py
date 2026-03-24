@@ -18,15 +18,29 @@ class milktea_to_laptop(Office_base_task):
         return {self.milktea.get_name()}
 
     def load_actors(self):
+        self.side = np.random.choice(["left", "right"])
         laptop_id = np.random.choice([9748,9912,9960,9968,9992,9996,10040,10098,10101,10125,10211])
+        laptop_id = 9912
+        self.milktea_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["101_milk-tea"])
+
+        if self.side == "left":
+            xlim1 = [self.office_info["table_lims"][0]+0.08, 0]
+            xlim2 = [self.office_info["table_lims"][0]+self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"], 0.1]
+        else:
+            xlim1 = [-0.3, self.office_info["table_lims"][2]-0.27]
+            xlim2 = [-0.1, self.office_info["table_lims"][2]-self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"]]
+        ylim1 = [self.office_info["table_lims"][3]-0.3]
+        ylim2 = [self.office_info["table_lims"][1] + 0.1, self.office_info["table_lims"][3]-0.2]
+        
+
         self.laptop: ArticulationActor = rand_create_sapien_urdf_obj(
             scene=self,
             modelname="015_laptop",
             modelid=laptop_id,
-            xlim=[-self.office_info["table_area"][0]/2+0.1, 0.1],
-            ylim=[-self.office_info["table_area"][1]/2, self.office_info["table_area"][1]/2-0.3],
+            xlim=xlim1,
+            ylim=ylim1,
             rotate_rand=True,
-            rotate_lim=[0, 0, np.pi / 3],
+            rotate_lim=[0, 0, np.pi / 6],
             qpos=[0.7, 0, 0, 0.7],
             fix_root_link=True,
         )
@@ -34,15 +48,43 @@ class milktea_to_laptop(Office_base_task):
         limit = self.laptop.get_qlimits()[0]
         self.laptop.set_qpos([limit[0] + (limit[1] - limit[0]) * 0.9])
         self.add_prohibit_area(self.laptop, padding=0.01)
+        cuboid_pose = self.laptop.get_pose().p.tolist() + [1, 0, 0, 0]
+        cuboid_pose[1] += 0.04
+        cuboid_pose[2] = self.office_info["table_height"] + 0.07
+        self.cuboid_collision_list.append(("015_laptop", [0.2, 0.07, 0.14], cuboid_pose))
+        # self.laptop_collision_box = create_box(
+        #     scene=self,
+        #     pose=sapien.Pose(p=cuboid_pose[:3], q=cuboid_pose[3:]),
+        #     half_size=[0.1, 0.025, 0.07],
+        #     color=(1, 0, 0),
+        #     name="laptop_collision_box",
+        #     is_static=True,
+        # )
+
+
+        half_size = [0.03, 0.03, 0.0005]
+        p = self.laptop.get_pose().p.tolist()
+        p[0] += 0.15
+        p[1] -= 0.05
+        p[2] = self.office_info["table_height"]
+        target_pose = sapien.Pose(p=p, q=[1, 0, 0, 0])
+        self.target = create_box(
+            scene=self,
+            pose=target_pose,
+            half_size=half_size,
+            color=(0, 0, 1),
+            name="box",
+            is_static=True,
+        )
+        self.add_prohibit_area(self.target, padding=0.06, area="table")
         
-        milktea_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["101_milk-tea"])
         success, self.milktea = rand_create_cluttered_actor(
             scene=self.scene,
-            xlim=[-self.office_info["table_area"][0]/2, self.office_info["table_area"][0]/2],
-            ylim=[-self.office_info["table_area"][1]/2, self.office_info["table_area"][1]/2-0.2],
+            xlim=xlim2,
+            ylim=ylim2,
             zlim=[self.office_info["table_height"]],
             modelname="101_milk-tea",
-            modelid=milktea_id,
+            modelid=self.milktea_id,
             modeltype="glb",
             rotate_rand=True,
             rotate_lim=[0, 1, 0],
@@ -57,38 +99,46 @@ class milktea_to_laptop(Office_base_task):
             scale = self.item_info["scales"]["101_milk-tea"]
         )
         if not success:
-            raise RuntimeError("Failed to load laptop")
+            raise RuntimeError("Failed to load milktea")
+        self.milktea.set_mass(0.1)
+        self.add_prohibit_area(self.milktea, padding=0.01, area="table")
+
+        self.target_pose = target_pose.p.tolist() + self.milktea.get_pose().q.tolist()
+        # p = self.milktea.get_pose().p.tolist()
+        # p[1]-=0.1
+        # self.target_pose = p + self.milktea.get_pose().q.tolist()
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag("right" if self.mouse.get_pose().p[0] > 0 else "left")
+        arm_tag = ArmTag(self.side)
 
         # Grasp the mouse with the selected arm
-        self.move(self.grasp_actor(self.mouse, arm_tag=arm_tag, pre_grasp_dis=0.1))
+        self.move(self.grasp_actor(self.milktea, arm_tag=arm_tag, pre_grasp_dis=0.15, contact_point_id=[0, 1, 2, 3, 5, 6, 7]))
 
         # Lift the mouse upward by 0.1 meters in z-direction
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
+        # self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
 
-        self.attach_object(self.mouse, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/047_mouse/collision/base{self.mouse_id}.glb", str(arm_tag))
+        self.attach_object(self.milktea, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/101_milk-tea/collision/base{self.milktea_id}.glb", str(arm_tag))
 
         # Place the mouse at the target location with alignment constraint
         self.move(
             self.place_actor(
-                self.mouse,
+                self.milktea,
                 arm_tag=arm_tag,
                 target_pose=self.target_pose,
-                constrain="align",
+                constrain="free",
                 pre_dis=0.07,
-                dis=0.005,
+                dis=0.01,
+                local_up_axis=[0,0,1]
             ))
 
-        # Record information about the objects and arm used in the task
-        self.info["info"] = {
-            "{A}": f"047_mouse/base{self.mouse_id}",
-            "{B}": f"{self.color_name}",
-            "{a}": str(arm_tag),
-        }
-        return self.info
+        # # Record information about the objects and arm used in the task
+        # self.info["info"] = {
+        #     "{A}": f"047_mouse/base{self.mouse_id}",
+        #     "{B}": f"{self.color_name}",
+        #     "{a}": str(arm_tag),
+        # }
+        # return self.info
 
     def check_success(self):
         mouse_pose = self.mouse.get_pose().p
