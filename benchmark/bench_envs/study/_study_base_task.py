@@ -41,8 +41,15 @@ parent_directory = os.path.dirname(current_file_path)
 
 
 class Study_base_task(Bench_base_task):
+    # Study scene furniture: table, wall, floor, ground, bookcase, wooden_box
+    FURNITURE_NAMES = {"table", "wall", "floor", "ground", "014_bookcase", "042_wooden_box"}
+
     def __init__(self):
         pass
+
+    def _get_target_object_names(self) -> set[str]:
+        """Default for tasks with single self.target_obj. Override for multi-target tasks."""
+        return {self.target_obj.get_name()}
 
     def _init_task_env_(self, table_xy_bias=[0, 0], table_height_bias=0, **kwags):
         """
@@ -74,6 +81,7 @@ class Study_base_task(Bench_base_task):
         self.save_data = kwags.get("save_data", False)
         self.dual_arm = kwags.get("dual_arm", True)
         self.eval_mode = kwags.get("eval_mode", False)
+        self.enable_collision_metrics = kwags.get("enable_collision_metrics", False)
         self.scene_objs = []
         self.need_topp = True  # TODO
 
@@ -126,6 +134,8 @@ class Study_base_task(Bench_base_task):
         self.instruction = None  # for Eval
 
         self.collision_list = [] # list of collision objects for curobo planner
+        self.cuboid_collision_list = [] # list of cuboid collision objects for curobo planner
+        self._init_collision_metrics()
 
         self.load_robot(**kwags)
         self.create_static_elements(table_xy_bias=table_xy_bias, table_height=0.74)
@@ -142,6 +152,9 @@ class Study_base_task(Bench_base_task):
 
         if self.cluttered_table:
             self.get_cluttered_surfaces()
+
+        if self.enable_collision_metrics:
+            self._build_collision_name_sets()
 
         is_stable, unstable_list = self.check_stable()
         if not is_stable:

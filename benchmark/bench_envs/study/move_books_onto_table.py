@@ -17,6 +17,9 @@ from envs.utils.rand_create_actor import rand_pose
 
 class move_books_onto_table(Study_base_task):
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.target_obj_1.get_name(), self.target_obj_2.get_name()}
+
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)

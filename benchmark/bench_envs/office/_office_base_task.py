@@ -38,11 +38,19 @@ parent_directory = os.path.dirname(current_file_path)
 
 
 class Office_base_task(Bench_base_task):
-
-    FURNITURE_NAMES = {"table", "wall", "shelf", "ground"}
+    # Office scene furniture: table, wall, ground, floor parts, shelf, cabinet, file holder (wooden_box)
+    FURNITURE_NAMES = {
+        "table", "wall", "ground",
+        # "floor_0", "floor_1", "floor_2", "floor_3",
+        "121_wall-shelf", "036_cabinet", "042_wooden_box",
+    }
 
     def __init__(self):
         pass
+
+    def _get_target_object_names(self) -> set[str]:
+        """Default for tasks with single self.target_obj. Override when using different attr names (mouse, phone, etc)."""
+        return {self.target_obj.get_name()}
 
     def _init_task_env_(self, table_xy_bias=[0, 0], table_height_bias=0, **kwags):
         """

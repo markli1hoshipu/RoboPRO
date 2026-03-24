@@ -17,7 +17,7 @@ class place_notebook(Office_base_task):
         super()._init_task_env_(**kwargs)
     
     def _get_target_object_names(self) -> set[str]:
-        return set()
+        return {self.book.get_name()}
 
     def load_actors(self):
         pose = self.file_holder.get_pose().p
@@ -31,7 +31,6 @@ class place_notebook(Office_base_task):
             is_static=True,
             scale = 0.5
         )
-
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
