@@ -136,7 +136,7 @@ class Study_base_task(Bench_base_task):
         self.render_freq = 0
         self.together_open_gripper(save_freq=None)
         self.render_freq = render_freq
-
+        self.cuboid_collision_list = []
         self.robot.set_origin_endpose()
         self.load_actors()
 
