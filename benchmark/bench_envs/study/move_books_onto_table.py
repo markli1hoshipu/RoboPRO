@@ -58,20 +58,20 @@ class move_books_onto_table(Study_base_task):
                      obj_pose=[p_2,q], mass = 0.5, rotation=False)
 
         self.lift_height = 0.2
-        self.ep_lift = -0.2 
+        self.ep_lift = -0.2
 
         book_xlim = [xlim[0] + 0.05, xlim[1]-0.1]
         book_ylim = [ylim[0] + 0.0, ylim[1]-0.1]
-        
+
         if _robotwin_log_move():
             print(f"[move_books_onto_table] book_xlim: {book_xlim}")
             print(f"[move_books_onto_table] book_ylim: {book_ylim}")
-        
+
         while True:
             base_pose = rand_pose(
                 xlim=book_xlim,
                 ylim=book_ylim,
-                zlim=[0.83],
+                zlim=[0.84],
                 qpos=euler2quat(*[np.deg2rad(d) for d in [25, 180, 0]]),
                 rotate_rand=None,
             )
@@ -128,7 +128,7 @@ class move_books_onto_table(Study_base_task):
             self.detach_object(arm_tag)
             
             self.move(self.move_by_displacement(arm_tag=arm_tag, x = -0.06, 
-                                                y = -0.05, z = 0.03)) 
+                                                y = -0.05, z = 0.03))
 
         # Record information about the objects and arm used in the task
         self.info["info"] = {
