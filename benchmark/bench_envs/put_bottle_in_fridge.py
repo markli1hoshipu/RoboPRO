@@ -7,6 +7,17 @@ import transforms3d as t3d
 
 
 class put_bottle_in_fridge(Kitchen_base_large):
+    BOTTLE_MASS = 0.1
+    BOTTLE_SPAWN_Z_OFFSET = 0.02
+
+    # Success region bounds in fridge base-link local frame
+    FRIDGE_SUCCESS_X_BOUNDS = (-0.33, 0.16)
+    FRIDGE_SUCCESS_Y_BOUNDS = (-0.22, 0.22)
+    FRIDGE_SUCCESS_Z_BOUNDS = (-0.34, 0.24)
+
+    # Placement target in fridge base-link local frame
+    FRIDGE_PLACE_LOCAL = np.array([-0.10, 0.00, 0.05], dtype=float)
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.bottle_modelname = "001_bottle"
         self.bottle_model_ids = [1, 11, 14, 16]
@@ -37,11 +48,19 @@ class put_bottle_in_fridge(Kitchen_base_large):
 
         self.set_fridge_open()
 
-    def check_stable(self):
-        """Dynamic bottle can wobble while settling; ignore init instability for `task_bottle`."""
-        is_stable, unstable_list = super().check_stable()
-        unstable_list = [n for n in unstable_list if n != "task_bottle"]
-        return len(unstable_list) == 0, unstable_list
+    def _sample_bottle_spawn_pose(self, table_center: np.ndarray) -> sapien.Pose:
+        # Keep current spawn behavior exactly as implemented.
+        x = float(np.random.uniform(table_center[0] - 0.2, table_center[0]))
+        y = float(np.random.uniform(table_center[1] - 0.1, table_center[1] + 0.1))
+        z = float(table_center[2] + self.BOTTLE_SPAWN_Z_OFFSET)
+
+        roll_deg, pitch_deg, yaw_deg = self.bottle_spawn_rot_deg
+        ax = math.radians(roll_deg)
+        ay = math.radians(pitch_deg)
+        az = math.radians(yaw_deg)
+        qx, qy, qz, qw = t3d.euler.euler2quat(ax, ay, az)
+        bottle_quat = [qw, qx, qy, qz]
+        return sapien.Pose([x, y, z], bottle_quat)
 
     def load_actors(self):
         if getattr(self, "fridge_closed_qpos", None) is None:
@@ -50,27 +69,12 @@ class put_bottle_in_fridge(Kitchen_base_large):
 
         table_center = np.array(self.table.get_pose().p, dtype=float)
         self.bottle_model_id = int(np.random.choice(self.bottle_model_ids))
-        # Randomize initial bottle table center with fixed offsets:
-        #   x in [table_center.x - 0.2, table_center.x + 0.2]
-        #   y in [table_center.y - 0.3, table_center.y + 0.1]
-        x = float(np.random.uniform(table_center[0] - 0.2, table_center[0] + 0.2))
-        y = float(np.random.uniform(table_center[1] - 0.3, table_center[1] + 0.1))
-        z = float(table_center[2] + 0.02)
+        bottle_pose = self._sample_bottle_spawn_pose(table_center)
 
         intrinsic_scale = self._get_asset_model_scale_create_actor(
             self.bottle_modelname, self.bottle_model_id
         )
         final_scale = float(intrinsic_scale) * float(self.bottle_scale)
-
-        roll_deg, pitch_deg, yaw_deg = self.bottle_spawn_rot_deg
-        ax = math.radians(roll_deg)
-        ay = math.radians(pitch_deg)
-        az = math.radians(yaw_deg)
-        qx, qy, qz, qw = t3d.euler.euler2quat(ax, ay, az)
-        bottle_quat = [qw, qx, qy, qz]
-
-        bottle_pose = sapien.Pose([x, y, z], bottle_quat)
-        bottle_mass = 0.1
 
         self.bottle = create_actor(
             scene=self.scene,
@@ -78,15 +82,12 @@ class put_bottle_in_fridge(Kitchen_base_large):
             modelname=self.bottle_modelname,
             model_id=self.bottle_model_id,
             is_static=False,
-            # Match `create_actor_custom.create_glb_actor` default: nonconvex collision
-            # (often reduces micro-wobble for thin dynamic objects during settle).
-            convex=False,
+            convex=True,
             scale=final_scale,
         )
 
         if self.bottle is not None:
-            # Match `scene_gen_utils.place_actor` default mass override.
-            self.bottle.set_mass(bottle_mass)
+            self.bottle.set_mass(self.BOTTLE_MASS)
 
             self.bottle.set_name("task_bottle")
             if isinstance(self.bottle.config, dict):
@@ -98,8 +99,7 @@ class put_bottle_in_fridge(Kitchen_base_large):
         base_tf = base_pose.to_transformation_matrix()
         base_R = np.array(base_tf[:3, :3], dtype=float)
         base_p = np.array(base_tf[:3, 3], dtype=float)
-        local_inside = np.array([-0.10, 0.00, 0.05], dtype=float)
-        world_inside = base_p + base_R @ local_inside
+        world_inside = base_p + base_R @ self.FRIDGE_PLACE_LOCAL
         bottle_q = self.bottle.get_pose().q.tolist()
         return world_inside.tolist() + bottle_q
 
@@ -112,26 +112,35 @@ class put_bottle_in_fridge(Kitchen_base_large):
         inv_tf = np.linalg.inv(base_tf)
         bottle_local_h = inv_tf @ np.array([bottle_world[0], bottle_world[1], bottle_world[2], 1.0], dtype=float)
         x_l, y_l, z_l = bottle_local_h[:3]
-        x_ok = (-0.33 <= x_l <= 0.16)
-        y_ok = (-0.22 <= y_l <= 0.22)
-        z_ok = (-0.34 <= z_l <= 0.24)
+        x_ok = (self.FRIDGE_SUCCESS_X_BOUNDS[0] <= x_l <= self.FRIDGE_SUCCESS_X_BOUNDS[1])
+        y_ok = (self.FRIDGE_SUCCESS_Y_BOUNDS[0] <= y_l <= self.FRIDGE_SUCCESS_Y_BOUNDS[1])
+        z_ok = (self.FRIDGE_SUCCESS_Z_BOUNDS[0] <= z_l <= self.FRIDGE_SUCCESS_Z_BOUNDS[1])
         return bool(x_ok and y_ok and z_ok)
 
     def play_once(self):
         arm_tag = ArmTag("right")
-        self.move(self.grasp_actor(self.bottle, arm_tag=arm_tag, pre_grasp_dis=0.10, grasp_dis=0.0))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.12))
-        place_pose = self._fridge_inside_target_pose()
+        # Close slightly less than "fully closed" to reduce penetration impulse.
         self.move(
-            self.place_actor(
+            self.grasp_actor(
                 self.bottle,
                 arm_tag=arm_tag,
-                target_pose=place_pose,
-                constrain="auto",
-                pre_dis=0.10,
-                dis=0.03,
+                pre_grasp_dis=0.07,
+                grasp_dis=0.0,
+                gripper_pos=0.0,
             )
         )
+        # Smaller lift to reduce any residual separation impulse from the grasp moment.
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
+        # Return to the stored initial/home arm state (TCP + planned joint target) before placing.
+        self.move(self.back_to_origin(arm_tag=arm_tag))
+
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=0.1, y=0.30, z=-0.05))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.1, z=-0.05))
+        self.move(self.close_gripper(arm_tag=arm_tag, pos=1.0))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.2))
+        self.move(self.back_to_origin(arm_tag=arm_tag))
+
+
         self.info["info"] = {
             "{A}": f"{self.bottle_modelname}/base{self.bottle_model_id}",
             "{a}": str(arm_tag),
