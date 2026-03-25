@@ -6,7 +6,7 @@ import math
 from envs._GLOBAL_CONFIGS import *
 from copy import deepcopy
 import glob
-
+from transforms3d.euler import euler2quat
 
 class milktea_to_laptop(Office_base_task):
 
@@ -18,6 +18,8 @@ class milktea_to_laptop(Office_base_task):
         return {self.milktea.get_name()}
 
     def load_actors(self):
+        # add table as collision
+        self.cuboid_collision_list.append(("table", [2, 2, 0.002], [0,0,0.74,1,0,0,0]))
         self.side = np.random.choice(["left", "right"])
         laptop_id = np.random.choice([9748,9912,9960,9968,9992,9996,10040,10098,10101,10125,10211])
         laptop_id = 9912
@@ -29,8 +31,8 @@ class milktea_to_laptop(Office_base_task):
         else:
             xlim1 = [-0.3, self.office_info["table_lims"][2]-0.27]
             xlim2 = [-0.1, self.office_info["table_lims"][2]-self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"]]
-        ylim1 = [self.office_info["table_lims"][3]-0.3]
-        ylim2 = [self.office_info["table_lims"][1] + 0.1, self.office_info["table_lims"][3]-0.2]
+        ylim1 = [self.office_info["table_lims"][1]+0.2, self.office_info["shelf_lims"][1]-0.1]
+        ylim2 = [self.office_info["table_lims"][1] + 0.2, self.office_info["shelf_lims"][1]-0.05]
         
 
         self.laptop: ArticulationActor = rand_create_sapien_urdf_obj(
@@ -66,7 +68,7 @@ class milktea_to_laptop(Office_base_task):
         p = self.laptop.get_pose().p.tolist()
         p[0] += 0.15
         p[1] -= 0.05
-        p[2] = self.office_info["table_height"]
+        p[2] = self.office_info["table_height"] - 0.001
         target_pose = sapien.Pose(p=p, q=[1, 0, 0, 0])
         self.target = create_box(
             scene=self,
@@ -86,9 +88,9 @@ class milktea_to_laptop(Office_base_task):
             modelname="101_milk-tea",
             modelid=self.milktea_id,
             modeltype="glb",
-            rotate_rand=True,
+            rotate_rand=False,
             rotate_lim=[0, 1, 0],
-            qpos=[0.66, 0.66, -0.25, -0.25],
+            qpos=euler2quat(np.pi/2,0, 0, axes='sxyz'),
             obj_radius=0.03,
             z_offset=0,
             z_max=0.1,
@@ -100,10 +102,11 @@ class milktea_to_laptop(Office_base_task):
         )
         if not success:
             raise RuntimeError("Failed to load milktea")
-        self.milktea.set_mass(0.1)
+        self.milktea.set_mass(0.06)
         self.add_prohibit_area(self.milktea, padding=0.01, area="table")
 
         self.target_pose = target_pose.p.tolist() + self.milktea.get_pose().q.tolist()
+        self.target_pose[2] += 0.02
         # p = self.milktea.get_pose().p.tolist()
         # p[1]-=0.1
         # self.target_pose = p + self.milktea.get_pose().q.tolist()
@@ -113,24 +116,28 @@ class milktea_to_laptop(Office_base_task):
         arm_tag = ArmTag(self.side)
 
         # Grasp the mouse with the selected arm
-        self.move(self.grasp_actor(self.milktea, arm_tag=arm_tag, pre_grasp_dis=0.15, contact_point_id=[0, 1, 2, 3, 5, 6, 7]))
+        action = self.grasp_actor(self.milktea, arm_tag=arm_tag, pre_grasp_dis=0.1, grasp_dis=0.02, contact_point_id=2)
+        action[1][0].target_pose[2] += 0.04
+        action[1][1].target_pose[2] += 0.04
+        self.move(action)
 
         # Lift the mouse upward by 0.1 meters in z-direction
-        # self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.01))
 
         self.attach_object(self.milktea, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/101_milk-tea/collision/base{self.milktea_id}.glb", str(arm_tag))
 
         # Place the mouse at the target location with alignment constraint
-        self.move(
-            self.place_actor(
+        action = self.place_actor(
                 self.milktea,
                 arm_tag=arm_tag,
                 target_pose=self.target_pose,
                 constrain="free",
-                pre_dis=0.07,
-                dis=0.01,
+                pre_dis=0.0,
+                dis=0.0,
                 local_up_axis=[0,0,1]
-            ))
+            )
+        action[1][0].target_pose[2] += 0.03
+        self.move(action)
 
         # # Record information about the objects and arm used in the task
         # self.info["info"] = {

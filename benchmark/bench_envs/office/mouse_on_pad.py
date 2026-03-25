@@ -101,7 +101,10 @@ class mouse_on_pad(Office_base_task):
         
         self.milk_box.set_mass(0.1)
         self.add_prohibit_area(self.milk_box, padding=0.01, area="table")
-        self.collision_list.append((self.milk_box, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.milk_box_id}.glb", [1,1,1]))
+        self.collision_list.append({
+            "actor": self.milk_box,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.milk_box_id}.glb",
+        })
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)

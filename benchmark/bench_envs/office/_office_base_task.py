@@ -320,7 +320,10 @@ class Office_base_task(Bench_base_task):
             is_static=True,
             mass=2
         )
-        self.collision_list.append((self.shelf, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/121_wall-shelf/cc0_wall_shelf_4.glb", shelf_scale))
+        self.collision_list.append({
+            "actor": self.shelf,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/121_wall-shelf/cc0_wall_shelf_4.glb",
+        })
         xmin = pose[0] - self.office_info["shelf_area"][0]/2
         xmax = pose[0] + self.office_info["shelf_area"][0]/2
         ymin = pose[1] - self.office_info["shelf_area"][1]/2
@@ -376,7 +379,10 @@ class Office_base_task(Bench_base_task):
         ymax = pose[1] + self.office_info["file_holder_area"][1]/2
         self.office_info["file_holder_lims"] = [xmin, ymin, xmax, ymax]
         self.prohibited_area["table"].append([xmin-0.01, ymin, xmax+0.01, ymax])
-        self.collision_list.append((self.file_holder, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/122_file-holder/base.glb", [1,1,1]))
+        self.collision_list.append({
+            "actor": self.file_holder,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/122_file-holder/base.glb",
+        })
         
     def load_basic_office_items(self):
         # load office items: items that are always placed as obstacles ie key obstacles
@@ -460,7 +466,10 @@ class Office_base_task(Bench_base_task):
             self.plant.set_mass(1)
             pose = self.plant.get_pose().p
             self.prohibited_area["table"].append([pose[0]-0.03, pose[1]-0.03, pose[0]+0.03, pose[1]+0.03]) # manual because plant extents are incorrect
-            self.collision_list.append((self.plant, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/120_plant/collision/base{plant_id}.glb", [1,1,1]))
+            self.collision_list.append({
+                "actor": self.plant,
+                "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/120_plant/collision/base{plant_id}.glb",
+            })
     
     def get_cluttered_surfaces(self):
         # clutter surfaces with additional random obstacles
