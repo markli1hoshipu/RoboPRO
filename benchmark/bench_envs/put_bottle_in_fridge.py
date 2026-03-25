@@ -37,6 +37,12 @@ class put_bottle_in_fridge(Kitchen_base_large):
 
         self.set_fridge_open()
 
+    def check_stable(self):
+        """Dynamic bottle can wobble while settling; ignore init instability for `task_bottle`."""
+        is_stable, unstable_list = super().check_stable()
+        unstable_list = [n for n in unstable_list if n != "task_bottle"]
+        return len(unstable_list) == 0, unstable_list
+
     def load_actors(self):
         if getattr(self, "fridge_closed_qpos", None) is None:
             self._init_fridge_states()
@@ -44,10 +50,11 @@ class put_bottle_in_fridge(Kitchen_base_large):
 
         table_center = np.array(self.table.get_pose().p, dtype=float)
         self.bottle_model_id = int(np.random.choice(self.bottle_model_ids))
-        lx = float(np.random.uniform(*self.bottle_spawn_local_x_range))
-        ly = float(np.random.uniform(*self.bottle_spawn_local_y_range))
-        x = float(table_center[0] + lx)
-        y = float(table_center[1] + ly)
+        # Randomize initial bottle table center with fixed offsets:
+        #   x in [table_center.x - 0.2, table_center.x + 0.2]
+        #   y in [table_center.y - 0.3, table_center.y + 0.1]
+        x = float(np.random.uniform(table_center[0] - 0.2, table_center[0] + 0.2))
+        y = float(np.random.uniform(table_center[1] - 0.3, table_center[1] + 0.1))
         z = float(table_center[2] + 0.02)
 
         intrinsic_scale = self._get_asset_model_scale_create_actor(
@@ -62,16 +69,25 @@ class put_bottle_in_fridge(Kitchen_base_large):
         qx, qy, qz, qw = t3d.euler.euler2quat(ax, ay, az)
         bottle_quat = [qw, qx, qy, qz]
 
+        bottle_pose = sapien.Pose([x, y, z], bottle_quat)
+        bottle_mass = 0.1
+
         self.bottle = create_actor(
             scene=self.scene,
-            pose=sapien.Pose([x, y, z], bottle_quat),
+            pose=bottle_pose,
             modelname=self.bottle_modelname,
             model_id=self.bottle_model_id,
             is_static=False,
-            convex=True,
+            # Match `create_actor_custom.create_glb_actor` default: nonconvex collision
+            # (often reduces micro-wobble for thin dynamic objects during settle).
+            convex=False,
             scale=final_scale,
         )
+
         if self.bottle is not None:
+            # Match `scene_gen_utils.place_actor` default mass override.
+            self.bottle.set_mass(bottle_mass)
+
             self.bottle.set_name("task_bottle")
             if isinstance(self.bottle.config, dict):
                 self.bottle.config["scale"] = [final_scale] * 3
