@@ -284,7 +284,10 @@ class Bench_base_task(Base_Task):
                 path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
             else:
                 path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
-            self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale))
+            self.collision_list.append({
+                "actor": self.cluttered_obj,
+                "collision_path": path,
+            })
 
             # # for viewing radius estimation
             # half_size = [obj_radius, obj_radius, 0.0005]
@@ -389,7 +392,10 @@ class Bench_base_task(Base_Task):
                 path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
             else:
                 path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
-            self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale))
+            self.collision_list.append({
+                "actor": self.cluttered_obj,
+                "collision_path": path,
+            })
 
         if success_count < obstacle_count:
             print(f"Warning: Only {success_count} cluttered objects are placed on the surface.")
@@ -1089,38 +1095,45 @@ class Bench_base_task(Base_Task):
     def update_world(self):
         """Updates CuRobo Collision World Model with new collision objects"""
         collision_dict = {"mesh": {}, "cuboid": {}}
-        for actor, collision_path, scale in self.collision_list:
-                if os.path.isdir(collision_path): # if actor is made from multiple obj files
-                    name_prefix = actor.get_name()
-                    if name_prefix == "036_cabinet":
-                        pose = actor.get_link_pose("link_0")
-                    elif name_prefix == "015_laptop":
-                        pose = actor.get_link_pose("link_1")
+        if self.collision_list:
+            for info in self.collision_list:
+                    actor = info["actor"]
+                    collision_path = info["collision_path"]
+                    if os.path.isdir(collision_path): # if actor is made from multiple obj files
+                        name_prefix = actor.get_name()
+                        if "link" in info:
+                            pose = actor.get_link_pose(info["link"])
+                        else:
+                            pose = actor.get_pose()
+                        np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                        convex_collision_dict = self.collision_dict_from_convex_obj_dir(
+                            collision_path,
+                            pose=np_pose,
+                            scale=actor.scale,
+                            name_prefix = name_prefix,
+                            files = info.get("files", None)
+                        )
+                        collision_dict["mesh"] = (
+                            collision_dict["mesh"] | convex_collision_dict["mesh"]
+                        )
                     else:
                         pose = actor.get_pose()
-                    np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                    convex_collision_dict = self.collision_dict_from_convex_obj_dir(
-                        collision_path,
-                        pose=np_pose,
-                        scale=actor.scale,
-                        name_prefix = name_prefix
-                    )
-                    collision_dict["mesh"] = (
-                        collision_dict["mesh"] | convex_collision_dict["mesh"]
-                    )
-                else:
-                    pose = actor.get_pose()
-                    np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                    collision_dict["mesh"][f"{actor.get_name()}_{np_pose}"] = {
-                            "file_path": collision_path,
-                            "pose": np_pose,
-                            "scale": actor.scale,
-                        }
-        for name, dims, pose in self.cuboid_collision_list:
-            collision_dict["cuboid"][name] = {
-                "dims": dims,
-                "pose": pose,
-            }
+                        np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                        collision_dict["mesh"][f"{actor.get_name()}_{np_pose}"] = {
+                                "file_path": collision_path,
+                                "pose": np_pose,
+                                "scale": actor.scale,
+                            }
+
+        if self.cuboid_collision_list:
+            for info in self.cuboid_collision_list:
+                name = info["name"]
+                dims = info["dims"]
+                pose = info["pose"]
+                collision_dict["cuboid"][name] = {
+                    "dims": dims,
+                    "pose": pose,
+                }
         self.robot.update_world(collision_dict)
     
     def collision_dict_from_convex_obj_dir(
@@ -1131,6 +1144,7 @@ class Bench_base_task(Base_Task):
         pose: tuple[float, float, float, float, float, float, float],  # [x,y,z,qw,qx,qy,qz]
         scale: tuple[float, float, float],  # e.g. (0.6, 0.8, 0.4)
         glob_pattern: str = "*.obj",
+        files: list[str] = None,
         recursive: bool = False,
     ) -> dict:
         """
@@ -1144,10 +1158,22 @@ class Bench_base_task(Base_Task):
         if not obj_dir.exists() or not obj_dir.is_dir():
             raise FileNotFoundError(f"OBJ directory not found or not a directory: {obj_dir}")
 
-        it = obj_dir.rglob(glob_pattern) if recursive else obj_dir.glob(glob_pattern)
-        obj_files = sorted([p for p in it if p.is_file()])
+        if files is not None:
+            obj_files = []
+            for file_name in files:
+                p = obj_dir / file_name
+                if p.is_file():
+                    obj_files.append(p)
+            obj_files = sorted(obj_files)
+        else:
+            it = obj_dir.rglob(glob_pattern) if recursive else obj_dir.glob(glob_pattern)
+            obj_files = sorted([p for p in it if p.is_file()])
 
         if not obj_files:
+            if files is not None:
+                raise FileNotFoundError(
+                    f"No requested OBJ files found in {obj_dir}. Requested files: {files}"
+                )
             raise FileNotFoundError(
                 f"No OBJ files found in {obj_dir} with pattern '{glob_pattern}' (recursive={recursive})"
             )
@@ -1172,7 +1198,7 @@ class Bench_base_task(Base_Task):
             if getattr(m, "faces", None) is None or len(m.faces) == 0:
                 continue
 
-            part_name = f"{name_prefix}_{i}_{p.stem}_{self.seed}"
+            part_name = f"{name_prefix}_{i}_{self.seed}"
             collision_dict["mesh"][part_name] = {
                 "file_path": str(p),
                 "pose": list(pose),
