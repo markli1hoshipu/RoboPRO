@@ -11,9 +11,14 @@ from envs.utils import *
 from envs._GLOBAL_CONFIGS import *
 from copy import deepcopy
 from bench_envs.utils.scene_gen_utils import get_position_limits, get_actor_boundingbox, get_collison_with_objs
-from bench_envs.utils.scene_gen_utils import print_c, place_actor
+from bench_envs.utils.scene_gen_utils import place_actor
 from transforms3d.euler import euler2quat
 from envs.utils.rand_create_actor import rand_pose
+
+
+def _robotwin_log_move():
+    return os.environ.get("ROBOTWIN_LOG_MOVE", "") == "1"
+
 
 class move_books_onto_table(Study_base_task):
 
@@ -55,19 +60,35 @@ class move_books_onto_table(Study_base_task):
         self.lift_height = 0.2
         self.ep_lift = -0.2 #if self.arm_side == "right" else -xy_thr
 
-
+        book_ylim = [ylim[0] + 0.0, ylim[1]-0.1]
+        book_xlim = [xlim[0] + 0.01, xlim[1]-0.1]
+        if _robotwin_log_move():
+            print(f"[move_books_onto_table] book_xlim: {book_xlim}")
+            print(f"[move_books_onto_table] book_ylim: {book_ylim}")
+        
         while True:
-            self.des_obj_pose  = rand_pose(
+            base_pose = rand_pose(
                 xlim=xlim,
-                ylim=ylim,
-                zlim=[0.76],
-                qpos=euler2quat(*[np.deg2rad(d) for d in [0,0,0]]), 
+                ylim=book_ylim,
+                zlim=[0.84],
+                qpos=euler2quat(*[np.deg2rad(d) for d in [25, 180, 0]]),
                 rotate_rand=None,
             )
-            if not get_collison_with_objs(object_bounds, self.des_obj_pose, 0.25):
+            if not get_collison_with_objs(object_bounds, base_pose, 0.25):
                 break
 
-        print_c(f"placing book at {self.des_obj_pose}", "RED")
+        self.des_obj_poses = [
+            base_pose,
+            sapien.Pose(
+                [base_pose.p[0], base_pose.p[1]-0.015, base_pose.p[2] + 0.005],
+                base_pose.q,
+            ),
+        ]
+        if _robotwin_log_move():
+            print(
+                f"[move_books_onto_table] placing books at low={self.des_obj_poses[0]} "
+                f"high={self.des_obj_poses[1]}"
+            )
         self.add_prohibit_area(self.target_obj_1, padding=0.12, area="table")
 
       
@@ -76,31 +97,42 @@ class move_books_onto_table(Study_base_task):
         arm_tag = ArmTag(self.arm_side) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
 
 
-        for target_pose in [self.target_obj_1, self.target_obj_2]:
+        for i, target_obj in enumerate([self.target_obj_1, self.target_obj_2]):
+            _p = target_obj.get_pose()
+            if _robotwin_log_move():
+                print(
+                    f"[move_books_onto_table] target_obj (actor {target_obj.get_name()}): "
+                    f"p={np.round(np.asarray(_p.p), 4)} q={np.round(np.asarray(_p.q), 4)}"
+                )
             # Grasp the mouse with the selected arm
-            self.move(self.grasp_actor(target_pose, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
+            self.move(self.grasp_actor(target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
 
             # Lift the mouse upward by 0.1 meters in z-direction
             # self.move(self.move_to_pose(arm_tag=arm_tag, target_pose=self.lift_pose,
             #                              constraint_pose=[0,0,0,1,0,0,0]))
+            # self.move(self.move_by_displacement(arm_tag=arm_tag, y= self.ep_lift, 
+            #                                     z=self.lift_height, 
+            #                                     constraint_pose=None))
             self.move(self.move_by_displacement(arm_tag=arm_tag, y= self.ep_lift, 
-                                                z=self.lift_height, 
-                                                constraint_pose=None))
+                                                z=self.lift_height))
 
-            self.attach_object(target_pose, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id_1}.glb", str(arm_tag))
+            self.attach_object(target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id_1}.glb", str(arm_tag))
 
             self.move(
                 self.place_actor(
-                    target_pose,
+                    target_obj,
                     arm_tag=arm_tag,
-                    target_pose= self.des_obj_pose,
-                    constrain= [0,0,0,1,1,1],
-                    actor_axis="world",
+                    target_pose=self.des_obj_poses[i],
+                    constrain= "free",
+                    actor_axis_type="world",
                     pre_dis=pre_dis,
                     dis=dis,
-                    align_axis=[1, 1, 0]
+                    align_axis=[0, 0, 0]
                 ))
             self.detach_object(arm_tag)
+            
+            self.move(self.move_by_displacement(arm_tag=arm_tag, x = -0.06, 
+                                                y = -0.05, z = 0.03)) #DEBUG number
 
         # Record information about the objects and arm used in the task
         self.info["info"] = {
@@ -111,6 +143,28 @@ class move_books_onto_table(Study_base_task):
         return self.info
 
     def check_success(self):
-        eps1 = 0.015
+        eps1 = 0.05
+        p1 = np.asarray(self.target_obj_1.get_pose().p)
+        p2 = np.asarray(self.target_obj_2.get_pose().p)
+        d0 = np.asarray(self.des_obj_poses[0].p)
+        d1 = np.asarray(self.des_obj_poses[1].p)
+        xy_ok = np.all(np.abs(p1[:2] - d0[:2]) < eps1) and np.all(
+            np.abs(p2[:2] - d1[:2]) < eps1
+        )
+        expected_dz = float(d1[2] - d0[2])
+        actual_dz = float(p2[2] - p1[2])
+        z_stack_ok = actual_dz > 0 and abs(actual_dz - expected_dz) < eps1
 
-        return abs(self.target_obj_1.get_pose().p[-1] - self.lift_height) < eps1
+        if _robotwin_log_move():
+            e1_xy = p1[:2] - d0[:2]
+            e2_xy = p2[:2] - d1[:2]
+            dz_err = actual_dz - expected_dz
+            print(
+                f"[move_books_onto_table] check_success "
+                f"xy_err_obj1={np.round(e1_xy, 4)} max_abs={np.max(np.abs(e1_xy)):.4f} "
+                f"xy_err_obj2={np.round(e2_xy, 4)} max_abs={np.max(np.abs(e2_xy)):.4f} "
+                f"dz_err={dz_err:.4f} (actual_dz={actual_dz:.4f} expected_dz={expected_dz:.4f}) "
+                f"xy_ok={xy_ok} z_stack_ok={z_stack_ok}"
+            )
+
+        return bool(xy_ok and z_stack_ok)
