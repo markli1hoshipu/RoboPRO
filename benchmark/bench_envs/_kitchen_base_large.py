@@ -606,7 +606,7 @@ class Kitchen_base_large(Bench_base_task):
         """Place the chosen articulated cabinet asset on the opposite end of the table from the drawer."""
         # Mirror the drawer position across the table center in x.
         x_center = table_xy_bias[0]
-        y_center = table_xy_bias[1] + 0.22
+        y_center = table_xy_bias[1] + 0.12
         z_center = table_height + 0.7
 
         # Apply 90° rotation around all three axes (roll, pitch, yaw).
