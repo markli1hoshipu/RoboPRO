@@ -60,18 +60,20 @@ class move_books_onto_table(Study_base_task):
         self.lift_height = 0.2
         self.ep_lift = -0.2 #if self.arm_side == "right" else -xy_thr
 
+        book_xlim = [xlim[0] + 0.05, xlim[1]-0.1]
         book_ylim = [ylim[0] + 0.0, ylim[1]-0.1]
-        book_xlim = [xlim[0] + 0.01, xlim[1]-0.1]
+        
         if _robotwin_log_move():
             print(f"[move_books_onto_table] book_xlim: {book_xlim}")
             print(f"[move_books_onto_table] book_ylim: {book_ylim}")
         
         while True:
             base_pose = rand_pose(
-                xlim=xlim,
+                xlim=book_xlim,
                 ylim=book_ylim,
-                zlim=[0.84],
+                zlim=[0.83],
                 qpos=euler2quat(*[np.deg2rad(d) for d in [25, 180, 0]]),
+                # qpos=euler2quat(*[np.deg2rad(d) for d in [0, 0, 0]]),
                 rotate_rand=None,
             )
             if not get_collison_with_objs(object_bounds, base_pose, 0.25):
@@ -127,7 +129,7 @@ class move_books_onto_table(Study_base_task):
                     actor_axis_type="world",
                     pre_dis=pre_dis,
                     dis=dis,
-                    align_axis=[0, 0, 0]
+                    align_axis=None
                 ))
             self.detach_object(arm_tag)
             
