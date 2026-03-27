@@ -498,6 +498,7 @@ class Kitchen_base_large(Bench_base_task):
         self._load_microwave_on_table(table_height, table_xy_bias)
         self._load_basket_on_table(table_height, table_xy_bias)
         self._load_cabinet_on_table(table_height, table_xy_bias)
+        self._add_cabinet_wall_filler()
 
         # Additional kitchen appliances (wall cabinets, pantry rack, etc.)
         # can be re-enabled later via _load_kitchen_appliances if needed.
@@ -627,6 +628,89 @@ class Kitchen_base_large(Bench_base_task):
             self.cabinet.set_name("cabinet")
             self.add_prohibit_area(self.cabinet, padding=0.02, area="cabinet")
             self._init_cabinet_states()
+
+    def _entity_aabb(self, entity):
+        # Actor path: reuse existing utility.
+        if hasattr(entity, "get_components"):
+            return get_actor_boundingbox(entity)
+
+        # Articulation path: aggregate all link collision-shape vertices.
+        if not hasattr(entity, "get_links"):
+            return None, None
+
+        all_points = []
+        for link in entity.get_links():
+            try:
+                link_pose = link.pose
+            except Exception:
+                link_pose = link.get_pose()
+            link_mat = link_pose.to_transformation_matrix()
+
+            try:
+                shapes = link.get_collision_shapes()
+            except Exception:
+                shapes = []
+
+            for shape in list(shapes):
+                try:
+                    local_v = np.array(shape.get_vertices(), dtype=float)
+                except Exception:
+                    try:
+                        hs = np.array(shape.half_size, dtype=float)
+                    except Exception:
+                        continue
+                    local_v = np.array(
+                        [[x, y, z] for x in (-hs[0], hs[0]) for y in (-hs[1], hs[1]) for z in (-hs[2], hs[2])],
+                        dtype=float,
+                    )
+
+                try:
+                    local_v = local_v * np.array(shape.scale, dtype=float)
+                except Exception:
+                    pass
+
+                try:
+                    shape_mat = shape.get_local_pose().to_transformation_matrix()
+                except Exception:
+                    shape_mat = np.eye(4, dtype=float)
+
+                world_mat = link_mat @ shape_mat
+                homo_v = np.pad(local_v, ((0, 0), (0, 1)), constant_values=1.0)
+                world_v = (world_mat @ homo_v.T).T[:, :3]
+                all_points.append(world_v)
+
+        if not all_points:
+            return None, None
+        points_cloud = np.vstack(all_points)
+        return points_cloud.min(axis=0), points_cloud.max(axis=0)
+
+    def _add_cabinet_wall_filler(self):
+        """
+        Fill space behind cabinet with a simple gray static box.
+        """
+        if getattr(self, "cabinet", None) is None:
+            return
+
+        cab_pose = np.array(self.cabinet.get_pose().p, dtype=float)
+        scale_ratio = float(self.cabinet_scale) / 0.5
+
+        # User-requested simple placement: smaller dimensions + positive y offset.
+        x_half = 0.30 * scale_ratio
+        y_half = 0.11 * scale_ratio
+        z_half = 0.22 * scale_ratio
+
+        x_center = float(cab_pose[0])
+        y_center = float(cab_pose[1] + 0.16 * scale_ratio)
+        z_center = float(cab_pose[2])
+
+        self.cabinet_wall_filler = create_box(
+            self.scene,
+            sapien.Pose(p=[x_center, y_center, z_center]),
+            half_size=[x_half, y_half, z_half],
+            color=(0.32, 0.32, 0.32),
+            name="cabinet_wall_filler",
+            is_static=True,
+        )
 
     # -----------------------
     # Cabinet articulation state helpers
