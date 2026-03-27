@@ -132,14 +132,14 @@ class open_cabinet(Kitchen_base_large):
 
         # Move to the initial TCP pose and rotate by +90 degrees around the y-axis.
         self.move(self.move_by_displacement(arm_tag=arm_tag, quat=rotated_tcp_quat.tolist()))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, x=-0.17, y=0.2, z=0.30))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=-0.17, y=0.1, z=0.30))
         self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.054))
         self.move(self.close_gripper(arm_tag=arm_tag, pos=-0.1))
 
         # Pull the cabinet door with a circular trajectory (same style as open_fridge).
         self.pull_door_circularly(
             arm_tag=arm_tag,
-            door_radius=0.21,
+            door_radius=0.20,
             total_open_angle=45,
             num_steps=30,
         )
