@@ -47,7 +47,8 @@ class lift_cup_from_book(Study_base_task):
         self.target_obj, self.target_id, self.target_pose = \
             place_actor(self.target_name, self, task_objs = task_objs,
                     obj_pose=self.target_pose, mass = 0.2)
-        
+        self.init_tar_pose = self.target_obj.get_pose()
+
         self.lift_height = 0.2
         xy_thr = 0.2
         self.ep_lift = xy_thr if self.arm_side == "right" else -xy_thr
@@ -83,6 +84,5 @@ class lift_cup_from_book(Study_base_task):
         return self.info
 
     def check_success(self):
-        eps1 = 0.015
-
-        return abs(self.target_obj.get_pose().p[-1] - self.lift_height) < eps1
+        eps1 = 0.05
+        return abs(self.target_obj.get_pose().p[-1] - (self.init_tar_pose.p[-1] + self.lift_height) )< eps1

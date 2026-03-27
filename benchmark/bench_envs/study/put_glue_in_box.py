@@ -81,12 +81,8 @@ class put_glue_in_box(Study_base_task):
         return self.info
 
     def check_success(self):
-        target_pose = self.target_obj.get_pose().p
-        target_qpose = np.abs(self.target_obj.get_pose().q)
-        target_des_pos = self.target_obj.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
-
-        return (np.all(abs(target_pose[:2] - target_des_pos[:2]) < np.array([eps1, eps2]))
-                 and self.robot.is_left_gripper_open()
+        box_bb = get_actor_boundingbox(self.box.actor)
+        return (np.all((box_bb[0][:2] <= self.target_obj.get_pose().p[:2])  & 
+                       (self.target_obj.get_pose().p[:2] <= box_bb[1][:2]))
+                and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

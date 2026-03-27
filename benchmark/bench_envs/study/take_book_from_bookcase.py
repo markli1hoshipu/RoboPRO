@@ -33,12 +33,15 @@ class take_book_from_bookcase(Study_base_task):
         p = [bcs_bb[0][0]+ delta[0], bcs_bb[0][1] + y_l/2, self.table.get_pose().p[-1] + 0.03]
         q = (0,180,90)
 
-        self.arm_side = delta[1]
+        self.arm_side = "right"
         self.target_name = "043_book"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
         
         self.target_obj, self.target_id, self.target_pose = \
         place_actor(self.target_name, self, task_objs = task_objs,obj_id = 0,
                      obj_pose=[p,q], mass = 0.5, rotation=False)
+       
+        self.init_tar_pose = self.target_obj.get_pose()
+
         self.lift_height = 0.2
         xy_thr = 0.2
         self.ep_lift = -xy_thr  #if self.arm_side == "right" else -xy_thr
@@ -72,6 +75,6 @@ class take_book_from_bookcase(Study_base_task):
         return self.info
 
     def check_success(self):
-        eps1 = 0.015
+        eps1 = 0.05
 
-        return abs(self.target_obj.get_pose().p[-1] - self.lift_height) < eps1
+        return abs(self.target_obj.get_pose().p[-1] - (self.init_tar_pose.p[-1] + self.lift_height) )< eps1

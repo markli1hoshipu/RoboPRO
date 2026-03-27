@@ -22,7 +22,7 @@ class move_cup_next_to_book(Study_base_task):
     def load_actors(self):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
-        move_thr = 0.08
+        move_thr = 0.12
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
                                       boundary_thr=0.10, side="right")
         

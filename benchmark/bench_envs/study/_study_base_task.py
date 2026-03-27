@@ -258,6 +258,9 @@ class Study_base_task(Bench_base_task):
                     is_static=param.get('is_static', True)
                 )
                 self.scene_objs.append(value)
+                # if "bookcase" not in obj:
+                #     self.collision_list.append((value, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj}/collision/base{param.get('model_id', 0)}.glb", param.get("scale", [1,1,1])))
+
                 self.add_prohibit_area(value, padding=0.12, area="table")
 
             elif param.get("obj_type", "actor") == "table":
@@ -362,7 +365,6 @@ class Study_base_task(Bench_base_task):
                     q = [1,0,0,0]
 
             )
-            # try:
             value = create_actor(
                     scene=self,
                     pose=pose,
@@ -373,23 +375,12 @@ class Study_base_task(Bench_base_task):
                     is_static= True
             )
             bbox = get_actor_boundingbox(value.actor)
-            # print(dir(value.actor))
-            print(pose.p)
-            print(bbox)
             if bbox[0][1] < pose.p[1]:
                 value.actor.set_pose(
                     sapien.Pose(
                         p = [pose.p[0], pose.p[1]+ pose.p[1]- bbox[0][1], pose.p[2]], 
                         q = pose.q)
                 )
-            print([pose.p[0], pose.p[1]+ pose.p[1]- bbox[0][1], pose.p[2]])
-            # except:
-            #     print("didn't work")
-            #     continue
-            # setattr(self, f"{obj_name.split('_')[-1]}_{obj_ins}", value)
-        
-   
-  
     
     def get_cluttered_surfaces(self):
         self.get_cluttered_table()

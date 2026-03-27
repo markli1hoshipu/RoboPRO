@@ -51,10 +51,17 @@ def get_actor_boundingbox(entity):
     points_cloud = np.vstack(all_points)
     return points_cloud.min(axis=0), points_cloud.max(axis=0)
 
-def get_position_limits(surface_obj, boundary_thr = 0.15, robot_reach_thr = 0.6,
+def get_position_limits(surface_obj, boundary_thr = 0.15, 
+                       robot_reach_thr = 0.6,
                        arm_x_pose = 0.15, side=None):
     # Get generation limits
     # Assumption is that the robot is centered with respect to the the surface area
+    if isinstance(boundary_thr, float):
+        x_thr = y_thr = boundary_thr
+    else:
+        x_thr = boundary_thr[0]
+        y_thr = boundary_thr[1]
+
     try:
         actor = surface_obj.actor
     except:
@@ -64,14 +71,14 @@ def get_position_limits(surface_obj, boundary_thr = 0.15, robot_reach_thr = 0.6,
     side_to_place = side or np.random.choice(["left", "right"])
 
     if side_to_place == "left":
-        xmin = max((table_bb[0][0] + boundary_thr),  (-arm_x_pose - robot_reach_thr))
+        xmin = max((table_bb[0][0] + x_thr),  (-arm_x_pose - robot_reach_thr))
         xmax = min((-arm_x_pose + robot_reach_thr), arm_x_pose)
         xlim=[xmin, xmax ] # 0.9 is the range of reach for the robot arm
     else:
-        xmax = min((table_bb[1][0] - boundary_thr),  (arm_x_pose + robot_reach_thr))
+        xmax = min((table_bb[1][0] - x_thr),  (arm_x_pose + robot_reach_thr))
         xmin = max((arm_x_pose - robot_reach_thr), -arm_x_pose)
         xlim=[xmin, xmax] # 0.9 is the range of reach for the robot arm
-    ylim= [table_bb[0][1] + boundary_thr, table_bb[1][1]- boundary_thr]
+    ylim= [table_bb[0][1] + y_thr, table_bb[1][1]- y_thr]
 
     return xlim, ylim, side_to_place
 
@@ -120,6 +127,20 @@ def get_collison_with_objs(object_bounds, obj_pose, x_thr, y_thr = None):
             return True
     return False
 
+def get_random_place_pose(xlim, ylim, object_bounds=None, col_thr=0.15, qpos=(0,0,0),
+                          rotation=False, rotate_lim = (0,0,0)):
+        
+    while True:
+        obj_pose = rand_pose(
+            xlim=xlim,
+            ylim=ylim,
+            qpos=euler2quat(*[np.deg2rad(d) for d in qpos]), #[0.5, 0.5, 0.5, 0.5],
+            rotate_rand=rotation,
+            rotate_lim=rotate_lim,
+        )
+        if not get_collison_with_objs(object_bounds, obj_pose, col_thr):
+            return obj_pose
+            
 def place_actor(obj_name, scene, task_objs, col_thr=0.15, object_bounds=None, 
                 obj_id = None, mass = 0.1,  xlim=None, ylim=None, obj_pose=None, 
                 qpos=(0,0,0), rotation=False, rotate_lim = (0,0,0)):
@@ -130,9 +151,9 @@ def place_actor(obj_name, scene, task_objs, col_thr=0.15, object_bounds=None,
             obj_pose = rand_pose(
                 xlim=xlim,
                 ylim=ylim,
-                qpos=euler2quat(*[np.deg2rad(d) for d in qpos]), #[0.5, 0.5, 0.5, 0.5],
+                qpos=euler2quat(*[np.deg2rad(d) for d in qpos]),
                 rotate_rand=rotation,
-                rotate_lim=rotate_lim,
+                rotate_lim=rotate_lim
             )
             if not get_collison_with_objs(object_bounds, obj_pose, col_thr):
                 break
@@ -149,6 +170,7 @@ def place_actor(obj_name, scene, task_objs, col_thr=0.15, object_bounds=None,
             modelname=obj_name,
             convex=True,
             model_id= obj_id,
+            is_static=False,
             scale= None if task_objs['scales'].get(obj_name) is None else \
                 task_objs['scales'][obj_name].get(str(obj_id)) 
     )
@@ -178,6 +200,7 @@ TEXT_COLOR = {"RED": '\033[31m',
              "WHITE": '\033[37m'   }
 def print_c(text, color="WHITE"):
     print(f"{TEXT_COLOR[color]}{text}{TEXT_COLOR['RESET']}")
+
 def get_task_objects_config(task_cfg_path=None):
     """
     Load and return the complete benchmark/bench_task_config/task_objects.yml as a dict.
@@ -209,3 +232,11 @@ def get_task_objects_config(task_cfg_path=None):
         raise ValueError(f"Expected dict in {task_cfg_path}, got {type(data).__name__}")
 
     return data
+
+def point_to_box_distance(point, b_min, b_max):
+    # Calculate distance for each axis (0 if inside the box range)
+    dx = max(0, b_min[0] - point[0], point[0] - b_max[0])
+    dy = max(0, b_min[1] - point[1], point[1] - b_max[1])
+    dz = max(0, b_min[2] - point[2], point[2] - b_max[2])
+    
+    return np.sqrt(dx**2 + dy**2 + dz**2)

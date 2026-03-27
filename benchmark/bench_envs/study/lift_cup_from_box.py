@@ -14,7 +14,7 @@ from bench_envs.utils.scene_gen_utils import get_position_limits, get_actor_boun
 from bench_envs.utils.scene_gen_utils import print_c, place_actor
 from transforms3d.euler import euler2quat
 
-class lift_pen_from_pencup(Study_base_task):
+class lift_cup_from_box(Study_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
@@ -23,35 +23,25 @@ class lift_pen_from_pencup(Study_base_task):
     def load_actors(self):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
-        
-        xlim, ylim, self.arm_side = get_position_limits(self.table, boundary_thr=0.25)
-       
-        object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
 
-        self.des_obj_name = "059_pencup"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
-        
-        self.des_obj, self.des_obj_id, self.des_obj_pose = \
-        place_actor(self.des_obj_name, self, col_thr =0.15,
-                     xlim=xlim, ylim=ylim, qpos=(90,0,90),
-                     object_bounds = object_bounds, task_objs = task_objs,
-                     obj_id = 1, mass = 0.5, rotation=False)
-       
+        self.des_obj = self.box
     
         des_bb = get_actor_boundingbox(self.des_obj.actor)
-        des_bb = get_actor_boundingbox(self.des_obj.actor)
-        place_pose =  [[*self.des_obj.get_pose().p[:2],
-                         des_bb[0][-1] + 0.03],(90,0,90)]
 
-        self.target_name = "058_markpen"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
+        self.target_name = "021_cup"
+
+        place_pose =  [[self.des_obj.get_pose().p[0], 
+                        self.des_obj.get_pose().p[1] + np.random.uniform(low=-0.1, high=0.1),
+                        des_bb[0][-1] + 0.03],(90,0,90)]
+
         self.target_obj, self.target_id, self.target_pose = \
             place_actor(self.target_name, self, task_objs = task_objs,
-                    obj_pose=place_pose, mass = 0.4, obj_id=1,
-                    qpos=(180,0,0))
-       
+                    obj_pose=place_pose, mass = 0.2)
+        
         self.init_tar_pose = self.target_obj.get_pose()
-        self.lift_height = 0.2
-        xy_thr = 0.2
-        self.ep_lift = xy_thr if self.arm_side == "right" else -xy_thr
+        self.lift_height = 0.15
+        self.ep_lift = 0.15
+        self.arm_side = "left"
         print_c(f"Lifting by {self.lift_height}", "RED")
         self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
         self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
@@ -66,14 +56,11 @@ class lift_pen_from_pencup(Study_base_task):
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
 
         # Lift the mouse upward by 0.1 meters in z-direction
-        # self.move(self.move_to_pose(arm_tag=arm_tag, target_pose=self.lift_pose,
-        #                              constraint_pose=[0,0,0,1,0,0,0]))
         self.move(self.move_by_displacement(arm_tag=arm_tag, x= self.ep_lift, 
                                             z=self.lift_height, 
                                             constraint_pose=None))
 
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
-
 
         # Record information about the objects and arm used in the task
         self.info["info"] = {

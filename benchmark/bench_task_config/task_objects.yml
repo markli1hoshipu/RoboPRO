@@ -15,7 +15,6 @@ objects:
         048_stapler: [0,1,2,3,4]
         055_small-speaker: [1,2,3]
         073_rubikscube: [0,2]
-        100_seal: [0,1]
       tall:
         # 001_bottle: [1,11,14,16,21]
         089_globe: [2,3]
@@ -24,11 +23,11 @@ objects:
   study:
     targets:
       021_cup: [0,1,2,3]
-      039_mug: [0,7,5,11]
       043_book: [0,1]
-      058_markpen: [0,1,3,4]
+      058_markpen: [0,1,3]
       095_glue: [0,1,2,4]
-      059_pencup: [1,2]
+      059_pencup: [1]
+      100_seal: [0,2,3]
     obstacles:
       short:
         023_tissue-box: [0,1,2,3,4]
@@ -100,6 +99,7 @@ object_ood:
         039_mug: [9]
         058_markpen: [5]
         095_glue: [5]
+        048_stapler: [5,6]
       obstacles:
         023_tissue-box: [5,6]
         057_toycar: [5]

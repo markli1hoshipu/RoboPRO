@@ -13,7 +13,7 @@ from bench_envs.utils.scene_gen_utils import get_position_limits, get_actor_boun
 from bench_envs.utils.scene_gen_utils import print_c, place_actor
 from transforms3d.euler import euler2quat
 
-class move_objects_into_box(Study_base_task):
+class move_cups_into_box(Study_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
@@ -30,18 +30,17 @@ class move_objects_into_box(Study_base_task):
         self.target_objects = []
         self.des_obj_poses = []
         des_pos = self.box.get_pose().p
-        place_gap = 0.12
+        place_gap = 0.10
         self.target_name = "021_cup"
         for i, tn in enumerate(["021_cup","021_cup"]):
             target_obj, target_id, target_pose = \
             place_actor(tn, self, col_thr=0.10, xlim=xlim, ylim=ylim, 
                         qpos=(90,0,90), object_bounds=object_bounds, task_objs=task_objs,
                         mass = 0.1, rotation=False, obj_id=None)
+           
             self.target_objects.append((tn, target_id, target_obj))
-            tar_bb = get_actor_boundingbox(target_obj.actor)
-            object_bounds.append(tar_bb)
             self.des_obj_poses.append([des_pos[0], des_pos[1] - place_gap + (i*place_gap), des_pos[-1]]+[1,0,0,0])
-            self.add_prohibit_area(target_obj, padding=0.12, area="table")
+            self.add_prohibit_area(target_obj, padding=0.1, area="table")
 
 
         print_c(f"Placement destination pose {des_pos}", "RED")

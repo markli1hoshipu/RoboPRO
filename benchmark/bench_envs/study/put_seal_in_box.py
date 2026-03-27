@@ -13,7 +13,7 @@ from bench_envs.utils.scene_gen_utils import get_position_limits, get_actor_boun
 from bench_envs.utils.scene_gen_utils import print_c, place_actor
 from transforms3d.euler import euler2quat
 
-class put_cup_in_box(Study_base_task):
+class put_seal_in_box(Study_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
@@ -28,10 +28,10 @@ class put_cup_in_box(Study_base_task):
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
   
       
-        self.target_name = "021_cup"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
+        self.target_name = "100_seal"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
         self.target_obj, self.target_id, self.target_pose = \
         place_actor(self.target_name, self, col_thr=0.10, xlim=xlim, ylim=ylim, 
-                    qpos=(90,0,90), object_bounds=object_bounds, task_objs=task_objs,
+                    qpos=(90,0,0), object_bounds=object_bounds, task_objs=task_objs,
                      mass = 0.1, rotation=False)
         
      
@@ -42,6 +42,7 @@ class put_cup_in_box(Study_base_task):
         p[-1] = des_bb[1][-1]
         self.des_obj_pose = p + [1, 0, 0, 0]
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
+
 
         self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
         self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
