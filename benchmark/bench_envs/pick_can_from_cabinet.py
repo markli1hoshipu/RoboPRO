@@ -11,7 +11,6 @@ class pick_can_from_cabinet(Kitchen_base_large):
     IN_HAND_TCP_DIST_THRESHOLD = 0.18
 
     # Can spawn anchor in cabinet base-link local coordinates.
-    # y, z, x
     CABINET_CAN_LOCAL = np.array([0.09, -0.21, -0.14], dtype=float)
 
     # Cabinet interior bounds in cabinet base-link local frame.
@@ -21,8 +20,7 @@ class pick_can_from_cabinet(Kitchen_base_large):
 
     # Retrieval trajectory tuning.
     APPROACH_DELTA = dict(x=-0.05, y=0.15, z=0.35)
-    LIFT_DELTA = dict(z=0.06)
-    RETREAT_DELTA = dict(y=-0.18)
+    RETREAT_DELTA = dict(y=-0.18, z=0.06)
     GRASP_PRE_DIS = 0.07
     GRASP_DIS = 0.01
     GRASP_CLOSE_POS = 0.0
@@ -44,6 +42,11 @@ class pick_can_from_cabinet(Kitchen_base_large):
         cfg["contact_points_group"] = [[0]]
         cfg["contact_points_mask"] = [True]
 
+    def _ensure_cabinet_open(self) -> None:
+        if getattr(self, "cabinet_closed_qpos", None) is None:
+            self._init_cabinet_states()
+        self.set_cabinet_open()
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.can_modelname = "071_can"
         self.can_model_ids = [5]
@@ -61,9 +64,7 @@ class pick_can_from_cabinet(Kitchen_base_large):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
 
-        if getattr(self, "cabinet_closed_qpos", None) is None:
-            self._init_cabinet_states()
-        self.set_cabinet_open()
+        self._ensure_cabinet_open()
 
     def _can_quat_from_cfg(self) -> list[float]:
         roll_deg, pitch_deg, yaw_deg = self.can_spawn_rot_deg
@@ -80,11 +81,9 @@ class pick_can_from_cabinet(Kitchen_base_large):
         base_p = np.array(base_tf[:3, 3], dtype=float)
         world_inside = base_p + base_R @ self.CABINET_CAN_LOCAL
 
-        # Planned randomization (disabled for now):
-        # world_inside[0] += float(np.random.uniform(-0.02, 0.02))
-        # world_inside[1] += float(np.random.uniform(-0.02, 0.02))
-        world_inside[0] += 0.05
-        world_inside[1] += 0.05
+        # Current behavior: randomized spawn around the cabinet-local anchor.
+        world_inside[0] += float(np.random.uniform(-0.05, 0.05))
+        world_inside[1] += float(np.random.uniform(0.00, 0.10))
 
         return sapien.Pose(world_inside.tolist(), self._can_quat_from_cfg())
 
@@ -98,9 +97,7 @@ class pick_can_from_cabinet(Kitchen_base_large):
         return np.array(can_local_h[:3], dtype=float)
 
     def load_actors(self):
-        if getattr(self, "cabinet_closed_qpos", None) is None:
-            self._init_cabinet_states()
-        self.set_cabinet_open()
+        self._ensure_cabinet_open()
 
         self.can_model_id = int(np.random.choice(self.can_model_ids))
         spawn_pose = self._cabinet_inside_spawn_pose()
@@ -113,7 +110,7 @@ class pick_can_from_cabinet(Kitchen_base_large):
             pose=spawn_pose,
             modelname=self.can_modelname,
             model_id=self.can_model_id,
-            is_static=False,  # requested: start as static object for initial implementation
+            is_static=False,
             convex=True,
             scale=final_scale,
         )
@@ -160,7 +157,7 @@ class pick_can_from_cabinet(Kitchen_base_large):
                 contact_point_id=self.GRASP_CONTACT_POINT_ID,
             )
         )
-        self.move(self.move_by_displacement(arm_tag=arm_tag, **self.LIFT_DELTA))
+        # Lift is intentionally skipped because retreat already clears cabinet edge robustly.
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
         self.move(self.back_to_origin(arm_tag=arm_tag))
 
