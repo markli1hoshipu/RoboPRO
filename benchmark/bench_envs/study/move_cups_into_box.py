@@ -15,6 +15,9 @@ from transforms3d.euler import euler2quat
 
 class move_cups_into_box(Study_base_task):
 
+    def _get_target_object_names(self) -> set[str]:
+        return {t[-1].get_name() for t in self.target_objects}
+
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
@@ -42,7 +45,6 @@ class move_cups_into_box(Study_base_task):
             self.target_objects.append((tn, target_id, target_obj))
             self.des_obj_poses.append([des_pos[0], des_pos[1] - place_gap + (i*place_gap), des_pos[-1]]+[1,0,0,0])
             self.add_prohibit_area(target_obj, padding=0.1, area="table")
-
 
         print_c(f"Placement destination pose {des_pos}", "RED")
 
