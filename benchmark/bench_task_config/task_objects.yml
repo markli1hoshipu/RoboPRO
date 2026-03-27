@@ -106,6 +106,7 @@ object_ood:
         039_mug: [9]
         058_markpen: [5]
         095_glue: [5]
+        048_stapler: [5,6]
       obstacles:
         023_tissue-box: [5,6]
         057_toycar: [5]

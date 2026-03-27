@@ -49,10 +49,6 @@ class lift_cup_from_book(Study_base_task):
             place_actor(self.target_name, self, task_objs = task_objs,
                     obj_pose=self.target_pose, mass = 0.2)
         self.init_tar_pose = self.target_obj.get_pose()
-        # self.collision_list.append({
-        #     "actor":self.target_obj,
-        #     "collision_path": self.col_temp.format(object=self.target_name, object_id=self.target_id)
-        # })
 
         self.lift_height = 0.2
         xy_thr = 0.2

@@ -41,7 +41,7 @@ class put_pen_in_box(Study_base_task):
 
         p = self.des_obj.get_pose().p.tolist() 
         p[-1] = des_bb[1][-1]
-        self.des_obj_pose = p + self.target_obj.get_pose().q.tolist()
+        self.des_obj_pose = p + [1,0,0,0] #self.target_obj.get_pose().q.tolist()
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
 
@@ -68,7 +68,7 @@ class put_pen_in_box(Study_base_task):
                 self.target_obj,
                 arm_tag=arm_tag,
                 target_pose= self.des_obj_pose,
-                constrain= "auto",
+                constrain= "free",
                 pre_dis=pre_dis,
                 dis=dis,
                 actor_axis_type="world"
