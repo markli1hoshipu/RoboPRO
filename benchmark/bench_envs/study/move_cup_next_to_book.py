@@ -10,7 +10,7 @@ from copy import deepcopy
 from bench_envs.study._study_base_task import Study_base_task
 from envs.utils import *
 from bench_envs.utils.scene_gen_utils import get_position_limits, get_actor_boundingbox, get_collison_with_objs
-from bench_envs.utils.scene_gen_utils import print_c, place_actor
+from bench_envs.utils.scene_gen_utils import print_c, place_actor, point_to_box_distance
 from transforms3d.euler import euler2quat
 
 class move_cup_next_to_book(Study_base_task):
@@ -86,12 +86,11 @@ class move_cup_next_to_book(Study_base_task):
         return self.info
 
     def check_success(self):
-        target_pose = self.target_obj.get_pose().p
-        target_des_pos = self.target_obj.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
+        dist_thr = 0.12
+        book_bb = get_actor_boundingbox(self.des_obj.actor)
+        dist_to_cup = point_to_box_distance(self.target_obj.get_pose().p, book_bb[0], book_bb[1])
 
-        return (np.all(abs(target_pose[:2] - target_des_pos[:2]) < np.array([eps1, eps2]))
+        return (dist_to_cup < dist_thr
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
 

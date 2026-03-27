@@ -82,11 +82,17 @@ class move_seal_onto_table(Study_base_task):
         return self.info
 
     def check_success(self):
-        target_pose = self.target_obj.get_pose().p
-        target_des_pos = self.target_place_pose.p
-        eps1 = 0.03
-        eps2 = 0.03
+        box_bb = get_actor_boundingbox(self.box.actor)
+        seal_pose = self.target_obj.get_pose().p
+        eps = 0.03
 
-        return (np.all(abs(target_pose[:2] - target_des_pos[:2]) < np.array([eps1, eps2]))
+        seal_in_box = np.all((box_bb[0][:2] <= seal_pose[:2])  &  (seal_pose[:2] <= box_bb[1][:2]))
+
+        table_bb = get_actor_boundingbox(self.table)
+        seal_on_table = np.all((table_bb[0][:2] <= seal_pose[:2])  &  (seal_pose[:2] <= table_bb[1][:2]))
+        seal_on_table &= (seal_pose[-1] - table_bb[1][-1]) < eps  
+
+
+        return (not seal_in_box and seal_on_table 
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

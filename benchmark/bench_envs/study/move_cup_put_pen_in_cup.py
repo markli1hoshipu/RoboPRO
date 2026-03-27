@@ -112,12 +112,18 @@ class move_cup_put_pen_in_cup(Study_base_task):
         return self.info
 
     def check_success(self):
-        return True
-        target_pose = self.target_obj.get_pose().p
-        target_des_pos = self.des_obj.get_pose().p
-        eps1 = 0.03
-        eps2 = 0.03
+        box_bb = get_actor_boundingbox(self.box.actor)
+        cup_pose = self.cup_obj.get_pose().p
+        eps = 0.03
+        cup_in_box = np.all((box_bb[0][:2] <= cup_pose[:2])  &  (cup_pose[:2] <= box_bb[1][:2]))
 
-        return (np.all(abs(target_pose[:2] - target_des_pos[:2]) < np.array([eps1, eps2]))
+        table_bb = get_actor_boundingbox(self.table)
+        cup_on_table = np.all((table_bb[0][:2] <= cup_pose[:2])  &  (cup_pose[:2] <= table_bb[1][:2]))
+        cup_on_table &= (cup_pose[-1] - table_bb[1][-1]) < eps  
+
+        pen_in_cup = np.all(abs(cup_pose[:2] - self.target_obj.get_pose().p[:2]) < np.array([eps, eps]))
+
+
+        return (not cup_in_box and cup_on_table and pen_in_cup
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

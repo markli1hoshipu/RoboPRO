@@ -42,7 +42,6 @@ class put_cup_on_coaster(Study_base_task):
                          rotation=False)
         
         # Get the placement pose
-        des_bb = get_actor_boundingbox(self.des_obj.actor)
         p = self.des_obj.get_pose().p.tolist() 
 
         p[1] -= 0.05  # Coaster appears 5cm below in the simulator
@@ -91,8 +90,7 @@ class put_cup_on_coaster(Study_base_task):
         return self.info
 
     def check_success(self):
-        box_bb = get_actor_boundingbox(self.box.actor)
-        return (np.all((box_bb[0][:2] <= self.target_obj.get_pose().p[:2])  & 
-                       (self.target_obj.get_pose().p[:2] <= box_bb[1][:2]))
+        eps = 0.02
+        return (np.all((self.des_obj.get_pose().p[:2] - self.target_obj.get_pose().p[:2]) < [eps, eps])  
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

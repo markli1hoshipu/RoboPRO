@@ -10,7 +10,7 @@ from copy import deepcopy
 from bench_envs.study._study_base_task import Study_base_task
 from envs.utils import *
 from bench_envs.utils.scene_gen_utils import get_position_limits, get_actor_boundingbox, get_collison_with_objs
-from bench_envs.utils.scene_gen_utils import print_c, place_actor
+from bench_envs.utils.scene_gen_utils import print_c, place_actor, point_to_box_distance
 from transforms3d.euler import euler2quat
 
 class move_seal_next_to_box(Study_base_task):
@@ -27,9 +27,9 @@ class move_seal_next_to_box(Study_base_task):
         
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         self.target_name = "100_seal"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
-        move_thr = 0.25
+        self.move_thr = 0.25
 
-        xlim_m = [xlim[0] + move_thr+0.1, xlim[1]] 
+        xlim_m = [xlim[0] + self.move_thr + 0.1, xlim[1]] 
         self.target_obj, self.target_id, self.target_pose = \
         place_actor(self.target_name, self, col_thr=0.20, xlim=xlim_m, ylim=ylim, 
                     qpos=(90,0,0), object_bounds=object_bounds, task_objs=task_objs,
@@ -37,7 +37,7 @@ class move_seal_next_to_box(Study_base_task):
         
         
         p = self.box.get_pose().p.tolist() 
-        p[0] += move_thr
+        p[0] += self.move_thr 
         self.des_obj_pose = p + [1,0,0,0] #self.target_obj.get_pose().q.tolist() 
 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
@@ -76,12 +76,10 @@ class move_seal_next_to_box(Study_base_task):
         return self.info
 
     def check_success(self):
-        target_pose = self.target_obj.get_pose().p
-        target_des_pos = self.target_obj.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
+        dist_thr = 0.15
+        box_bb = get_actor_boundingbox(self.box.actor)
+        dist_to_box = point_to_box_distance(self.target_obj.get_pose().p, box_bb[0], box_bb[1])
 
-        return (np.all(abs(target_pose[:2] - target_des_pos[:2]) < np.array([eps1, eps2]))
+        return (dist_to_box < dist_thr
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
-

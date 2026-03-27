@@ -44,21 +44,19 @@ class take_book_from_bookcase(Study_base_task):
 
         self.lift_height = 0.2
         xy_thr = 0.2
-        self.ep_lift = -xy_thr  #if self.arm_side == "right" else -xy_thr
+        self.ep_lift = -xy_thr 
         print_c(f"Lifting by {self.lift_height}", "RED")
         self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
 
       
     def play_once(self, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.arm_side) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
+        arm_tag = ArmTag(self.arm_side) 
 
         # Grasp the mouse with the selected arm
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
 
         # Lift the mouse upward by 0.1 meters in z-direction
-        # self.move(self.move_to_pose(arm_tag=arm_tag, target_pose=self.lift_pose,
-        #                              constraint_pose=[0,0,0,1,0,0,0]))
         self.move(self.move_by_displacement(arm_tag=arm_tag, y= self.ep_lift, 
                                             z=self.lift_height, 
                                             constraint_pose=None))
@@ -76,5 +74,4 @@ class take_book_from_bookcase(Study_base_task):
 
     def check_success(self):
         eps1 = 0.05
-
         return abs(self.target_obj.get_pose().p[-1] - (self.init_tar_pose.p[-1] + self.lift_height) )< eps1

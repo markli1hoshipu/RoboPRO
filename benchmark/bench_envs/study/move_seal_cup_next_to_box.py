@@ -103,18 +103,17 @@ class move_seal_cup_next_to_box(Study_base_task):
 
 
     def check_success(self):
-        dist_tresh = 0.05
+        dist_thr = 0.15
 
         box_bb = get_actor_boundingbox(self.box.actor)
 
-        cup_pose = self.target_obj.get_pose().p[:2]
-        seal_pose = self.target_obj_2.get_pose().p
+        seal_pose = self.target_obj.get_pose().p
+        cup_pose = self.target_obj_2.get_pose().p[:2]
 
         cup_in_box = np.all((box_bb[0][:2] <= cup_pose)  &  (cup_pose <= box_bb[1][:2]))
         seal_in_box = np.all((box_bb[0][:2] <= seal_pose[:2])  &  (seal_pose[:2] <= box_bb[1][:2]))
         dist_to_box = point_to_box_distance(seal_pose, box_bb[0], box_bb[1])
-        print(cup_pose, seal_pose,dist_to_box)
-        return (cup_in_box and not seal_in_box and dist_to_box <= dist_tresh 
+        return (cup_in_box and not seal_in_box and dist_to_box <= dist_thr 
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
 

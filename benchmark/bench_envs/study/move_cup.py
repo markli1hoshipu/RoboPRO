@@ -37,10 +37,12 @@ class move_cup(Study_base_task):
                      mass = 0.1, rotation=False)
 
         move_thr = 0.2
+        self.init_tar_pose = self.target_obj.get_pose().p
+
         p = self.target_obj.get_pose().p.tolist() 
 
         p[0] += move_thr if self.side_to_place == "right" else -move_thr 
-        self.des_obj_pose = p + [1,0,0,0] #
+        self.des_obj_pose = p + [1,0,0,0] 
         print(self.side_to_place)
 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
@@ -64,21 +66,7 @@ class move_cup(Study_base_task):
             )
         grasp.extend(place)
         self.move((arm, grasp))
-        # Lift the mouse upward by 0.1 meters in z-direction
-        # self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
 
-        # self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
-
-        # # Place the mouse at the target location with alignment constraint
-        # self.move(
-        #     self.place_actor(
-        #         self.target_obj,
-        #         arm_tag=arm_tag,
-        #         target_pose= self.des_obj_pose,
-        #         constrain="auto",
-        #         pre_dis=pre_dis,
-        #         dis=dis,
-        #     ))
 
         # Record information about the objects and arm used in the task
         self.info["info"] = {
@@ -120,9 +108,7 @@ class move_cup(Study_base_task):
         return self.info
 
     def check_success(self):
-        target_pose = self.target_obj.get_pose().p
-        target_des_pos = self.des_obj_pose
-        eps = 0.05
-        print(target_pose, target_des_pos)
-        return abs(target_pose[0] - target_des_pos[0]) <   eps
-
+        if self.side_to_place == "right":
+            return abs(self.target_obj.get_pose().p[1] - (self.init_tar_pose[1])) > 0 
+        else:
+            return abs(self.target_obj.get_pose().p[1] - (self.init_tar_pose[1])) < 0 

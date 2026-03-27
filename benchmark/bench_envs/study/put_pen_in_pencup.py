@@ -47,15 +47,7 @@ class put_pen_in_pencup(Study_base_task):
                         obj_id = 1, mass = 0.2, rotation=False)
         
         # Get the placement pose
-        # des_bb = get_actor_boundingbox(self.des_obj.actor)
-        # p = self.des_obj.get_pose().p.tolist() 
-       
-        print(f"target bb {tar_bb}")
-
-        # tar_center = np.add(tar_bb[0], tar_bb[1])/2
-        # offset = np.subtract(tar_center, self.target_obj.get_pose().p)
-        # p = np.add(p, offset).tolist()
-        # p[-1] = des_bb[1][-1]
+  
         self.des_obj_pose = self.des_obj_pose.p.tolist() + euler2quat(0,0,np.deg2rad(90)).tolist()
         self.des_obj_pose[2] = 0.90
         #[1,0,0,0]
@@ -76,17 +68,6 @@ class put_pen_in_pencup(Study_base_task):
         # Grasp the mouse with the selected arm
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
-
-        # Lift the mouse upward by 0.1 meters in z-direction
-        # self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
-
-        # center the gripper
-        # xy_disp = - self.target_obj.get_pose().p
-        # self.move(self.move_by_displacement(arm_tag=arm_tag, x=xy_disp[0]))
-        # self.move(self.move_by_displacement(arm_tag=arm_tag, y=-z*2))
-       
-        # # rotate the pen
-        # self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
         
         self.move(self.move_to_pose(arm_tag, [0,-0.2,0.95,1,0,0,0]))
 
@@ -101,19 +82,6 @@ class put_pen_in_pencup(Study_base_task):
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=-z*2))
         self.move(self.open_gripper(arm_tag, 1))
 
-        # self.des_obj_pose = self.des_obj_pose[:3] + self.target_obj.get_pose().q.tolist()
-
-        # Place the mouse at the target location with alignment constraint
-        # self.move(
-        #     self.place_actor(
-        #         self.target_obj,
-        #         arm_tag=arm_tag,
-        #         target_pose= self.des_obj_pose,
-        #         constrain= [0.8,0.8,0.8,0.8,0.8,0.8],
-        #         pre_dis=pre_dis,
-        #         dis=dis,
-        #     ))
-
         # Record information about the objects and arm used in the task
         self.info["info"] = {
             "{A}": f"{self.target_name}/base{self.target_id}",
@@ -121,6 +89,7 @@ class put_pen_in_pencup(Study_base_task):
             "{a}": str(arm_tag),
         }
         return self.info
+    
     def play_oncebk(self, z = 0.15, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
@@ -178,9 +147,8 @@ class put_pen_in_pencup(Study_base_task):
     def check_success(self):
         target_pose = self.target_obj.get_pose().p
         target_des_pos = self.des_obj.get_pose().p
-        eps1 = 0.03
-        eps2 = 0.03
+        eps = 0.03
 
-        return (np.all(abs(target_pose[:2] - target_des_pos[:2]) < np.array([eps1, eps2]))
+        return (np.all(abs(target_pose[:2] - target_des_pos[:2]) < np.array([eps, eps]))
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
