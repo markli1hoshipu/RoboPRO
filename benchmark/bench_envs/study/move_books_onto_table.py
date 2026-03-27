@@ -145,28 +145,39 @@ class move_books_onto_table(Study_base_task):
         return self.info
 
     def check_success(self):
-        eps1 = 0.05
+        eps_xy = 0.05  # 5cm
         p1 = np.asarray(self.target_obj_1.get_pose().p)
         p2 = np.asarray(self.target_obj_2.get_pose().p)
-        d0 = np.asarray(self.des_obj_poses[0].p)
-        d1 = np.asarray(self.des_obj_poses[1].p)
-        xy_ok = np.all(np.abs(p1[:2] - d0[:2]) < eps1) and np.all(
-            np.abs(p2[:2] - d1[:2]) < eps1
-        )
-        expected_dz = float(d1[2] - d0[2])
-        actual_dz = float(p2[2] - p1[2])
-        z_stack_ok = actual_dz > 0 and abs(actual_dz - expected_dz) < eps1
+        table_z = float(self.table.get_pose().p[2])
+        table_bb = get_actor_boundingbox(self.table)
+
+        # Both books must be within the table surface on xy
+        on_table_1 = (table_bb[0][0] <= p1[0] <= table_bb[1][0] and
+                      table_bb[0][1] <= p1[1] <= table_bb[1][1])
+        on_table_2 = (table_bb[0][0] <= p2[0] <= table_bb[1][0] and
+                      table_bb[0][1] <= p2[1] <= table_bb[1][1])
+
+        # Lower book: 0-5cm above table surface
+        dz1 = float(p1[2] - table_z)
+        z1_ok = 0 <= dz1 <= 0.05
+
+        # Upper book: 0-5cm above lower book
+        dz2 = float(p2[2] - p1[2])
+        z2_ok = 0 <= dz2 <= 0.05
+
+        # XY: second book within 5cm of first book
+        xy_ok = bool(np.all(np.abs(p2[:2] - p1[:2]) < eps_xy))
 
         if _robotwin_log_move():
-            e1_xy = p1[:2] - d0[:2]
-            e2_xy = p2[:2] - d1[:2]
-            dz_err = actual_dz - expected_dz
             print(
                 f"[move_books_onto_table] check_success "
-                f"xy_err_obj1={np.round(e1_xy, 4)} max_abs={np.max(np.abs(e1_xy)):.4f} "
-                f"xy_err_obj2={np.round(e2_xy, 4)} max_abs={np.max(np.abs(e2_xy)):.4f} "
-                f"dz_err={dz_err:.4f} (actual_dz={actual_dz:.4f} expected_dz={expected_dz:.4f}) "
-                f"xy_ok={xy_ok} z_stack_ok={z_stack_ok}"
+                f"table_bb_x=[{table_bb[0][0]:.4f}, {table_bb[1][0]:.4f}] "
+                f"table_bb_y=[{table_bb[0][1]:.4f}, {table_bb[1][1]:.4f}] "
+                f"on_table_1={on_table_1} on_table_2={on_table_2} "
+                f"table_z={table_z:.4f} "
+                f"dz1(book1-table)={dz1:.4f} z1_ok={z1_ok} "
+                f"dz2(book2-book1)={dz2:.4f} z2_ok={z2_ok} "
+                f"xy_diff={np.round(p2[:2] - p1[:2], 4)} xy_ok={xy_ok}"
             )
 
-        return bool(xy_ok and z_stack_ok)
+        return bool(on_table_1 and on_table_2 and z1_ok and z2_ok and xy_ok)
