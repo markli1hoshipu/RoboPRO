@@ -28,7 +28,7 @@ class lift_pen_from_pencup(Study_base_task):
        
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
 
-        self.des_obj_name = "059_pencup"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
+        self.des_obj_name = "059_pencup"
         
         self.des_obj, self.des_obj_id, self.des_obj_pose = \
         place_actor(self.des_obj_name, self, col_thr =0.15,
@@ -42,7 +42,7 @@ class lift_pen_from_pencup(Study_base_task):
         place_pose =  [[*self.des_obj.get_pose().p[:2],
                          des_bb[0][-1] + 0.03],(90,0,90)]
 
-        self.target_name = "058_markpen"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
+        self.target_name = "058_markpen"
         self.target_obj, self.target_id, self.target_pose = \
             place_actor(self.target_name, self, task_objs = task_objs,
                     obj_pose=place_pose, mass = 0.4, obj_id=1,

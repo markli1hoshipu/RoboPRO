@@ -23,7 +23,8 @@ class move_cups_into_box(Study_base_task):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
         
-        xlim, ylim, self.side_to_place = get_position_limits(self.table, boundary_thr=0.20, side="left")
+        xlim, ylim, self.side_to_place = get_position_limits(self.table, boundary_thr=0.20, 
+                                                             side="right" if self.scene_id else "left")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
     
@@ -48,7 +49,7 @@ class move_cups_into_box(Study_base_task):
       
     def play_once(self, z = 0.1, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
+        arm_tag = ArmTag(self.side_to_place )
 
         for t, d in zip(self.target_objects,self.des_obj_poses):
             # Grasp the mouse with the selected arm

@@ -121,7 +121,7 @@ class Study_base_task(Bench_base_task):
         self.right_joint_path = kwags.get("right_joint_path", [])
         self.left_cnt = 0
         self.right_cnt = 0
-        self.scene_id = kwags.get("scene_id", 0)
+        self.scene_id = 2 #kwags.get("scene_id", 0)
 
         self.instruction = None  # for Eval
 

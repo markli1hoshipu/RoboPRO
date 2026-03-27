@@ -26,7 +26,7 @@ class move_cup_put_pen_in_cup(Study_base_task):
             task_objs = yaml.safe_load(f)
         
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-                                         boundary_thr=[0.15, 0.25], side="left")
+                                         boundary_thr=[0.15, 0.25], side="left" if self.scene_id == 0 else "right")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
    
@@ -64,7 +64,7 @@ class move_cup_put_pen_in_cup(Study_base_task):
     def pick_place_cup(self, arm_tag, pre_grasp_dist=0.1, z = 0.15, pre_dis= 0.05, dis=0.005):
         self.move(self.grasp_actor(self.cup_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
 
-        self.move(self.move_by_displacement(arm_tag=arm_tag,x=z, z=z,
+        self.move(self.move_by_displacement(arm_tag=arm_tag,x=-z if self.scene_id else z, z=z,
                                             constraint_pose=None))
         self.attach_object(self.cup_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.cup_name}/collision/base{self.cup_obj_id}.glb", str(arm_tag))
         self.move(

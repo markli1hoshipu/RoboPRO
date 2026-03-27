@@ -25,7 +25,7 @@ class put_pen_in_box(Study_base_task):
             task_objs = yaml.safe_load(f)
         
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-         boundary_thr=0.15, side="left")
+         boundary_thr=0.15, side="left" if self.scene_id == 0 else "right")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         
@@ -41,7 +41,7 @@ class put_pen_in_box(Study_base_task):
 
         p = self.des_obj.get_pose().p.tolist() 
         p[-1] = des_bb[1][-1]
-        self.des_obj_pose = p + [1,0,0,0] #self.target_obj.get_pose().q.tolist()
+        self.des_obj_pose = p + self.target_obj.get_pose().q.tolist()
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
 
@@ -50,7 +50,7 @@ class put_pen_in_box(Study_base_task):
 
      
       
-    def play_once(self, z = 0.1, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
+    def play_once(self, z = 0.12, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
 

@@ -39,7 +39,7 @@ class move_books_onto_table(Study_base_task):
                self.table.get_pose().p[-1] + 0.03] 
  
         self.arm_side = "right"
-        self.target_name = "043_book"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
+        self.target_name = "043_book"
         
         self.target_obj_1, self.target_id_1, _ = \
         place_actor(self.target_name, self, task_objs = task_objs,obj_id = 0,
@@ -50,8 +50,7 @@ class move_books_onto_table(Study_base_task):
                      obj_pose=[p_2,q], mass = 0.5, rotation=False)
 
         self.lift_height = 0.2
-        self.ep_lift = -0.2 #if self.arm_side == "right" else -xy_thr
-
+        self.ep_lift = -0.2 
 
         while True:
             self.des_obj_pose  = rand_pose(
@@ -70,7 +69,7 @@ class move_books_onto_table(Study_base_task):
       
     def play_once(self, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.arm_side) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
+        arm_tag = ArmTag(self.arm_side) 
 
 
         for target_pose in [self.target_obj_1, self.target_obj_2]:
@@ -78,8 +77,6 @@ class move_books_onto_table(Study_base_task):
             self.move(self.grasp_actor(target_pose, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
 
             # Lift the mouse upward by 0.1 meters in z-direction
-            # self.move(self.move_to_pose(arm_tag=arm_tag, target_pose=self.lift_pose,
-            #                              constraint_pose=[0,0,0,1,0,0,0]))
             self.move(self.move_by_displacement(arm_tag=arm_tag, y= self.ep_lift, 
                                                 z=self.lift_height, 
                                                 constraint_pose=None))

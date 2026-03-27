@@ -26,7 +26,8 @@ class put_pen_in_pencup(Study_base_task):
             task_objs = yaml.safe_load(f)
         
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-                                         boundary_thr=[0.15, 0.25], side="right")
+                                         boundary_thr=[0.15, 0.25],
+                                           side="right" if self.scene_id == 0 else "left")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         
@@ -47,79 +48,18 @@ class put_pen_in_pencup(Study_base_task):
                         obj_id = 1, mass = 0.2, rotation=False)
         
         # Get the placement pose
-  
         self.des_obj_pose = self.des_obj_pose.p.tolist() + euler2quat(0,0,np.deg2rad(90)).tolist()
         self.des_obj_pose[2] = 0.90
-        #[1,0,0,0]
-        # euler2quat(np.deg2rad(90),0,0).tolist()
-
+ 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
 
         self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
         self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
 
-     
-      
-    def play_once1(self, z = 0.1, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
-        # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
-
-        # Grasp the mouse with the selected arm
-        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
-        self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
-        
-        self.move(self.move_to_pose(arm_tag, [0,-0.2,0.95,1,0,0,0]))
-
-        self.move(self.move_by_displacement(arm_tag=arm_tag, quat=euler2quat(0,0,np.deg2rad(90)).tolist()))
-
-
-        # move above the cup
-        xy_disp = self.des_obj.get_pose().p - self.target_obj.get_pose().p
-        self.move(self.move_by_displacement(arm_tag=arm_tag, x = xy_disp[0], y=xy_disp[1]))
-        
-        # move to cup
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=-z*2))
-        self.move(self.open_gripper(arm_tag, 1))
-
-        # Record information about the objects and arm used in the task
-        self.info["info"] = {
-            "{A}": f"{self.target_name}/base{self.target_id}",
-            "{B}": f"red",
-            "{a}": str(arm_tag),
-        }
-        return self.info
-    
-    def play_oncebk(self, z = 0.15, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
-        # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
-
-        # Grasp the mouse with the selected arm
-        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
-        self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
-
-        self.move(self.move_by_displacement(arm_tag=arm_tag, y= -z, z=z))
-        # self.move(self.move_by_displacement(arm_tag=arm_tag, y = -z)
-        self.move(self.move_by_displacement(arm_tag=arm_tag, quat=euler2quat(0,0,np.deg2rad(90)).tolist()))
-
-        xy_disp = self.des_obj.get_pose().p[:2] - self.target_obj.get_pose().p[:2]
-
-        xy_disp = xy_disp.tolist() + [0.941] +[1,0,0,0]
-        self.move(self.move_to_pose(arm_tag, xy_disp, [0.8,0.8,0,0.8,0.8,0.8]))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=-z*2))
-        self.move(self.open_gripper(arm_tag, 1))
-        # Record information about the objects and arm used in the task
-        self.info["info"] = {
-            "{A}": f"{self.target_name}/base{self.target_id}",
-            "{B}": f"red",
-            "{a}": str(arm_tag),
-        }
-        return self.info
-
     def play_once(self, z = 0.15, pre_dis= 0.05, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
-
+        arm_tag = ArmTag(self.side_to_place ) 
         # Grasp the mouse with the selected arm
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))

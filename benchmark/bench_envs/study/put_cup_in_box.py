@@ -23,12 +23,13 @@ class put_cup_in_box(Study_base_task):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
         
-        xlim, ylim, self.side_to_place = get_position_limits(self.table, boundary_thr=0.20, side="left")
+        xlim, ylim, self.side_to_place = get_position_limits(self.table,
+                                                              boundary_thr=0.20, side="left" if self.scene_id == 0 else "right")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
   
       
-        self.target_name = "021_cup"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
+        self.target_name = "021_cup"
         self.target_obj, self.target_id, self.target_pose = \
         place_actor(self.target_name, self, col_thr=0.10, xlim=xlim, ylim=ylim, 
                     qpos=(90,0,90), object_bounds=object_bounds, task_objs=task_objs,
@@ -50,14 +51,11 @@ class put_cup_in_box(Study_base_task):
       
     def play_once(self, z = 0.1, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
-
+        arm_tag = ArmTag(self.side_to_place ) 
         # Grasp the mouse with the selected arm
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
 
         # Lift the mouse upward by 0.1 meters in z-direction
-        # self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
-
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
 
         # Place the mouse at the target location with alignment constraint

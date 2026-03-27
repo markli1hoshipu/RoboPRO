@@ -40,8 +40,9 @@ class lift_cup_from_box(Study_base_task):
         
         self.init_tar_pose = self.target_obj.get_pose()
         self.lift_height = 0.15
-        self.ep_lift = 0.15
-        self.arm_side = "left"
+        self.ep_lift = 0.15 if self.scene_id == 0 else -0.15
+        self.arm_side = "left" if self.scene_id == 0 else "right"
+        
         print_c(f"Lifting by {self.lift_height}", "RED")
         self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
         self.add_prohibit_area(self.des_obj, padding=0.12, area="table")

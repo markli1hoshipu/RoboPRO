@@ -26,15 +26,15 @@ class empty_box(Study_base_task):
             task_objs = yaml.safe_load(f)
         
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-                                         boundary_thr=[0.15, 0.25], side="left")
+                                         boundary_thr=[0.15, 0.25],
+                                        side="left" if self.scene_id == 0 else "right")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
    
         des_bb = get_actor_boundingbox(self.box.actor)
     
-    
         # Object 1
-        self.seal_name ="100_seal" # "021_cup"
+        self.seal_name ="100_seal" 
         box_pose = self.box.get_pose().p
         place_pose =  [[box_pose[0], box_pose[1]-0.05, des_bb[0][-1] + 0.03],(90,0,180)]
        
@@ -49,7 +49,7 @@ class empty_box(Study_base_task):
         # Object 2
         place_pose =  [[box_pose[0], box_pose[1] + 0.05, des_bb[0][-1] + 0.03],(90,0,90)]
      
-        self.cup_name = "021_cup" #"048_stapler"
+        self.cup_name = "021_cup" 
         self.cup_obj, self.cup_obj_id, self.cup_obj_pose = \
             place_actor(self.cup_name, self, task_objs = task_objs,
                     obj_pose=place_pose, mass = 0.4)
@@ -81,7 +81,7 @@ class empty_box(Study_base_task):
     def pick_place_seal(self, arm_tag, pre_grasp_dist=0.1,
                         z = 0.10, pre_dis= 0.05, dis=0.005):
         self.move(self.grasp_actor(self.seal_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
-        self.move(self.move_by_displacement(arm_tag=arm_tag,x=z, z=z,
+        self.move(self.move_by_displacement(arm_tag=arm_tag,x=z if self.side_to_place == "left" else -z, z=z,
                                             constraint_pose=None))
         self.attach_object(self.seal_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.seal_name}/collision/base{self.seal_obj_id}.glb", str(arm_tag))
         self.move(
@@ -101,7 +101,7 @@ class empty_box(Study_base_task):
                         z = 0.10, pre_dis= 0.05, dis=0.005):
         self.move(self.grasp_actor(self.cup_obj, arm_tag=arm_tag,
                                     pre_grasp_dis=pre_grasp_dist))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, x=z, z=z,
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=z if self.side_to_place == "left" else -z, z=z,
                                             constraint_pose=None))
         self.attach_object(self.cup_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.cup_name}/collision/base{self.cup_obj_id}.glb", str(arm_tag))
         self.move(
@@ -119,8 +119,7 @@ class empty_box(Study_base_task):
     
     def play_once(self, z = 0.15, pre_dis= 0.05, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
-
+        arm_tag = ArmTag(self.side_to_place ) 
         self.pick_place_seal(arm_tag)
         self.pick_place_cup(arm_tag)
 

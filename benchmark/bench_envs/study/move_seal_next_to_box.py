@@ -23,13 +23,14 @@ class move_seal_next_to_box(Study_base_task):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-                                      boundary_thr=0.10, side="left")
+                                      boundary_thr=0.10, side="left" if self.scene_id==0 else "right")
         
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
-        self.target_name = "100_seal"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
+        self.target_name = "100_seal"
         self.move_thr = 0.25
 
-        xlim_m = [xlim[0] + self.move_thr + 0.1, xlim[1]] 
+        xlim_m = [xlim[0] + self.move_thr + 0.1, xlim[1]] if self.scene_id == 0 \
+        else [xlim[0], xlim[1] - self.move_thr - 0.1]
         self.target_obj, self.target_id, self.target_pose = \
         place_actor(self.target_name, self, col_thr=0.20, xlim=xlim_m, ylim=ylim, 
                     qpos=(90,0,0), object_bounds=object_bounds, task_objs=task_objs,
@@ -37,9 +38,8 @@ class move_seal_next_to_box(Study_base_task):
         
         
         p = self.box.get_pose().p.tolist() 
-        p[0] += self.move_thr 
-        self.des_obj_pose = p + [1,0,0,0] #self.target_obj.get_pose().q.tolist() 
-
+        p[0] += self.move_thr if self.side_to_place == "left" else -self.move_thr
+        self.des_obj_pose = p + [1,0,0,0] 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
         self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
@@ -47,8 +47,7 @@ class move_seal_next_to_box(Study_base_task):
 
     def play_once(self, z = 0.05, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
-
+        arm_tag = ArmTag(self.side_to_place ) 
         # Grasp the mouse with the selected arm
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
 

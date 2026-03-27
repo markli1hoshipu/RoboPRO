@@ -24,7 +24,8 @@ class put_cup_on_coaster(Study_base_task):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
         
-        xlim, ylim, self.side_to_place = get_position_limits(self.table, boundary_thr=0.15, side="right")
+        xlim, ylim, self.side_to_place = get_position_limits(self.table, 
+                                                             boundary_thr=0.15, side="right" if self.scene_id == 0 else "left")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         

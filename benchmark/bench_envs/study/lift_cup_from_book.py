@@ -9,10 +9,8 @@ import numpy as np
 from bench_envs.study._study_base_task import Study_base_task
 from envs.utils import *
 from envs._GLOBAL_CONFIGS import *
-from copy import deepcopy
-from bench_envs.utils.scene_gen_utils import get_position_limits, get_actor_boundingbox, get_collison_with_objs
+from bench_envs.utils.scene_gen_utils import get_position_limits, get_actor_boundingbox
 from bench_envs.utils.scene_gen_utils import print_c, place_actor
-from transforms3d.euler import euler2quat
 
 class lift_cup_from_book(Study_base_task):
 

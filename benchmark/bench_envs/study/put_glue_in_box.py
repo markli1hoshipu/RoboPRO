@@ -25,7 +25,7 @@ class put_glue_in_box(Study_base_task):
             task_objs = yaml.safe_load(f)
         
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-         boundary_thr=0.15, side="left")
+         boundary_thr=0.15, side="left" if self.scene_id == 0 else "right")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         

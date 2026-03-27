@@ -26,7 +26,8 @@ class move_seal_onto_table(Study_base_task):
             task_objs = yaml.safe_load(f)
         
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-                                         boundary_thr=[0.15, 0.25], side="left")
+                                         boundary_thr=[0.15, 0.25], 
+                                         side="left" if self.scene_id == 0 else "right")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
    
@@ -56,10 +57,9 @@ class move_seal_onto_table(Study_base_task):
     
     def play_once(self, z = 0.15, pre_dis= 0.05, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
-        
+        arm_tag = ArmTag(self.side_to_place ) 
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
-        self.move(self.move_by_displacement(arm_tag=arm_tag,x=z, z=z,
+        self.move(self.move_by_displacement(arm_tag=arm_tag,x=z if self.side_to_place == "left" else -z, z=z,
                                             constraint_pose=None))
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
         self.move(
@@ -72,8 +72,6 @@ class move_seal_onto_table(Study_base_task):
                 dis=dis
             ))
         self.move(self.move_by_displacement(arm_tag=arm_tag,  z=z))
-
-    
         self.info["info"] = {
             "{A}": f"{self.target_name}/base{self.target_id}",
             "{B}": f"red",

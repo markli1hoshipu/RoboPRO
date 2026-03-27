@@ -24,10 +24,10 @@ class move_cup_next_to_book(Study_base_task):
             task_objs = yaml.safe_load(f)
         move_thr = 0.12
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-                                      boundary_thr=0.10, side="right")
+                                      boundary_thr=0.10, side="right" if self.scene_id == 0 else "left")
         
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
-        self.target_name = "021_cup"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
+        self.target_name = "021_cup"
 
         xlim_m = [xlim[0], (xlim[0] + xlim[1])/2 - move_thr- 0.05] 
         self.target_obj, self.target_id, self.target_pose = \
@@ -48,7 +48,7 @@ class move_cup_next_to_book(Study_base_task):
      
         p = self.des_obj.get_pose().p.tolist() 
         p[0] -= move_thr
-        self.des_obj_pose = p + [1,0,0,0] #self.target_obj.get_pose().q.tolist() 
+        self.des_obj_pose = p + [1,0,0,0]  
 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
@@ -57,7 +57,7 @@ class move_cup_next_to_book(Study_base_task):
 
     def play_once(self, z = 0.05, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
+        arm_tag = ArmTag(self.side_to_place )
 
         # Grasp the mouse with the selected arm
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
