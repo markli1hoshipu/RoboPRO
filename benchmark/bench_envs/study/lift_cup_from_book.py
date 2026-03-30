@@ -26,8 +26,7 @@ class lift_cup_from_book(Study_base_task):
        
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
 
-        self.des_obj_name = "043_book"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
-        
+        self.des_obj_name = "043_book"
         self.des_obj, self.des_obj_id, self.des_obj_pose = \
         place_actor(self.des_obj_name, self, col_thr =0.15,
                      xlim=xlim, ylim=ylim, qpos=(90,0,90),
@@ -37,7 +36,7 @@ class lift_cup_from_book(Study_base_task):
     
         des_bb = get_actor_boundingbox(self.des_obj.actor)
 
-        self.target_name = "021_cup"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
+        self.target_name = "021_cup"
         
         self.target_pose = self.des_obj_pose
         self.target_pose.set_p([*self.target_pose.p[:2], des_bb[1][-1]]) 
@@ -58,14 +57,11 @@ class lift_cup_from_book(Study_base_task):
       
     def play_once(self, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.arm_side) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
-
+        arm_tag = ArmTag(self.arm_side)
         # Grasp the mouse with the selected arm
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
 
         # Lift the mouse upward by 0.1 meters in z-direction
-        # self.move(self.move_to_pose(arm_tag=arm_tag, target_pose=self.lift_pose,
-        #                              constraint_pose=[0,0,0,1,0,0,0]))
         self.move(self.move_by_displacement(arm_tag=arm_tag, x= self.ep_lift, 
                                             z=self.lift_height, 
                                             constraint_pose=None))
