@@ -39,7 +39,10 @@ class items_to_shelf(Office_base_task):
         )
         self.wooden_box.set_mass(1)
         self.add_prohibit_area(self.wooden_box, padding=0.02, area="table")
-        self.collision_list.append((self.wooden_box, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/042_wooden_box/collision/base0.glb", scale))
+        self.collision_list.append({
+            "actor": self.wooden_box,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/042_wooden_box/collision/base0.glb",
+        })
 
         # ------------------------------------------------------------
         self.cube_id = 0

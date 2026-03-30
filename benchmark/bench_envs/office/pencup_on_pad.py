@@ -121,7 +121,10 @@ class pencup_on_pad(Office_base_task):
         rb.set_linear_damping(5.0)
         rb.set_angular_damping(20.0)
         self.add_prohibit_area(self.bottle, padding=0.04, area="table")
-        self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb", self.bottle.scale))
+        self.collision_list.append({
+            "actor": self.bottle,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb",
+        })
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
