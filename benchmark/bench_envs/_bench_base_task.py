@@ -405,7 +405,7 @@ class Bench_base_task(Base_Task):
         self.cluttered_objs = []
     
     def stabilize_object(self, object):
-        object.set_mass(1)
+        # object.set_mass(1)
         rb = object.actor.components[1]
         try:
             rb.set_linear_damping(5.0)
@@ -1109,6 +1109,8 @@ class Bench_base_task(Base_Task):
                         name_prefix = actor.get_name()
                         if "link" in info:
                             pose = actor.get_link_pose(info["link"])
+                        elif "pose" in info:
+                            pose = info["pose"]
                         else:
                             pose = actor.get_pose()
                         np_pose = np.concatenate([pose.p, pose.q]).tolist()
@@ -1204,7 +1206,7 @@ class Bench_base_task(Base_Task):
             if getattr(m, "faces", None) is None or len(m.faces) == 0:
                 continue
 
-            part_name = f"{name_prefix}_{i}_{self.seed}"
+            part_name = f"{p}_{self.seed}"
             collision_dict["mesh"][part_name] = {
                 "file_path": str(p),
                 "pose": list(pose),
@@ -1237,3 +1239,6 @@ class Bench_base_task(Base_Task):
         Detach the attached objects from the robot in Curobo Planning.
         """
         self.robot.detach_object(arms_tag=arms_tag)
+    
+    def enable_obstacle(self, enable: bool, names: list[str]):
+        self.robot.enable_obstacle(enable, names)
