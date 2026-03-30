@@ -4,6 +4,7 @@ objects:
     targets:
       077_phone: [0,1,2,3]
       092_notebook: [0,1,2]
+      043_book: [0,1]
       046_alarm-clock: [0,1,2,3]
       101_milk-tea: [0,1,2,4]
       047_mouse: [0,1,2]
