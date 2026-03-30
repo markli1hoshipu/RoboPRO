@@ -28,7 +28,7 @@ class place_phone_holder(Office_base_task):
             [0.5, -0.5, 0.5, -0.5],
         ]
 
-        self.phone_id = np.random.choice([0, 1, 2, 4], 1)[0]
+        self.phone_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["077_phone"])
         phone_pose = rand_pose(
             xlim = [0,0.1],
             # xlim = [0,0.35],
@@ -63,7 +63,7 @@ class place_phone_holder(Office_base_task):
             modelname="078_phonestand",
             convex=True,
             model_id=self.stand_id,
-            is_static=True,
+            is_static=False,
         )
         self.stand.set_mass(2)
         self.collision_list.append({

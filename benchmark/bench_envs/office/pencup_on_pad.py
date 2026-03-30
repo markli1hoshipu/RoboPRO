@@ -31,7 +31,7 @@ class pencup_on_pad(Office_base_task):
                 rotate_rand=False,
             )
 
-        self.pencup_id = np.random.choice([0, 1, 2, 3, 5], 1)[0]
+        self.pencup_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["059_pencup"])
         # [3]
         # print(f"pencup_id: {self.pencup_id}")
         # 1,6 might be too small

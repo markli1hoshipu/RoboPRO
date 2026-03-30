@@ -9,7 +9,7 @@ from copy import deepcopy
 import glob
 
 
-class place_phone_holder(Office_base_task):
+class place_phone_desk(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
@@ -28,7 +28,7 @@ class place_phone_holder(Office_base_task):
             [0.5, -0.5, 0.5, -0.5],
         ]
 
-        self.phone_id = np.random.choice([0, 1, 2, 4], 1)[0]
+        self.phone_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["077_phone"])
         phone_pose = rand_pose(
             xlim = [0,0.1],
             # xlim = [0,0.35],
@@ -48,7 +48,7 @@ class place_phone_holder(Office_base_task):
         self.phone.set_mass(0.01)
 
         stand_pose = rand_pose(
-                xlim = [self.phone.get_pose().p[0]+0.25,0.55],
+                xlim = [self.office_info["table_lims"][0]+0.05, self.office_info["table_lims"][2]-0.05],
                 # ylim=[0.05],
                 ylim=[-0.15,0.08],
                 qpos=[0.7071, 0.7071, 0.0, 0.0],
@@ -63,7 +63,7 @@ class place_phone_holder(Office_base_task):
             modelname="078_phonestand",
             convex=True,
             model_id=self.stand_id,
-            is_static=True,
+            is_static=False,
         )
         self.stand.set_mass(2)
         self.collision_list.append({

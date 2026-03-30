@@ -1,0 +1,157 @@
+# from envs._base_task import Base_Task
+from bench_envs.office._office_base_task import Office_base_task
+from envs.utils import *
+from bench_envs.utils import *
+import sapien
+import math
+from envs._GLOBAL_CONFIGS import *
+from copy import deepcopy
+import glob
+from transforms3d.euler import euler2quat
+
+
+class put_rubikscube_shelf(Office_base_task):
+
+    def setup_demo(self, is_test=False, **kwargs):
+        kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
+        super()._init_task_env_(**kwargs)
+    
+    def _get_target_object_names(self) -> set[str]:
+        return set()
+
+    def load_actors(self):
+        self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
+        # prepare drawer --------------------------------------------
+        limit = self.cabinet.get_qlimits()[0]
+        self.cabinet.set_qpos([limit[1],0,0])
+        # prohibit area around opening space
+        self.collision_list.append({
+            "actor": self.cabinet,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
+            "pose": self.cabinet.get_link_pose("link_1"),
+            "files": ["original-23.obj", "original-24.obj", "original-18.obj"],
+        })
+        self.collision_list.append({
+            "actor": self.cabinet,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
+            "link": "link_2",
+            "files": ["original-34.obj", "original-41.obj"],
+        })
+        self.cabinet.set_qpos([limit[0],0,0])
+        cabinet_pose = self.cabinet.get_pose().p
+        cabinet_pose[1]-= 0.19  
+        self.prohibited_area["table"].append([cabinet_pose[0]-0.11, cabinet_pose[1]-0.1, cabinet_pose[0]+0.11, cabinet_pose[1]+0.1])
+
+        # rubikscube --------------------------------------------------
+        self.cube_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["073_rubikscube"])
+        center = self.cabinet.get_pose().p
+        center[1] -= 0.02
+        center[2] = self.office_info["table_height"]+0.03
+        self.cube = rand_create_actor(
+            self,
+            xlim=[center[0]],
+            ylim=[center[1]],
+            zlim=[center[2]],
+            modelname="073_rubikscube",
+            rotate_rand=True,
+            rotate_lim=[0, np.pi/8, 0],
+            qpos=[0, 0, 0.7071, 0.7071],
+            convex=True,
+            model_id=self.cube_id,
+            is_static=False,
+        )
+        self.cube.set_mass(0.1)
+        # target ------------------------------------------------------
+        self.side = "left" if self.arr_v == 2 else "right"
+        level = np.random.choice([0,1])
+        xlim = [self.office_info["shelf_lims"][0] + 0.07, 0.05] if self.side == "left" else [-0.05, self.office_info["shelf_lims"][2] -0.07]
+        target_rand_pose = rand_pose(
+            xlim=xlim,
+            ylim=[self.office_info["shelf_lims"][1] + 0.055],
+            zlim = [self.office_info["shelf_heights"][level]],
+            qpos=[1, 0, 0, 0],
+            rotate_rand=False,
+        )
+
+        half_size = [0.05, 0.05, 0.0005]
+        self.target_box = create_box(
+            scene=self,
+            pose=target_rand_pose,
+            half_size=half_size,
+            color=(0, 0, 1), # blue
+            name="target_box",
+            is_static=True,
+        )
+        self.target = self.target_box.get_pose().p.tolist() + euler2quat(np.pi/2,np.pi, 0, axes='sxyz').tolist()
+        self.target[2] += 0.06 # raise target 0.02 meters
+        self.add_prohibit_area(self.target_box, padding=0.05, area=f"shelf{level}")
+
+
+    def play_once(self):
+        # Determine which arm to use based on mouse position (right if on right side, left otherwise)
+        arm_tag = ArmTag("left") if self.arr_v == 2 else ArmTag("right")
+
+        # disable front panel collision while opening drawer
+        self.enable_drawer(enable=False)
+
+        self.move(self.grasp_actor(self.cabinet, arm_tag=arm_tag, pre_grasp_dis=0.05, grasp_dis=0.025))
+
+        # Pull the drawer
+        for _ in range(3):
+            self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.06))
+        
+        self.move(self.open_gripper(arm_tag=arm_tag))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.02))
+
+        self.enable_drawer(enable=True)
+
+        action = self.grasp_actor(self.cube, arm_tag=arm_tag, pre_grasp_dis=0.1, contact_point_id=3)
+        if action:
+            action[1][1].target_pose[2] += 0.04 # grasp center of box
+        self.move(action)
+
+        # Lift the box upward by 0.1 meters in z-direction
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.03))
+
+        self.attach_object(self.cube, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/073_rubikscube/collision/base{self.cube_id}.glb", str(arm_tag))
+
+        self.move(
+            self.place_actor(
+                self.cube,
+                arm_tag=arm_tag,
+                target_pose=self.target,
+                constrain="align",
+                pre_dis=0.08,
+                dis=-0.02,
+            ))
+
+        self.detach_object(arms_tag=arm_tag)
+        arm_tag, actions = self.grasp_actor(self.cabinet, arm_tag=arm_tag, pre_grasp_dis=0.05, grasp_dis=0.025)
+
+        self.move((arm_tag, [actions[0]]))
+        self.enable_drawer(enable=False)
+        self.move((arm_tag, actions[1:]))
+
+        # Pull the drawer
+        for _ in range(3):
+            self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.06))
+
+        # Record information about the objects and arm used in the task
+        # self.info["info"] = {
+        #     "{A}": f"047_mouse/base{self.mouse_id}",
+        #     "{B}": f"{self.color_name}",
+        #     "{a}": str(arm_tag),
+        # }
+        # return self.info
+
+    def check_success(self):
+        mouse_pose = self.mouse.get_pose().p
+        mouse_qpose = np.abs(self.mouse.get_pose().q)
+        target_pos = self.target.get_pose().p
+        eps1 = 0.015
+        eps2 = 0.012
+
+        return (np.all(abs(mouse_pose[:2] - target_pos[:2]) < np.array([eps1, eps2]))
+                and (np.abs(mouse_qpose[2] * mouse_qpose[3] - 0.49) < eps1
+                     or np.abs(mouse_qpose[0] * mouse_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
+                and self.robot.is_right_gripper_open())

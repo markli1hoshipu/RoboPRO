@@ -18,7 +18,7 @@ class milktea_to_shelf(Office_base_task):
         return {self.milktea.get_name()}
 
     def load_actors(self):
-        self.cuboid_collision_list.append(("table", [2, 2, 0.002], [0,0,0.74,1,0,0,0]))
+        self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
 
         target_rand_pose = rand_pose(
             xlim=[self.office_info["shelf_lims"][0]+0.04, self.office_info["shelf_lims"][2]-0.04],
@@ -47,7 +47,7 @@ class milktea_to_shelf(Office_base_task):
             xlim1 = [self.office_info["table_lims"][0]+self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"], 0.1]
         else:
             xlim1 = [-0.1, self.office_info["table_lims"][2]-self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"]]
-        ylim1 = [self.office_info["table_lims"][1] + 0.2, self.office_info["shelf_lims"][1]-0.05]
+        ylim1 = [self.office_info["table_lims"][1] + 0.3, self.office_info["shelf_lims"][1]-0.05]
 
         self.milktea = rand_create_actor(
             self,

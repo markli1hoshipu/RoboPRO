@@ -344,6 +344,12 @@ class Office_base_task(Bench_base_task):
         )
         self.add_prohibit_area(self.cabinet, padding=0.01)
         self.cabinet.set_mass(0.5)
+        self.collision_list.append({
+            "actor": self.cabinet,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
+            "link": "link_0",
+            "files": ["original-4.obj","original-7.obj"],
+        })
         # ------------------------------------------------------------
         self.wooden_box = create_actor(
             scene=self,
@@ -396,19 +402,19 @@ class Office_base_task(Bench_base_task):
         if "015_laptop" not in full_names:
             laptop_id = np.random.choice([9748,9912,9960,9968,9992,9996,10040,10098,10101,10125,10211])
             laptop_id = 9912
-            laptop_file = {
-                9748: "original-97",
-                9912: "new-4",
-                9960: "new-0",
-                9968: "new-8",
-                9992: "new-1",
-                9996: "new-4",
-                10040: "new-5",
-                10098: "new-4",
-                10101: "new-1",
-                10125: "new-7",
-                10211: "new-1",
-            }
+            # laptop_file = {
+            #     9748: "original-97",
+            #     9912: "new-4",
+            #     9960: "new-0",
+            #     9968: "new-8",
+            #     9992: "new-1",
+            #     9996: "new-4",
+            #     10040: "new-5",
+            #     10098: "new-4",
+            #     10101: "new-1",
+            #     10125: "new-7",
+            #     10211: "new-1",
+            # }
             success, self.laptop = rand_create_cluttered_actor(
                 scene=self.scene,
                 xlim=[-0.4, 0.4],
@@ -438,7 +444,7 @@ class Office_base_task(Bench_base_task):
             cuboid_pose = self.laptop.get_pose().p.tolist() + [1, 0, 0, 0]
             cuboid_pose[1] += 0.04
             cuboid_pose[2] = self.office_info["table_height"] + 0.07
-            self.cuboid_collision_list.append(("015_laptop", [0.2, 0.07, 0.14], cuboid_pose))
+            self.cuboid_collision_list.append({"name": "015_laptop", "dims": [0.2, 0.07, 0.14], "pose": cuboid_pose})
         # ------------------------------------------------------------
         if "plant" not in full_names:
             plant_id = 0
@@ -561,3 +567,8 @@ class Office_base_task(Bench_base_task):
     
     def add_extra_cameras(self):
         self.cameras.add_extra_cameras(f"{os.environ['BENCH_ROOT']}/bench_assets/embodiments/office_config.yml")
+    
+    def enable_drawer(self, enable: bool):
+        files = ["original-23.obj", "original-24.obj", "original-18.obj", "original-34.obj", "original-41.obj"]
+        names = [f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/{file}_{self.seed}" for file in files]
+        self.enable_obstacle(enable, names)

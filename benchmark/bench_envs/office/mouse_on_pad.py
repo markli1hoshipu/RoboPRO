@@ -34,13 +34,14 @@ class mouse_on_pad(Office_base_task):
             rotate_lim=[0, 3.14, 0],
         )
 
-        self.mouse_id = np.random.choice([0, 1, 2], 1)[0]
+        self.mouse_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["047_mouse"])
         self.mouse = create_actor(
             scene=self,
             pose=rand_pos,
             modelname="047_mouse",
             convex=True,
             model_id=self.mouse_id,
+            scale=self.item_info['scales']['047_mouse'].get(f'{self.mouse_id}',None),
         )
         self.mouse.set_mass(0.05)
 

@@ -13,7 +13,7 @@ from transforms3d.euler import euler2quat
 class stack_book(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
-        kwargs["collision_cache"] = {"mesh": 200, "obb": 3}
+        kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
     
     def _get_target_object_names(self) -> set[str]:
@@ -23,7 +23,7 @@ class stack_book(Office_base_task):
         ylim = [self.file_holder.get_pose().p[1]]
         zlim = [self.office_info["file_holder_heights"][1]+0.1]
         xlim = [self.office_info["file_holder_lims"][0]+0.08, self.office_info["file_holder_lims"][2]-0.08]
-        model_id1 = 0
+        model_id1 = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["043_book"])
         model_id2 = 1
         self.book = rand_create_actor(
             self,
@@ -39,6 +39,7 @@ class stack_book(Office_base_task):
             scale = self.item_info['scales']['043_book'][f'{model_id1}']
         )
         self.book.set_mass(0.1)
+        self.stabilize_object(self.book)
 
         xlim = [-0.55,0.1] if self.book.get_pose().p[0] < 0 else [-0.1,0.55]
         ylim = [-0.15, self.office_info["file_holder_lims"][1]-0.1]
@@ -67,7 +68,7 @@ class stack_book(Office_base_task):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag("left") if self.book.get_pose().p[0] < 0 else ArmTag("right")
 
-        self.move(self.grasp_actor(self.book, arm_tag=arm_tag, pre_grasp_dis=0.04, grasp_dis=0.02))
+        self.move(self.grasp_actor(self.book, arm_tag=arm_tag, pre_grasp_dis=0.04, grasp_dis=0.01))
         self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.01, z=0.01))
         self.attach_object(self.book, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/043_book/collision/base0.glb", str(arm_tag))
 

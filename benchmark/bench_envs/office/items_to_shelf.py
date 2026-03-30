@@ -6,7 +6,7 @@ import math
 from envs._GLOBAL_CONFIGS import *
 from copy import deepcopy
 import glob
-
+from transforms3d.euler import euler2quat
 
 class items_to_shelf(Office_base_task):
 
@@ -45,7 +45,7 @@ class items_to_shelf(Office_base_task):
         })
 
         # ------------------------------------------------------------
-        self.cube_id = 0
+        self.cube_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["073_rubikscube"])
         center = self.wooden_box.get_pose().p
         self.cube = rand_create_actor(
             self,
@@ -63,7 +63,7 @@ class items_to_shelf(Office_base_task):
         self.cube.set_mass(0.1)
 
         # ------------------------------------------------------------
-        self.tea_box_id = 0
+        self.tea_box_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["112_tea-box"])
         self.tea_box = rand_create_actor(
             self,
             xlim=[center[0]+0.09,center[0]+0.02],
@@ -122,8 +122,8 @@ class items_to_shelf(Office_base_task):
             name="target2",
             is_static=True,
         )
-        self.target2_pose = self.target2.get_pose().p.tolist() + [0.7071, 0.7071, 0, 0]
-        self.target2_pose[2] += 0.05 # raise target 0.02 meters
+        self.target2_pose = self.target2.get_pose().p.tolist() + euler2quat(np.pi/2,np.pi, 0, axes='sxyz').tolist()
+        self.target2_pose[2] += 0.06 # raise target 0.02 meters
         self.add_prohibit_area(self.target2, padding=0.05, area=f"shelf0")
 
     def play_once(self):
@@ -170,7 +170,7 @@ class items_to_shelf(Office_base_task):
                 self.cube,
                 arm_tag=arm[1],
                 target_pose=self.target2_pose,
-                constrain="free",
+                constrain="align",
                 pre_dis=0.08,
                 dis=-0.02,
             ))
