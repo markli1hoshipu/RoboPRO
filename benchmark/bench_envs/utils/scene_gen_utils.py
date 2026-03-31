@@ -143,7 +143,8 @@ def get_random_place_pose(xlim, ylim, object_bounds=None, col_thr=0.15, qpos=(0,
             
 def place_actor(obj_name, scene, task_objs, col_thr=0.15, object_bounds=None, 
                 obj_id = None, mass = 0.1,  xlim=None, ylim=None, obj_pose=None, 
-                qpos=(0,0,0), rotation=False, rotate_lim = (0,0,0)):
+                qpos=(0,0,0), rotation=False, rotate_lim = (0,0,0),
+                is_static=False):
     
     if obj_pose is None:
         # Threshold between the objects
@@ -170,7 +171,7 @@ def place_actor(obj_name, scene, task_objs, col_thr=0.15, object_bounds=None,
             modelname=obj_name,
             convex=True,
             model_id= obj_id,
-            is_static=False,
+            is_static=is_static,
             scale= None if task_objs['scales'].get(obj_name) is None else \
                 task_objs['scales'][obj_name].get(str(obj_id)) 
     )

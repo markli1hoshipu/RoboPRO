@@ -33,7 +33,11 @@ class lift_cup_from_book(Study_base_task):
                      object_bounds = object_bounds, task_objs = task_objs,
                      obj_id = None, mass = 0.5, rotation=False)
        
-    
+        # self.collision_list.append({
+        #     "actor":self.des_obj,
+        #     "collision_path": self.col_temp.format(object=self.des_obj_name, object_id=self.des_obj_id)
+        # })
+
         des_bb = get_actor_boundingbox(self.des_obj.actor)
 
         self.target_name = "021_cup"
@@ -45,13 +49,17 @@ class lift_cup_from_book(Study_base_task):
             place_actor(self.target_name, self, task_objs = task_objs,
                     obj_pose=self.target_pose, mass = 0.2)
         self.init_tar_pose = self.target_obj.get_pose()
+        # self.collision_list.append({
+        #     "actor":self.target_obj,
+        #     "collision_path": self.col_temp.format(object=self.target_name, object_id=self.target_id)
+        # })
 
         self.lift_height = 0.2
         xy_thr = 0.2
         self.ep_lift = xy_thr if self.arm_side == "right" else -xy_thr
         print_c(f"Lifting by {self.lift_height}", "RED")
-        self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
-        self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
+        self.add_prohibit_area(self.target_obj, padding=0.0, area="table")
+        self.add_prohibit_area(self.des_obj, padding=0.0, area="table")
 
      
       

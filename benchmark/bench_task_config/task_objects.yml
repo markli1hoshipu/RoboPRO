@@ -37,10 +37,11 @@ objects:
         080_pillbottle: [1,2,3,4]
         086_woodenblock: [1,3,4]
         094_rest: [0,1,2,3]
-        108_block: [1,2,3,5]
       tall:
         012_plant-pot: [0,2,3]
         090_trophy: [0,1,2]
+        001_bottle: [0,19,3,20]
+        108_block: [1,2,3]
   kitchens:
     targets:
       003_plate: [0]
@@ -100,11 +101,13 @@ object_ood:
         039_mug: [9]
         058_markpen: [5]
         095_glue: [5]
-        048_stapler: [5,6]
       obstacles:
         023_tissue-box: [5,6]
         057_toycar: [5]
         080_pillbottle: [5]
+        108_block: [5]
+        001_bottle: [9,8,17,6]
+
   kitchens:
     targets:
       006_hamburg: [3]
@@ -131,15 +134,24 @@ object_ood:
 
 scales:
   001_bottle:
+    "0": 0.08
     "1": 0.08
+    "3": 0.08
+    "6": 0.08
+    "8": 0.08
     "11": 0.08
     "14": 0.08
     "16": 0.08
+    "17": 0.08
+    "19": 0.08
     "21": 0.08
   003_plate:
     "0": 0.02
   006_hamburg: null
-  012_plant-pot: null
+  012_plant-pot: 
+    "0": 0.07
+    "2": 0.07
+    "3": 0.07
   019_coaster: null
   015_laptop: null
   017_calculator:
@@ -267,7 +279,10 @@ scales:
     "3": 0.4
     "4": 0.4
   089_globe: null
-  090_trophy: null
+  090_trophy:
+    "0": 0.07
+    "2": 0.07
+    "3": 0.07
   091_kettle: null
   092_notebook: null
   094_rest: null

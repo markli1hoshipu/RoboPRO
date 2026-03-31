@@ -164,7 +164,6 @@ class Bench_base_task(Base_Task):
         # record cluttered objects
         self.record_cluttered_objects = []
         self.size_dict = []
-
         if np.random.rand() < self.clean_background_rate:
             return
 
@@ -189,7 +188,6 @@ class Bench_base_task(Base_Task):
         # If one group is empty, fall back to the other
         if not obj_names_short and not obj_names_tall:
             return
-
         while success_count < obstacle_count and trys < max_try:
             # Decide which group to sample from for this attempt
             if not obj_names_short:
@@ -257,7 +255,7 @@ class Bench_base_task(Base_Task):
             if not success or self.cluttered_obj is None:
                 trys += 1
                 continue
-
+            
             self.cluttered_obj.set_name(f"{obj_name}")
 
             # manage stability as distractors
@@ -289,19 +287,6 @@ class Bench_base_task(Base_Task):
                 "collision_path": path,
             })
 
-            # # for viewing radius estimation
-            # half_size = [obj_radius, obj_radius, 0.0005]
-            # pose = self.cluttered_obj.get_pose()
-            # pose.q = [1,0,0,0]
-            # target = create_box(
-            #     scene=self,
-            #     pose=pose,
-            #     half_size=half_size,
-            #     color=(1, 0, 0),
-            #     name=f"{obj_name}_collision",
-            #     is_static=True,
-            # )
-        
         if success_count < obstacle_count:
             print(f"Warning: Only {success_count} cluttered objects are placed on the surface.")
 

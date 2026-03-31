@@ -31,21 +31,39 @@ class lift_cup_from_box(Study_base_task):
         self.target_name = "021_cup"
 
         place_pose =  [[self.des_obj.get_pose().p[0], 
-                        self.des_obj.get_pose().p[1] + np.random.uniform(low=-0.1, high=0.1),
+                        self.des_obj.get_pose().p[1] +
+                        np.random.uniform(low=-0.2, high=0),
                         des_bb[0][-1] + 0.03],(90,0,90)]
 
         self.target_obj, self.target_id, self.target_pose = \
             place_actor(self.target_name, self, task_objs = task_objs,
                     obj_pose=place_pose, mass = 0.2)
         
+        if np.random.rand() > self.clean_background_rate:
+            box_obs = "001_bottle"
+            gap = 0.1
+            place_pose =  [[np.random.choice([des_bb[0][0]+gap,
+                                              des_bb[1][1]-gap]), 
+                        des_bb[1][1]-gap,
+                        des_bb[0][-1]],(90,0,0)]
+            
+            box_obs_tar, obs_tar_id, _= place_actor(box_obs, self, 
+                           task_objs = task_objs, obj_id = 1,
+                          obj_pose=place_pose, mass = 0.5, is_static=False)
+            self.collision_list.append({
+                "actor":box_obs_tar,
+                "collision_path": self.col_temp.format(object=box_obs,
+                                                        object_id=obs_tar_id)
+            })
+
+
         self.init_tar_pose = self.target_obj.get_pose()
         self.lift_height = 0.15
         self.ep_lift = 0.15 if self.scene_id == 0 else -0.15
         self.arm_side = "left" if self.scene_id == 0 else "right"
         
         print_c(f"Lifting by {self.lift_height}", "RED")
-        self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
-        self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
+        self.add_prohibit_area(self.target_obj, padding=0, area="table")
 
      
       
