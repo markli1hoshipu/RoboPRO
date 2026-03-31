@@ -52,7 +52,8 @@ class move_cup_next_to_book(Study_base_task):
 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
-        self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
+        self.add_prohibit_area(self.des_obj_pose,padding=0.05, area="table")
+        self.add_prohibit_area(self.target_obj, padding=0.1, area="table")
 
 
     def play_once(self, z = 0.05, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):

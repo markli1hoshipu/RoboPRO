@@ -46,7 +46,6 @@ class put_seal_in_box(Study_base_task):
 
 
         self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
-        self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
 
      
       
@@ -58,7 +57,7 @@ class put_seal_in_box(Study_base_task):
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
 
         # Lift the mouse upward by 0.1 meters in z-direction
-        # self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
 
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
 

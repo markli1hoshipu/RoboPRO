@@ -34,8 +34,7 @@ class put_cup_in_box(Study_base_task):
         place_actor(self.target_name, self, col_thr=0.10, xlim=xlim, ylim=ylim, 
                     qpos=(90,0,90), object_bounds=object_bounds, task_objs=task_objs,
                      mass = 0.1, rotation=False)
-        
-     
+
         self.des_obj = self.box
 
         des_bb = get_actor_boundingbox(self.des_obj.actor)
@@ -44,8 +43,8 @@ class put_cup_in_box(Study_base_task):
         self.des_obj_pose = p + [1, 0, 0, 0]
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
-        self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
-        self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
+        self.add_prohibit_area(self.target_obj, padding=0.08, area="table")
+        self.add_prohibit_area(self.des_obj, padding=0., area="table")
 
      
       

@@ -48,14 +48,13 @@ class put_cup_on_coaster(Study_base_task):
         p[1] -= 0.05  # Coaster appears 5cm below in the simulator
         p[-1] = self.target_obj.get_pose().p[-1]
         
-        self.des_obj_pose = p +  [1,0,0,0] #self.target_obj.get_pose().q.tolist()
-        #euler2quat(3.14,0,3.14).tolist() #
+        self.des_obj_pose = p +  [1,0,0,0] 
 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
 
-        self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
-        self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
+        self.add_prohibit_area(self.target_obj, padding=0.05, area="table")
+        self.add_prohibit_area(self.des_obj, padding=0.1, area="table")
 
      
       

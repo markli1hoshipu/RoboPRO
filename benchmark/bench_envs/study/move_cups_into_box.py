@@ -41,10 +41,10 @@ class move_cups_into_box(Study_base_task):
             place_actor(tn, self, col_thr=0.10, xlim=xlim, ylim=ylim, 
                         qpos=(90,0,90), object_bounds=object_bounds, task_objs=task_objs,
                         mass = 0.1, rotation=False, obj_id=None)
-           
+
             self.target_objects.append((tn, target_id, target_obj))
             self.des_obj_poses.append([des_pos[0], des_pos[1] - place_gap + (i*place_gap), des_pos[-1]]+[1,0,0,0])
-            self.add_prohibit_area(target_obj, padding=0.1, area="table")
+            self.add_prohibit_area(target_obj, padding=0.08, area="table")
 
         print_c(f"Placement destination pose {des_pos}", "RED")
 
@@ -58,7 +58,8 @@ class move_cups_into_box(Study_base_task):
             self.move(self.grasp_actor(t[-1], arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
 
             # Lift the mouse upward by 0.1 meters in z-direction
-            self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
+            self.move(self.move_by_displacement(arm_tag=arm_tag, x=-z, z=z,
+                                                constraint_pose =[0,0,0.8, 0, 0, 0]))
 
             self.attach_object(t[-1], f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{t[0]}/collision/base{t[1]}.glb", str(arm_tag))
 

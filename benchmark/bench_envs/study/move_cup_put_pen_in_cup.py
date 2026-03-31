@@ -24,7 +24,23 @@ class move_cup_put_pen_in_cup(Study_base_task):
         print_c(self.seed, "YELLOW")
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
-        
+        if np.random.rand() > self.clean_background_rate:
+            des_bb = get_actor_boundingbox(self.box.actor)
+            box_obs = "001_bottle"
+            gap = 0.05
+            place_pose =  [[des_bb[1][0]+gap if self.scene_id == 0 else des_bb[0][0]-gap, 
+                           des_bb[1][1]-np.random.uniform(low=0, 
+                                    high=des_bb[1][1]-des_bb[0][1]),
+                           des_bb[0][-1]],(90,0,0)]
+            
+            box_obs_tar, obs_tar_id, _= place_actor(box_obs, self, 
+                           task_objs = task_objs, obj_id = np.random.choice([0,19,3,20]),
+                          obj_pose=place_pose, mass = 0.5, is_static=False)
+            self.collision_list.append({
+                "actor":box_obs_tar,
+                "collision_path": self.col_temp.format(object=box_obs,
+                                                        object_id=obs_tar_id)
+            })
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
                                          boundary_thr=[0.15, 0.25], side="left" if self.scene_id == 0 else "right")
       
@@ -37,18 +53,19 @@ class move_cup_put_pen_in_cup(Study_base_task):
         self.cup_obj, self.cup_obj_id, self.cup_obj_pose = \
             place_actor(self.cup_name, self, task_objs = task_objs,
                     obj_pose=place_pose, mass = 0.4)
-
-
       
         self.target_name = "058_markpen"
         self.target_obj, self.target_id, self.target_pose = \
         place_actor(self.target_name, self, col_thr=0.0, xlim=[0],
                     ylim=[-0.087], qpos=(90,0,0),object_bounds= object_bounds,
                      task_objs=task_objs,  obj_id = 0, mass = 0.1)
+        self.add_prohibit_area(self.target_obj, padding=0.1, area="table")
+
         object_bounds.append(get_actor_boundingbox(self.target_obj.actor))
         
         self.cup_des_pose = get_random_place_pose(xlim = [xlim[0], (xlim[0]+xlim[1])/2], ylim=ylim,
                                              col_thr=0.10, object_bounds=object_bounds)
+        self.add_prohibit_area(self.cup_des_pose, padding=0.12, area="table")
 
         # Get the placement pose
         self.cup_des_pose = self.cup_des_pose.p.tolist() + [1,0,0,0]
@@ -57,8 +74,6 @@ class move_cup_put_pen_in_cup(Study_base_task):
 
         print_c(f"Placement destination pose {self.cup_des_pose}", "RED")
 
-        # self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
-        self.add_prohibit_area(self.cup_obj, padding=0.12, area="table")
     
     
     def pick_place_cup(self, arm_tag, pre_grasp_dist=0.1, z = 0.15, pre_dis= 0.05, dis=0.005):

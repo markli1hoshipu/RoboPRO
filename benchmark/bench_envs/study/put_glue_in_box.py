@@ -45,9 +45,7 @@ class put_glue_in_box(Study_base_task):
 
 
         self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
-        self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
-
-     
+        # self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
       
     def play_once(self, z = 0.1, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)

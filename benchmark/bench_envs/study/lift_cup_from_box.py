@@ -32,8 +32,8 @@ class lift_cup_from_box(Study_base_task):
 
         place_pose =  [[self.des_obj.get_pose().p[0], 
                         self.des_obj.get_pose().p[1] +
-                        np.random.uniform(low=-0.2, high=0),
-                        des_bb[0][-1] + 0.03],(90,0,90)]
+                        np.random.uniform(low=-0.15, high=0),
+                        des_bb[0][-1] + 0.01],(90,0,90)]
 
         self.target_obj, self.target_id, self.target_pose = \
             place_actor(self.target_name, self, task_objs = task_objs,
@@ -43,12 +43,12 @@ class lift_cup_from_box(Study_base_task):
             box_obs = "001_bottle"
             gap = 0.1
             place_pose =  [[np.random.choice([des_bb[0][0]+gap,
-                                              des_bb[1][1]-gap]), 
+                                              des_bb[1][0]-gap]), 
                         des_bb[1][1]-gap,
                         des_bb[0][-1]],(90,0,0)]
             
             box_obs_tar, obs_tar_id, _= place_actor(box_obs, self, 
-                           task_objs = task_objs, obj_id = 1,
+                           task_objs = task_objs, obj_id = 0,
                           obj_pose=place_pose, mass = 0.5, is_static=False)
             self.collision_list.append({
                 "actor":box_obs_tar,

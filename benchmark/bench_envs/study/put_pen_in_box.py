@@ -33,7 +33,7 @@ class put_pen_in_box(Study_base_task):
         xlim = [xlim[0], (xlim[0] + xlim[1])/2 + 0.2] 
         self.target_obj, self.target_id, self.target_pose = \
         place_actor(self.target_name, self, col_thr=0.20, xlim=xlim, ylim=ylim, 
-                    qpos=(90,0,0), object_bounds=object_bounds, task_objs=task_objs,
+                    qpos=(90,0,90), object_bounds=object_bounds, task_objs=task_objs,
                      mass = 0.1,  rotation=None)
         
         self.des_obj = self.box
@@ -45,12 +45,12 @@ class put_pen_in_box(Study_base_task):
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
 
-        self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
-        self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
+        self.add_prohibit_area(self.target_obj, padding=0.10, area="table")
+        # self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
 
      
       
-    def play_once(self, z = 0.12, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
+    def play_once(self, z = 0.1, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
 
@@ -58,9 +58,8 @@ class put_pen_in_box(Study_base_task):
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
 
         # Lift the mouse upward by 0.1 meters in z-direction
-        x = z if self.target_obj.get_pose().p[1] < 0 else -z
-        
-        self.move(self.move_by_displacement(arm_tag=arm_tag, x= x , z=z))
+           
+        self.move(self.move_by_displacement(arm_tag=arm_tag,  z=z))
 
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
         
@@ -69,7 +68,7 @@ class put_pen_in_box(Study_base_task):
                 self.target_obj,
                 arm_tag=arm_tag,
                 target_pose= self.des_obj_pose,
-                constrain= "free",
+                constrain= "auto",
                 pre_dis=pre_dis,
                 dis=dis,
                 actor_axis_type="world"

@@ -53,7 +53,7 @@ class move_seal_onto_table(Study_base_task):
 
         print_c(f"Placement destination pose {self.target_des_pose}", "RED")
 
-        self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
+        self.add_prohibit_area( self.target_place_pose , padding=0.1, area="table")
     
     def play_once(self, z = 0.15, pre_dis= 0.05, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)

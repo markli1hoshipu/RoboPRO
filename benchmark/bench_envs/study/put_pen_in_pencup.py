@@ -53,11 +53,14 @@ class put_pen_in_pencup(Study_base_task):
  
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
+        self.collision_list.append({
+            "actor":self.bookcase,
+            "collision_path": self.col_temp.format(object="014_bookcase", object_id="3")
+        })
+        self.add_prohibit_area(self.target_obj, padding=0.10, area="table")
+        self.add_prohibit_area(self.des_obj, padding=0.0, area="table")
 
-        self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
-        self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
-
-    def play_once(self, z = 0.15, pre_dis= 0.05, dis=0.005, pre_grasp_dist=0.1):
+    def play_once(self, z = 0.15, pre_dis= 0.01, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side_to_place ) 
         # Grasp the mouse with the selected arm

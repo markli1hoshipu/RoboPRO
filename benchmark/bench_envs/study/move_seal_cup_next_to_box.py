@@ -48,18 +48,38 @@ class move_seal_cup_next_to_box(Study_base_task):
         p = self.box.get_pose().p.tolist() 
         p[0] += move_thr if self.side_to_place == "left" else -move_thr
         self.des_obj_pose = p + [1,0,0,0] 
+        
+        self.add_prohibit_area(sapien.Pose(p = p, q = [1,0,0,0]), padding=0.12, area="table")
 
         des_bb = get_actor_boundingbox(self.box.actor)
         p = self.box.get_pose().p.tolist() 
-        p[-1] = des_bb[1][-1] -0.05 
+        p[1] -= 0.1
+        p[2] = des_bb[1][-1] -0.05 
 
         self.des_obj_pose_2 = p + [1, 0, 0, 0]
 
-        print_c(f"Placement seal pose {self.des_obj_pose}", "RED")
-        print_c(f"Placement cup pose {self.des_obj_pose_2}", "RED")
-        print_c(f"Placement box pose {self.box.get_pose()}", "RED")
+        self.add_prohibit_area(self.target_obj, padding=0.1, area="table")
+        self.add_prohibit_area(self.target_obj_2, padding=0.1, area="table")
+       
+        if np.random.rand() > self.clean_background_rate:
+            box_obs = "001_bottle"
+            gap = 0.1
+            place_pose =  [[np.random.choice([des_bb[0][0]+gap,
+                                              des_bb[1][0]-gap]), 
+                        des_bb[1][1]-gap,
+                        des_bb[0][-1]],(90,0,0)]
+            
+            box_obs_tar, obs_tar_id, _= place_actor(box_obs, self, 
+                           task_objs = task_objs, obj_id = 0,
+                          obj_pose=place_pose, mass = 0.5, is_static=False)
+            self.collision_list.append({
+                "actor":box_obs_tar,
+                "collision_path": self.col_temp.format(object=box_obs,
+                                                        object_id=obs_tar_id)
+            })
 
-        self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
+        print_c(f"Placement seal pose {self.des_obj_pose}", "RED")
+        print_c(f"Placement cup pose {self.des_obj_pose_2}", "RED")      
 
     def move_object(self, arm_tag, target_obj, target_id, target_name, 
                     des_obj_pose, z = 0.1, pre_dis= 0.07, 
@@ -75,7 +95,7 @@ class move_seal_cup_next_to_box(Study_base_task):
         # Place the mouse at the target location with alignment constraint
         self.move(
             self.place_actor(
-                self.target_obj,
+                target_obj,
                 arm_tag=arm_tag,
                 target_pose= des_obj_pose,
                 constrain= "auto",
@@ -83,11 +103,11 @@ class move_seal_cup_next_to_box(Study_base_task):
                 dis=dis,
             ))
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
-
+        self.detach_object(arm_tag)
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
+        arm_tag = ArmTag(self.side_to_place ) 
         self.move_object(arm_tag, self.target_obj, self.target_id, 
                          self.target_name, self.des_obj_pose,
                         z = 0.1, pre_dis= 0.07, 

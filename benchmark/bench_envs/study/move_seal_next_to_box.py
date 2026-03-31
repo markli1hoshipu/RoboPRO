@@ -27,7 +27,7 @@ class move_seal_next_to_box(Study_base_task):
         
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         self.target_name = "100_seal"
-        self.move_thr = 0.25
+        self.move_thr = 0.20
 
         xlim_m = [xlim[0] + self.move_thr + 0.1, xlim[1]] if self.scene_id == 0 \
         else [xlim[0], xlim[1] - self.move_thr - 0.1]
@@ -42,7 +42,8 @@ class move_seal_next_to_box(Study_base_task):
         self.des_obj_pose = p + [1,0,0,0] 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
-        self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
+        self.add_prohibit_area(self.target_obj, padding=0.1, area="table")
+        self.add_prohibit_area(self.des_obj_pose, padding=0.0, area="table")
 
 
     def play_once(self, z = 0.05, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):

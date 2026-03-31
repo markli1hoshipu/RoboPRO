@@ -24,7 +24,23 @@ class empty_box(Study_base_task):
         print_c(self.seed, "YELLOW")
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
-        
+        if np.random.rand() > self.clean_background_rate:
+            des_bb = get_actor_boundingbox(self.box.actor)
+            box_obs = "001_bottle"
+            gap = 0.05
+            place_pose =  [[des_bb[1][0]+gap if self.scene_id == 0 else des_bb[0][0]-gap, 
+                           des_bb[1][1]-np.random.uniform(low=0, 
+                                    high=des_bb[1][1]-des_bb[0][1]),
+                           des_bb[0][-1]],(90,0,0)]
+            
+            box_obs_tar, obs_tar_id, _= place_actor(box_obs, self, 
+                           task_objs = task_objs, obj_id = np.random.choice([0,19,3,20]),
+                          obj_pose=place_pose, mass = 0.5, is_static=False)
+            self.collision_list.append({
+                "actor":box_obs_tar,
+                "collision_path": self.col_temp.format(object=box_obs,
+                                                        object_id=obs_tar_id)
+            })
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
                                          boundary_thr=[0.15, 0.25],
                                         side="left" if self.scene_id == 0 else "right")
@@ -37,7 +53,6 @@ class empty_box(Study_base_task):
         self.seal_name ="100_seal" 
         box_pose = self.box.get_pose().p
         place_pose =  [[box_pose[0], box_pose[1]-0.05, des_bb[0][-1] + 0.03],(90,0,180)]
-       
         self.seal_obj, self.seal_obj_id, self.seal_obj_pose = \
             place_actor(self.seal_name, self, task_objs = task_objs,
                     obj_pose=place_pose, mass = 0.1)
@@ -45,7 +60,8 @@ class empty_box(Study_base_task):
         
         self.seal_des_pose = get_random_place_pose(xlim = [xlim[0]+ np.mean(xlim), xlim[1]-0.1], ylim=ylim,
                                              col_thr=0.1, object_bounds=object_bounds)
-        
+        self.add_prohibit_area(self.seal_des_pose, padding=0.1, area="table")
+
         # Object 2
         place_pose =  [[box_pose[0], box_pose[1] + 0.05, des_bb[0][-1] + 0.03],(90,0,90)]
      
@@ -67,21 +83,25 @@ class empty_box(Study_base_task):
         # Get the placement pose
         self.seal_des_pose = self.seal_des_pose.p.tolist() + [1,0,0,0]
 
-        self.cup_des_pose = get_random_place_pose(xlim = xlim, ylim=ylim,
-                                             col_thr=0.05, object_bounds=object_bounds)
+        self.cup_des_pose = get_random_place_pose(xlim = [xlim[0]+ np.mean(xlim), xlim[1]-0.1], ylim=ylim,
+                                             col_thr=0.1, object_bounds=object_bounds)
+        self.add_prohibit_area(self.cup_des_pose, padding=0.1, area="table")
+
         self.cup_des_pose = self.cup_des_pose.p.tolist() + [1,0,0,0]
 
         print_c(f"Placement destination poses: Seal {self.seal_des_pose}; \
                 Cup {self.cup_des_pose}", "RED")
 
-        self.add_prohibit_area(self.cup_obj, padding=0.12, area="table")
-        self.add_prohibit_area(self.cup_obj, padding=0.12, area="table")
+
+    def _get_target_object_names(self) -> set[str]:
+        """Default for tasks with single self.target_obj. Override for multi-target tasks."""
+        return {self.cup_obj.get_name(), self.seal_obj.get_name()}
     
     
     def pick_place_seal(self, arm_tag, pre_grasp_dist=0.1,
                         z = 0.10, pre_dis= 0.05, dis=0.005):
         self.move(self.grasp_actor(self.seal_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
-        self.move(self.move_by_displacement(arm_tag=arm_tag,x=z if self.side_to_place == "left" else -z, z=z,
+        self.move(self.move_by_displacement(arm_tag=arm_tag,x=-z if self.side_to_place == "left" else z, z=z,
                                             constraint_pose=None))
         self.attach_object(self.seal_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.seal_name}/collision/base{self.seal_obj_id}.glb", str(arm_tag))
         self.move(
@@ -93,7 +113,7 @@ class empty_box(Study_base_task):
                 pre_dis=pre_dis,
                 dis=dis
             ))
-        self.move(self.move_by_displacement(arm_tag=arm_tag,  z=z))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
 
         return self.seal_obj.get_pose()
         

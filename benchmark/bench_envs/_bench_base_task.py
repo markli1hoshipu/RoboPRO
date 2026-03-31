@@ -623,14 +623,15 @@ class Bench_base_task(Base_Task):
         if (isinstance(actor, sapien.Pose) or isinstance(actor, list) or isinstance(actor, np.ndarray)):
             actor_pose = transforms._toPose(actor)
             actor_data = {}
+            scale = 1
         else:
             actor_pose = actor.get_pose()
             if isinstance(actor, Actor):
                 actor_data = actor.config
             else:
                 actor_data = {}
-
-        scale = actor.scale
+            scale = actor.scale
+       
         origin_bounding_size = (np.array(actor_data.get("extents", [0.1, 0.1, 0.1])) * scale / 2)
         origin_bounding_pts = (np.array([
             [-1, -1, -1],
