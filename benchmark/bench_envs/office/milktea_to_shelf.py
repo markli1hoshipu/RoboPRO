@@ -83,7 +83,7 @@ class milktea_to_shelf(Office_base_task):
         action = self.place_actor(
                 self.target_obj,
                 arm_tag=arm_tag,
-                des_obj_pose=self.des_obj_pose,
+                target_pose=self.des_obj_pose,
                 constrain="free",
                 pre_dis=0.0,
                 dis=0.0,

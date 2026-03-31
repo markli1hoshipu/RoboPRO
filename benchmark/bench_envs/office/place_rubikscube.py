@@ -92,7 +92,7 @@ class place_rubikscube(Office_base_task):
             self.place_actor(
                 self.target_obj,
                 arm_tag=arm_tag,
-                des_obj_pose=self.des_obj_pose,
+                target_pose=self.des_obj_pose,
                 constrain="align",
                 pre_dis=0.04,
                 dis=0.02,

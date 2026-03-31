@@ -101,7 +101,7 @@ class put_away_stapler(Office_base_task):
         self.move(self.place_actor(
             self.target_obj,
             arm_tag=arm_tag,
-            des_obj_pose=des_obj_pose,
+            target_pose=des_obj_pose,
             pre_dis=0.05,
             dis=0.05,
             constrain="align",
