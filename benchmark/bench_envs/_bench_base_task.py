@@ -226,7 +226,7 @@ class Bench_base_task(Base_Task):
             rand_idx = np.random.randint(len(ids_for_obj))
             obj_idx = ids_for_obj[rand_idx]
 
-            if obj_name in self.unstable_objects or obj_idx in placed_objects.get(obj_name, []):
+            if obj_idx in placed_objects.get(obj_name, []):
                 trys += 1
                 continue
 
@@ -355,7 +355,7 @@ class Bench_base_task(Base_Task):
             rand_idx = np.random.randint(len(ids_for_obj))
             obj_idx = ids_for_obj[rand_idx]
 
-            if obj_name in self.unstable_objects or obj_idx in placed_objects.get(obj_name, []):
+            if obj_idx in placed_objects.get(obj_name, []):
                 trys += 1
                 continue
 
@@ -638,14 +638,15 @@ class Bench_base_task(Base_Task):
         if (isinstance(actor, sapien.Pose) or isinstance(actor, list) or isinstance(actor, np.ndarray)):
             actor_pose = transforms._toPose(actor)
             actor_data = {}
+            scale = 1
         else:
             actor_pose = actor.get_pose()
             if isinstance(actor, Actor):
                 actor_data = actor.config
             else:
                 actor_data = {}
-
-        scale = actor.scale
+            scale = actor.scale
+            
         origin_bounding_size = (np.array(actor_data.get("extents", [0.1, 0.1, 0.1])) * scale / 2)
         origin_bounding_pts = (np.array([
             [-1, -1, -1],
