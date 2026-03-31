@@ -1119,7 +1119,12 @@ class Bench_base_task(Base_Task):
                     if os.path.isdir(collision_path): # if actor is made from multiple obj files
                         name_prefix = actor.get_name()
                         if "link" in info:
-                            pose = actor.get_link_pose(info["link"])
+                            if isinstance(info["link"], list):
+                                pose = sapien.Pose()
+                                pose.p = actor.get_link_pose(info["link"][0]).p
+                                pose.q = actor.get_link_pose(info["link"][1]).q
+                            else:
+                                pose = actor.get_link_pose(info["link"])
                         elif "pose" in info:
                             pose = info["pose"]
                         else:
