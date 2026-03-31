@@ -631,11 +631,8 @@ class Bench_base_task(Base_Task):
             else:
                 actor_data = {}
             scale = actor.scale
-<<<<<<< HEAD
-       
-=======
-            
->>>>>>> 73ea60a (minor change to scale processing)
+
+
         origin_bounding_size = (np.array(actor_data.get("extents", [0.1, 0.1, 0.1])) * scale / 2)
         origin_bounding_pts = (np.array([
             [-1, -1, -1],

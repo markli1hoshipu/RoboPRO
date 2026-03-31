@@ -68,7 +68,7 @@ class put_pen_in_box(Study_base_task):
                 self.target_obj,
                 arm_tag=arm_tag,
                 target_pose= self.des_obj_pose,
-                constrain= "free",
+                constrain= "auto",
                 pre_dis=pre_dis,
                 dis=dis,
                 actor_axis_type="world"
