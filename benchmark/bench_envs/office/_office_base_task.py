@@ -349,7 +349,7 @@ class Office_base_task(Bench_base_task):
             "actor": self.cabinet,
             "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
             "link": "link_0",
-            "files": ["original-4.obj","original-7.obj"],
+            "files": ["original-4.obj","original-7.obj"], # these are only the side panels of the cabinet. Drawer is added separately when needed
         })
         # ------------------------------------------------------------
         self.wooden_box = create_actor(
@@ -441,11 +441,18 @@ class Office_base_task(Bench_base_task):
             limit = self.laptop.get_qlimits()[0]
             self.laptop.set_qpos([limit[0] + (limit[1] - limit[0]) * 0.9])
             self.add_prohibit_area(self.laptop, padding=0.01)
-            # custom collision because laptop has too many meshes
-            cuboid_pose = self.laptop.get_pose().p.tolist() + [1, 0, 0, 0]
-            cuboid_pose[1] += 0.04
-            cuboid_pose[2] = self.office_info["table_height"] + 0.07
-            self.cuboid_collision_list.append({"name": "015_laptop", "dims": [0.2, 0.07, 0.14], "pose": cuboid_pose})
+            self.collision_list.append({
+                "actor": self.laptop,
+                "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/015_laptop/9912/textured_objs/",
+                "link": ["link_0", "link_1"],
+                "files": ["original-5.obj"],
+            })
+
+            # # custom collision because laptop has too many meshes
+            # cuboid_pose = self.laptop.get_pose().p.tolist() + [1, 0, 0, 0]
+            # cuboid_pose[1] += 0.04
+            # cuboid_pose[2] = self.office_info["table_height"] + 0.07
+            # self.cuboid_collision_list.append({"name": "015_laptop", "dims": [0.2, 0.07, 0.14], "pose": cuboid_pose})
         # ------------------------------------------------------------
         if "plant" not in full_names:
             plant_id = 0
@@ -511,59 +518,6 @@ class Office_base_task(Bench_base_task):
         self.clutter_surface(xlim, ylim, [self.office_info["shelf_heights"][0]], self.prohibited_area["shelf0"], 5, cluttered_item_info, obj_names_short)
         self.clutter_surface(xlim, ylim, [self.office_info["shelf_heights"][1]], self.prohibited_area["shelf1"], 5, cluttered_item_info, obj_names_short)
     
-    def load_table_obstacles_in_line(self, spacing=0.10, ground_y=-5.0, ground_z=0.02):
-        """Used for debugging. Load all table_obstacles that are available into the scene in a line on the ground at y=ground_y, spacing (m) apart."""
-        task_objects_list = []
-        for entity in self.scene.get_all_actors():
-            actor_name = entity.get_name()
-            if actor_name == "":
-                continue
-            if actor_name in ["table", "wall", "ground"]:
-                continue
-            task_objects_list.append(actor_name)
-        cluttered_item_info, obj_names = get_obstacle_objects_subset("office", task_objects_list)
-        if not obj_names:
-            return
-        n = len(obj_names)
-        # Center the line along x: first object at x = -(n-1)*spacing/2, then x += spacing
-        x_start = -(n - 1) * spacing / 2.0
-        identity_quat = [1, 0, 0, 0]
-        for i, obj_name in enumerate(obj_names):
-            ids = cluttered_item_info[obj_name]["ids"]
-            if not ids:
-                continue
-            obj_idx = ids[0]
-            info = cluttered_item_info[obj_name]
-            model_type = info["type"]
-            x_i = x_start + i * spacing
-            pose = sapien.Pose(
-                [
-                    x_i, ground_y, 
-                    ground_z + cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
-                ], 
-                identity_quat)
-            if model_type == "urdf":
-                obj = create_cluttered_urdf_obj(
-                    scene=self.scene,
-                    pose=pose,
-                    modelname=f"objects/objaverse/{obj_name}/{obj_idx}",
-                    fix_root_link=True,
-                    scale=1,
-                )
-            else:
-                obj = create_actor(
-                    scene=self.scene,
-                    pose=pose,
-                    modelname=obj_name,
-                    model_id=obj_idx,
-                    convex=True,
-                    is_static=True,
-                    scale = [1,1,1]
-                )
-            if obj is None:
-                continue
-            obj.set_name(obj_name)
-    
     def add_extra_cameras(self):
         self.cameras.add_extra_cameras(f"{os.environ['BENCH_ROOT']}/bench_assets/embodiments/office_config.yml")
     
@@ -571,3 +525,26 @@ class Office_base_task(Bench_base_task):
         files = ["original-23.obj", "original-24.obj", "original-18.obj", "original-34.obj", "original-41.obj"]
         names = [f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/{file}_{self.seed}" for file in files]
         self.enable_obstacle(enable, names)
+    
+    def add_cabinet_collision(self):
+        # adds cabinet drawer to curobo collision world. Adds it with the drawer state being open. 
+        limit = self.cabinet.get_qlimits()[0]
+        self.cabinet.set_qpos([limit[1],0,0]) # open drawer for extracting open pose
+        self.collision_list.append({
+            "actor": self.cabinet,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
+            "pose": self.cabinet.get_link_pose("link_1"),
+            "files": ["original-23.obj", "original-24.obj", "original-18.obj"],
+        })
+        self.collision_list.append({
+            "actor": self.cabinet,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
+            "link": "link_2",
+            "files": ["original-34.obj", "original-41.obj"],
+        })
+        self.cabinet.set_qpos([limit[0],0,0]) # reset drawer to closed state for task rollout
+
+        # prohibit area around opening space
+        cabinet_pose = self.cabinet.get_pose().p
+        cabinet_pose[1]-= 0.19  
+        self.prohibited_area["table"].append([cabinet_pose[0]-0.11, cabinet_pose[1]-0.1, cabinet_pose[0]+0.11, cabinet_pose[1]+0.1])

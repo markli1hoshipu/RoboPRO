@@ -20,6 +20,7 @@ class close_drawer(Office_base_task):
         return set()
 
     def load_actors(self):
+        self.add_cabinet_collision()
         limit = self.cabinet.get_qlimits()[0]
         self.cabinet.set_qpos([limit[1],0,0])
         cabinet_pose = self.cabinet.get_pose().p
@@ -31,7 +32,11 @@ class close_drawer(Office_base_task):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag("left") if self.arr_v == 2 else ArmTag("right")
 
-        self.move(self.grasp_actor(self.cabinet, arm_tag=arm_tag, pre_grasp_dis=0.05, grasp_dis=0.025))
+        _, actions = self.grasp_actor(self.cabinet, arm_tag=arm_tag, pre_grasp_dis=0.05, grasp_dis=0.025)
+
+        self.move((arm_tag, [actions[0]]))
+        self.enable_drawer(enable=False)
+        self.move((arm_tag, actions[1:]))
 
         # Pull the drawer
         for _ in range(3):

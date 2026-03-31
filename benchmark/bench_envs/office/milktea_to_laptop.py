@@ -19,7 +19,7 @@ class milktea_to_laptop(Office_base_task):
 
     def load_actors(self):
         # add table as collision
-        self.cuboid_collision_list.append(("table", [2, 2, 0.002], [0,0,0.74,1,0,0,0]))
+        self.cuboid_collision_list.append(("table", [1.2, 0.7, 0.002], [0,0,0.74,1,0,0,0]))
         self.side = np.random.choice(["left", "right"])
         laptop_id = np.random.choice([9748,9912,9960,9968,9992,9996,10040,10098,10101,10125,10211])
         laptop_id = 9912
@@ -50,10 +50,12 @@ class milktea_to_laptop(Office_base_task):
         limit = self.laptop.get_qlimits()[0]
         self.laptop.set_qpos([limit[0] + (limit[1] - limit[0]) * 0.9])
         self.add_prohibit_area(self.laptop, padding=0.01)
-        cuboid_pose = self.laptop.get_pose().p.tolist() + [1, 0, 0, 0]
-        cuboid_pose[1] += 0.04
-        cuboid_pose[2] = self.office_info["table_height"] + 0.07
-        self.cuboid_collision_list.append(("015_laptop", [0.2, 0.07, 0.14], cuboid_pose)) # collision box for laptop
+        self.collision_list.append({
+                "actor": self.laptop,
+                "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/015_laptop/9912/textured_objs/",
+                "link": ["link_0", "link_1"],
+                "files": ["original-5.obj"],
+            })
 
         half_size = [0.03, 0.03, 0.0005]
         p = self.laptop.get_pose().p.tolist()

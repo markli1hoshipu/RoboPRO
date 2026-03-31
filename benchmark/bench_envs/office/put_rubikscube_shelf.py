@@ -21,26 +21,9 @@ class put_rubikscube_shelf(Office_base_task):
 
     def load_actors(self):
         self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
+        
         # prepare drawer --------------------------------------------
-        limit = self.cabinet.get_qlimits()[0]
-        self.cabinet.set_qpos([limit[1],0,0])
-        # prohibit area around opening space
-        self.collision_list.append({
-            "actor": self.cabinet,
-            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
-            "pose": self.cabinet.get_link_pose("link_1"),
-            "files": ["original-23.obj", "original-24.obj", "original-18.obj"],
-        })
-        self.collision_list.append({
-            "actor": self.cabinet,
-            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
-            "link": "link_2",
-            "files": ["original-34.obj", "original-41.obj"],
-        })
-        self.cabinet.set_qpos([limit[0],0,0])
-        cabinet_pose = self.cabinet.get_pose().p
-        cabinet_pose[1]-= 0.19  
-        self.prohibited_area["table"].append([cabinet_pose[0]-0.11, cabinet_pose[1]-0.1, cabinet_pose[0]+0.11, cabinet_pose[1]+0.1])
+        self.add_cabinet_collision()
 
         # rubikscube --------------------------------------------------
         self.cube_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["073_rubikscube"])

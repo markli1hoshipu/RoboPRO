@@ -23,17 +23,9 @@ class place_stapler_drawer(Office_base_task):
         self.side =  "left" if self.arr_v == 2 else "right"
 
         # set up cabinet
+        self.add_cabinet_collision()
         limit = self.cabinet.get_qlimits()[0]
         self.cabinet.set_qpos([limit[1],0,0])
-        self.collision_list.append({
-            "actor": self.cabinet,
-            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
-            "link": "link_1",
-            "files": ["original-23.obj", "original-24.obj", "original-18.obj"],
-        })
-        cabinet_pose = self.cabinet.get_pose().p
-        cabinet_pose[1]-= 0.19  
-        self.prohibited_area["table"].append([cabinet_pose[0]-0.11, cabinet_pose[1]-0.1, cabinet_pose[0]+0.11, cabinet_pose[1]+0.1])
 
         # set up target_obj --------------------------------------------------
         self.stapler_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["048_stapler"])
