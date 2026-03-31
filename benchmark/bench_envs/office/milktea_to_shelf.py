@@ -15,7 +15,7 @@ class milktea_to_shelf(Office_base_task):
         super()._init_task_env_(**kwargs)
 
     def _get_target_object_names(self) -> set[str]:
-        return {self.milktea.get_name()}
+        return {self.target_obj.get_name()}
 
     def load_actors(self):
         self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
@@ -29,27 +29,27 @@ class milktea_to_shelf(Office_base_task):
         )
 
         half_size = [0.025, 0.025, 0.0005]
-        self.target = create_box(
+        self.des_obj = create_box(
             scene=self,
             pose=target_rand_pose,
             half_size=half_size,
             color=(0, 0, 1), # blue
-            name="target",
+            name="des_obj",
             is_static=True,
         )
-        self.target_pose = self.target.get_pose().p.tolist()
-        self.target_pose[2] += 0.02 # raise target 0.02 meters
-        self.add_prohibit_area(self.target, padding=0.05, area=f"shelf0")
+        self.des_obj_pose = self.des_obj.get_pose().p.tolist()
+        self.des_obj_pose[2] += 0.02 # raise des_obj 0.02 meters
+        self.add_prohibit_area(self.des_obj, padding=0.05, area=f"shelf0")
 
         self.milktea_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["101_milk-tea"])
-        self.side = "right" if self.target.get_pose().p[0] > 0 else "left"
+        self.side = "right" if self.des_obj.get_pose().p[0] > 0 else "left"
         if self.side == "left":
             xlim1 = [self.office_info["table_lims"][0]+self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"], 0.1]
         else:
             xlim1 = [-0.1, self.office_info["table_lims"][2]-self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"]]
         ylim1 = [self.office_info["table_lims"][1] + 0.3, self.office_info["shelf_lims"][1]-0.05]
 
-        self.milktea = rand_create_actor(
+        self.target_obj = rand_create_actor(
             self,
             xlim=xlim1,
             ylim=ylim1,
@@ -60,36 +60,36 @@ class milktea_to_shelf(Office_base_task):
             convex=True,
             model_id=self.milktea_id, 
         )
-        self.milktea.set_mass(0.06)
-        self.add_prohibit_area(self.milktea, padding=0.01)
-        self.target_pose += self.milktea.get_pose().q.tolist()
+        self.target_obj.set_mass(0.06)
+        self.add_prohibit_area(self.target_obj, padding=0.01)
+        self.des_obj_pose += self.target_obj.get_pose().q.tolist()
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side)
 
         # Grasp the mouse with the selected arm
-        action = self.grasp_actor(self.milktea, arm_tag=arm_tag, pre_grasp_dis=0.1, grasp_dis=0.02, contact_point_id=2)
-        action[1][0].target_pose[2] += 0.04
-        action[1][1].target_pose[2] += 0.04
+        action = self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.1, grasp_dis=0.02, contact_point_id=2)
+        action[1][0].des_obj_pose[2] += 0.04
+        action[1][1].des_obj_pose[2] += 0.04
         self.move(action)
 
         # Lift the mouse upward by 0.1 meters in z-direction
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.01))
 
-        self.attach_object(self.milktea, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/101_milk-tea/collision/base{self.milktea_id}.glb", str(arm_tag))
+        self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/101_milk-tea/collision/base{self.milktea_id}.glb", str(arm_tag))
 
-        # Place the mouse at the target location with alignment constraint
+        # Place the mouse at the des_obj location with alignment constraint
         action = self.place_actor(
-                self.milktea,
+                self.target_obj,
                 arm_tag=arm_tag,
-                target_pose=self.target_pose,
+                des_obj_pose=self.des_obj_pose,
                 constrain="free",
                 pre_dis=0.0,
                 dis=0.0,
                 local_up_axis=[0,0,1]
             )
-        # action[1][0].target_pose[2] += 0.03
+        # action[1][0].des_obj_pose[2] += 0.03
         self.move(action)
 
         # # Record information about the objects and arm used in the task
@@ -101,13 +101,11 @@ class milktea_to_shelf(Office_base_task):
         # return self.info
 
     def check_success(self):
-        mouse_pose = self.mouse.get_pose().p
-        mouse_qpose = np.abs(self.mouse.get_pose().q)
-        target_pos = self.target.get_pose().p
-        eps1 = 0.04
-        eps2 = 0.04
+        end_pose_actual = self.target_obj.get_pose().p
+        end_pose_desired = self.des_obj.get_pose().p
+        end_pose_desired[2] += 0.01
+        eps3 = 0.02
 
-        return (np.all(abs(mouse_pose[:2] - target_pos[:2]) < np.array([eps1, eps2]))
-                and (np.abs(mouse_qpose[2] * mouse_qpose[3] - 0.49) < eps1
-                     or np.abs(mouse_qpose[0] * mouse_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
+        return (np.all(abs(end_pose_actual[2] - end_pose_desired[2]) < np.array([eps1, eps2]))
+                and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

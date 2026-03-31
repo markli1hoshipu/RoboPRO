@@ -20,9 +20,9 @@ class cleaning_1(Office_base_task):
         return set()
 
     def load_actors(self):
-        # milktea ------------------------------------------------------------
+        # target_obj_1 ------------------------------------------------------------
         self.milktea_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["101_milk-tea"])
-        self.milktea = rand_create_actor(
+        self.target_obj_1 = rand_create_actor(
             self,
             xlim=[self.office_info["shelf_lims"][0]+0.05, self.office_info["shelf_lims"][2]-0.05],
             ylim=[self.office_info["shelf_lims"][1]+0.04],
@@ -34,16 +34,16 @@ class cleaning_1(Office_base_task):
             model_id=self.milktea_id,
             is_static=False,
         )
-        self.milktea.set_mass(0.06)
-        self.stabilize_object(self.milktea)
-        self.add_prohibit_area(self.milktea, padding=0.01, area="shelf0")
+        self.target_obj_1.set_mass(0.06)
+        self.stabilize_object(self.target_obj_1)
+        self.add_prohibit_area(self.target_obj_1, padding=0.01, area="shelf0")
         
-        # target1 ------------------------------------------------------------
-        if self.milktea.get_pose().p[0] < 0:
+        # des_obj_pose_1 ------------------------------------------------------------
+        if self.target_obj_1.get_pose().p[0] < 0:
             xlim = [self.office_info["table_lims"][0]+0.04, 0.1]
         else:
             xlim = [-0.1, self.office_info["table_lims"][2]-0.04]
-        self.coaster = rand_create_actor(
+        self.des_obj_1 = rand_create_actor(
             self,
             xlim=xlim,
             ylim=[self.office_info["table_lims"][1] + 0.25, self.office_info["shelf_lims"][1]-0.05],
@@ -55,11 +55,11 @@ class cleaning_1(Office_base_task):
             model_id=0,
             is_static=False,
         )
-        self.add_prohibit_area(self.coaster, padding=0.01, area="table")
-        self.target1 = self.coaster.get_pose().p.tolist() + self.milktea.get_pose().q.tolist()   # wxyz
-        self.target1[2] += 0.02
+        self.add_prohibit_area(self.des_obj_1, padding=0.01, area="table")
+        self.des_obj_pose_1 = self.des_obj_1.get_pose().p.tolist() + self.target_obj_1.get_pose().q.tolist()   # wxyz
+        self.des_obj_pose_1[2] += 0.02
 
-        # target2 ------------------------------------------------------------
+        # des_obj_pose_2 ------------------------------------------------------------
         target_rand_pose = rand_pose(
             xlim=[self.office_info["shelf_lims"][0]+0.05, self.office_info["shelf_lims"][2]-0.05],
             ylim=[self.office_info["shelf_lims"][1] + 0.055],
@@ -69,26 +69,26 @@ class cleaning_1(Office_base_task):
         )
 
         half_size = [0.05, 0.05, 0.0005]
-        self.target2_box = create_box(
+        self.des_obj_2 = create_box(
             scene=self,
             pose=target_rand_pose,
             half_size=half_size,
             color=(0, 0, 1), # blue
-            name="target2_box",
+            name="des_obj_2",
             is_static=True,
         )
-        self.target2 = self.target2_box.get_pose().p.tolist() + euler2quat(np.pi/2,np.pi, 0, axes='sxyz').tolist()
-        self.target2[2] += 0.05 # raise target 0.02 meters
-        self.add_prohibit_area(self.target2_box, padding=0.03, area=f"shelf1")
+        self.des_obj_pose_2 = self.des_obj_2.get_pose().p.tolist() + euler2quat(np.pi/2,np.pi, 0, axes='sxyz').tolist()
+        self.des_obj_pose_2[2] += 0.05 # raise target 0.02 meters
+        self.add_prohibit_area(self.des_obj_2, padding=0.03, area=f"shelf1")
 
-        # rubikscube ------------------------------------------------------------
-        if self.target2_box.get_pose().p[0] < 0:
+        # target_obj_2 ------------------------------------------------------------
+        if self.des_obj_2.get_pose().p[0] < 0:
             xlim = [self.office_info["table_lims"][0]+0.04, 0.1]
         else:
             xlim = [-0.1, self.office_info["table_lims"][2]-0.04]
 
         self.rubikscube_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["073_rubikscube"])
-        success, self.rubikscube = rand_create_cluttered_actor(
+        success, self.target_obj_2 = rand_create_cluttered_actor(
             scene=self.scene,
             xlim=xlim,
             ylim=[self.office_info["table_lims"][1]+0.04, self.office_info["shelf_lims"][1]-0.04],
@@ -108,9 +108,9 @@ class cleaning_1(Office_base_task):
             size_dict=dict(),
         )
         if not success:
-            raise RuntimeError("Failed to load rubikscube")
-        self.rubikscube.set_mass(0.1)
-        self.add_prohibit_area(self.rubikscube, padding=0.01, area="table")
+            raise RuntimeError("Failed to load target_obj_2")
+        self.target_obj_2.set_mass(0.1)
+        self.add_prohibit_area(self.target_obj_2, padding=0.01, area="table")
     
         # target3 ------------------------------------------------------------
         if self.arr_v == 0:
@@ -120,7 +120,7 @@ class cleaning_1(Office_base_task):
 
 
         self.target3_book_id = 1
-        success, self.target3_book = rand_create_cluttered_actor(
+        success, self.des_obj_3 = rand_create_cluttered_actor(
             scene=self.scene,
             xlim=xlim,
             ylim=[self.office_info["table_lims"][1]+0.15, self.office_info["shelf_lims"][1]-0.07],
@@ -140,19 +140,19 @@ class cleaning_1(Office_base_task):
             scale=self.item_info['scales']['043_book'][f'{self.target3_book_id}'],
         )
         if not success:
-            raise RuntimeError("Failed to load target3_book")
-        self.target3_book.set_mass(0.1)
-        self.add_prohibit_area(self.target3_book, padding=0.05, area="table")
-        self.target3 = self.target3_book.get_pose().p.tolist() + euler2quat(np.pi, np.pi/6, np.pi/2, axes='sxyz').tolist()
+            raise RuntimeError("Failed to load des_obj_3")
+        self.des_obj_3.set_mass(0.1)
+        self.add_prohibit_area(self.des_obj_3, padding=0.05, area="table")
+        self.target3 = self.des_obj_3.get_pose().p.tolist() + euler2quat(np.pi, np.pi/6, np.pi/2, axes='sxyz').tolist()
         self.target3[2]+=0.05
         self.target3[1]+=0.015
         
-        # book ------------------------------------------------------------
+        # target_obj_3 ------------------------------------------------------------
         ylim = [self.file_holder.get_pose().p[1]]
         zlim = [self.office_info["file_holder_heights"][1]+0.1]
         xlim = [self.office_info["file_holder_lims"][0]+0.08, self.office_info["file_holder_lims"][2]-0.08]
         book_id = 0
-        self.book = rand_create_actor(
+        self.target_obj_3 = rand_create_actor(
             self,
             xlim=xlim,
             ylim=ylim,
@@ -165,8 +165,8 @@ class cleaning_1(Office_base_task):
             is_static=False,
             scale = self.item_info['scales']['043_book'][f'{book_id}']
         )
-        self.book.set_mass(0.06)
-        self.stabilize_object(self.book)
+        self.target_obj_3.set_mass(0.06)
+        self.stabilize_object(self.target_obj_3)
 
 
     def play_once(self):
@@ -174,13 +174,13 @@ class cleaning_1(Office_base_task):
         armL = ArmTag("left")
         armR = ArmTag("right")
         arms = [
-            armL if self.milktea.get_pose().p[0] < 0 else armR,
-            armL if self.rubikscube.get_pose().p[0] < 0 else armR,
+            armL if self.target_obj_1.get_pose().p[0] < 0 else armR,
+            armL if self.target_obj_2.get_pose().p[0] < 0 else armR,
             armR if self.arr_v == 0 else armL,
         ]
 
-        # milktea --------------------------------------------------
-        action = self.grasp_actor(self.milktea, arm_tag=arms[0], pre_grasp_dis=0.1, grasp_dis=0.02, contact_point_id=2)
+        # target_obj_1 --------------------------------------------------
+        action = self.grasp_actor(self.target_obj_1, arm_tag=arms[0], pre_grasp_dis=0.1, grasp_dis=0.02, contact_point_id=2)
         action[1][0].target_pose[2] += 0.04
         action[1][1].target_pose[2] += 0.04
         self.move(action)
@@ -188,13 +188,13 @@ class cleaning_1(Office_base_task):
         # Lift the mouse upward by 0.1 meters in z-direction
         self.move(self.move_by_displacement(arm_tag=arms[0], z=0.01))
 
-        self.attach_object(self.milktea, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/101_milk-tea/collision/base{self.milktea_id}.glb", str(arms[0]))
+        self.attach_object(self.target_obj_1, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/101_milk-tea/collision/base{self.milktea_id}.glb", str(arms[0]))
 
         # Place the mouse at the target location with alignment constraint
         action = self.place_actor(
-                self.milktea,
+                self.target_obj_1,
                 arm_tag=arms[0],
-                target_pose=self.target1,
+                target_pose=self.des_obj_pose_1,
                 constrain="free",
                 pre_dis=0.0,
                 dis=0.0,
@@ -209,7 +209,7 @@ class cleaning_1(Office_base_task):
             self.move(self.back_to_origin(arms[0]))
 
         # rubics cube --------------------------------------------------
-        action = self.grasp_actor(self.rubikscube, arm_tag=arms[1], pre_grasp_dis=0.1, contact_point_id=3)
+        action = self.grasp_actor(self.target_obj_2, arm_tag=arms[1], pre_grasp_dis=0.1, contact_point_id=3)
         if action:
             action[1][1].target_pose[2] += 0.04 # grasp center of box
         self.move(action)
@@ -217,13 +217,13 @@ class cleaning_1(Office_base_task):
         # Lift the box upward by 0.1 meters in z-direction
         self.move(self.move_by_displacement(arm_tag=arms[1], z=0.01))
 
-        self.attach_object(self.rubikscube, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/073_rubikscube/collision/base{self.rubikscube_id}.glb", str(arms[1]))
+        self.attach_object(self.target_obj_2, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/073_rubikscube/collision/base{self.rubikscube_id}.glb", str(arms[1]))
 
         self.move(
             self.place_actor(
-                self.rubikscube,
+                self.target_obj_2,
                 arm_tag=arms[1],
-                target_pose=self.target2,
+                target_pose=self.des_obj_pose_2,
                 constrain="align",
                 pre_dis=0.08,
                 dis=-0.02,
@@ -235,14 +235,14 @@ class cleaning_1(Office_base_task):
         if arms[1] != arms[2]:
             self.move(self.back_to_origin(arms[1]))
     
-        # book --------------------------------------------------
-        self.move(self.grasp_actor(self.book, arm_tag=arms[2], pre_grasp_dis=0.04, grasp_dis=0.01))
+        # target_obj_3 --------------------------------------------------
+        self.move(self.grasp_actor(self.target_obj_3, arm_tag=arms[2], pre_grasp_dis=0.04, grasp_dis=0.01))
         self.move(self.move_by_displacement(arm_tag=arms[2], y=-0.01, z=0.01))
-        self.attach_object(self.book, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/043_book/collision/base0.glb", str(arms[2]))
+        self.attach_object(self.target_obj_3, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/043_book/collision/base0.glb", str(arms[2]))
 
         self.move(
             self.place_actor(
-                self.book,
+                self.target_obj_3,
                 arm_tag=arms[2],
                 target_pose=self.target3,
                 constrain="align",

@@ -116,7 +116,6 @@ class Office_base_task(Bench_base_task):
         self.size_dict = list()
         self.cluttered_objs = list()
         self.prohibited_area = {"table": [], "shelf0": [], "shelf1": []} # shelf 0 for lower shelf, shelf 1 for upper shelf
-        self.unstable_objects = ["050_bell"] # objects that are not stable and should be avoided
         # self.short_obstacles = [
         #     # "010_pen",
         #     # "015_laptop",
@@ -161,6 +160,8 @@ class Office_base_task(Bench_base_task):
             "shelf_heights":[0.9, 1.127], # heights of the shelf levels
             "shelf_area":[0.62, 0.26], # x,y area 
             "shelf_lims": [],
+            "shelf_padding": 0.09, # required distance from edge of shelf for gripper to fit
+            "file_holder_height": 0.76,
             "file_holder_area":[0.22, 0.16], # x,y area 
             "file_holder_lims": [],
             "file_holder_heights": [0.82,0.942],
@@ -528,8 +529,6 @@ class Office_base_task(Bench_base_task):
         x_start = -(n - 1) * spacing / 2.0
         identity_quat = [1, 0, 0, 0]
         for i, obj_name in enumerate(obj_names):
-            if obj_name in self.unstable_objects:
-                continue
             ids = cluttered_item_info[obj_name]["ids"]
             if not ids:
                 continue

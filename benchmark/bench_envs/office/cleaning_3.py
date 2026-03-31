@@ -46,23 +46,23 @@ class cleaning_3(Office_base_task):
         self.prohibited_area["table"].append([holder_pose[0]-0.11, holder_pose[1]-0.1, holder_pose[0]+0.11, holder_pose[1]+0.1])
         model_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["043_book"])
         
-        # book ------------------------------------------------------------
+        # target_obj_2 ------------------------------------------------------------
         ylim = [self.shelf.get_pose().p[1]-0.07]
         if self.arr_v == 0:
-            xlims = [-0.15, self.office_info["shelf_lims"][2]-0.09]
+            xlims = [-0.15, self.office_info["shelf_lims"][2]-self.office_info["shelf_padding"]]
             level = 0
         elif self.arr_v == 2:
-            xlims = [self.office_info["shelf_lims"][0]+0.09, 0.15]
+            xlims = [self.office_info["shelf_lims"][0]+self.office_info["shelf_padding"], 0.15]
             level = 0
         else:        
             level = np.random.choice([0,1])
             if level == 0:
-                xlims = [self.office_info["shelf_lims"][0]+0.09, 0.15]
+                xlims = [self.office_info["shelf_lims"][0]+self.office_info["shelf_padding"], 0.15]
             else:
-                xlims = [self.office_info["shelf_lims"][0]+0.09, 0.02]
+                xlims = [self.office_info["shelf_lims"][0]+self.office_info["shelf_padding"], 0.02]
         zlim = [self.office_info["shelf_heights"][level]+0.1]
 
-        self.book = rand_create_actor(
+        self.target_obj_2 = rand_create_actor(
             self,
             xlim=xlims,
             ylim=ylim,
@@ -75,22 +75,22 @@ class cleaning_3(Office_base_task):
             is_static=False,
             scale = self.item_info['scales']['043_book'][f'{model_id}']
         )
-        self.book.set_mass(0.1)
-        self.stabilize_object(self.book)
-        center_x = self.book.get_pose().p[0] + 0.02
-        center_y = self.book.get_pose().p[1]
+        self.target_obj_2.set_mass(0.1)
+        self.stabilize_object(self.target_obj_2)
+        center_x = self.target_obj_2.get_pose().p[0] + 0.02
+        center_y = self.target_obj_2.get_pose().p[1]
         self.prohibited_area[f"shelf{level}"].append([center_x-0.025, center_y-0.06, center_x+0.025, center_y+0.06])
 
         self.target = self.file_holder.get_pose().p.tolist() + euler2quat(np.pi, np.pi/12, np.pi/2, axes='sxyz').tolist()
         self.target[1]-= 0.06
         self.target[2]+=0.08
 
-        # mouse ------------------------------------------------------------
+        # target_obj_1 ------------------------------------------------------------
         self.mouse_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["047_mouse"])
         pose = self.cabinet.get_pose().p
         pose[1]-= 0.2
         pose[2] = self.office_info["table_height"]+0.03
-        self.mouse = rand_create_actor(
+        self.target_obj_1 = rand_create_actor(
             scene=self,
             xlim = [pose[0]],
             ylim = [pose[1]],
@@ -110,7 +110,7 @@ class cleaning_3(Office_base_task):
         if self.arr_v == 2:
             xlim = [self.office_info["table_lims"][0]+0.04, 0.15]
         else:
-            xlim = [-0.15, self.office_info["table_lims"][2]-0.09]
+            xlim = [-0.15, self.office_info["table_lims"][2]-0.04]
         target_rand_pose = rand_pose(
             xlim=xlim,
             ylim=[self.office_info["table_lims"][1]+0.07, -0.1],
@@ -134,7 +134,7 @@ class cleaning_3(Office_base_task):
         self.color_name, self.color_value = color_items[color_index]
 
         half_size = [0.035, 0.065, 0.0005]
-        self.target_box = create_box(
+        self.des_obj_1 = create_box(
             scene=self,
             pose=target_rand_pose,
             half_size=half_size,
@@ -142,24 +142,24 @@ class cleaning_3(Office_base_task):
             name="box",
             is_static=True,
         )
-        self.add_prohibit_area(self.target_box, padding=0.06, area="table")
+        self.add_prohibit_area(self.des_obj_1, padding=0.06, area="table")
         # Construct target pose with position from target object and identity orientation
-        self.target2 = self.target_box.get_pose().p.tolist() + [0, 0, 0, 1]
+        self.des_obj_pose_1 = self.des_obj_1.get_pose().p.tolist() + [0, 0, 0, 1]
 
     def play_once(self):
-        # Determine which arm to use based on mouse position (right if on right side, left otherwise)
+        # Determine which arm to use based on target_obj_1 position (right if on right side, left otherwise)
         arm_tag1 = ArmTag("left") if self.arr_v == 2 else ArmTag("right")
         arm_tag2 = ArmTag("right") if self.arr_v == 0 else ArmTag("left")
 
-        # mouse ------------------------------------------------------------
-        self.move(self.grasp_actor(self.mouse, arm_tag=arm_tag1, pre_grasp_dis=0.05,grasp_dis=0.02))
+        # target_obj_1 ------------------------------------------------------------
+        self.move(self.grasp_actor(self.target_obj_1, arm_tag=arm_tag1, pre_grasp_dis=0.05,grasp_dis=0.02))
         self.move(self.move_by_displacement(arm_tag=arm_tag1, z=0.1))
-        self.attach_object(self.mouse, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/047_mouse/collision/base{self.mouse_id}.glb", str(arm_tag1))
+        self.attach_object(self.target_obj_1, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/047_mouse/collision/base{self.mouse_id}.glb", str(arm_tag1))
         self.move(
             self.place_actor(
-                self.mouse,
+                self.target_obj_1,
                 arm_tag=arm_tag1,
-                target_pose=self.target2,
+                target_pose=self.des_obj_pose_1,
                 constrain="align",
                 pre_dis=0.02,
                 dis=0.02,
@@ -181,15 +181,15 @@ class cleaning_3(Office_base_task):
         if arm_tag1 != arm_tag2:
             self.move(self.back_to_origin(arm_tag1))
 
-        # book ------------------------------------------------------------
-        self.move(self.grasp_actor(self.book, arm_tag=arm_tag2, pre_grasp_dis=0.04, grasp_dis=0.02))
+        # target_obj_2 ------------------------------------------------------------
+        self.move(self.grasp_actor(self.target_obj_2, arm_tag=arm_tag2, pre_grasp_dis=0.04, grasp_dis=0.02))
 
         self.move(self.move_by_displacement(arm_tag=arm_tag2, z=0.015))
-        self.attach_object(self.book, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/043_book/collision/base0.glb", str(arm_tag2))
+        self.attach_object(self.target_obj_2, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/043_book/collision/base0.glb", str(arm_tag2))
 
         self.move(
             self.place_actor(
-                self.book,
+                self.target_obj_2,
                 arm_tag=arm_tag2,
                 target_pose=self.target,
                 constrain="align",
@@ -208,8 +208,8 @@ class cleaning_3(Office_base_task):
         # return self.info
 
     def check_success(self):
-        mouse_pose = self.mouse.get_pose().p
-        mouse_qpose = np.abs(self.mouse.get_pose().q)
+        mouse_pose = self.target_obj_1.get_pose().p
+        mouse_qpose = np.abs(self.target_obj_1.get_pose().q)
         target_pos = self.target.get_pose().p
         eps1 = 0.015
         eps2 = 0.012

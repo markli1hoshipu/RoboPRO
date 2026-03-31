@@ -47,7 +47,7 @@ class put_rubikscube_shelf(Office_base_task):
         center = self.cabinet.get_pose().p
         center[1] -= 0.02
         center[2] = self.office_info["table_height"]+0.03
-        self.cube = rand_create_actor(
+        self.target_obj = rand_create_actor(
             self,
             xlim=[center[0]],
             ylim=[center[1]],
@@ -60,8 +60,8 @@ class put_rubikscube_shelf(Office_base_task):
             model_id=self.cube_id,
             is_static=False,
         )
-        self.cube.set_mass(0.1)
-        # target ------------------------------------------------------
+        self.target_obj.set_mass(0.1)
+        # des_obj_pose ------------------------------------------------------
         self.side = "left" if self.arr_v == 2 else "right"
         level = np.random.choice([0,1])
         xlim = [self.office_info["shelf_lims"][0] + 0.07, 0.05] if self.side == "left" else [-0.05, self.office_info["shelf_lims"][2] -0.07]
@@ -74,17 +74,17 @@ class put_rubikscube_shelf(Office_base_task):
         )
 
         half_size = [0.05, 0.05, 0.0005]
-        self.target_box = create_box(
+        self.des_obj = create_box(
             scene=self,
             pose=target_rand_pose,
             half_size=half_size,
             color=(0, 0, 1), # blue
-            name="target_box",
+            name="des_obj",
             is_static=True,
         )
-        self.target = self.target_box.get_pose().p.tolist() + euler2quat(np.pi/2,np.pi, 0, axes='sxyz').tolist()
-        self.target[2] += 0.06 # raise target 0.02 meters
-        self.add_prohibit_area(self.target_box, padding=0.05, area=f"shelf{level}")
+        self.des_obj_pose = self.des_obj.get_pose().p.tolist() + euler2quat(np.pi/2,np.pi, 0, axes='sxyz').tolist()
+        self.des_obj_pose[2] += 0.06 # raise des_obj_pose 0.02 meters
+        self.add_prohibit_area(self.des_obj, padding=0.05, area=f"shelf{level}")
 
 
     def play_once(self):
@@ -105,7 +105,7 @@ class put_rubikscube_shelf(Office_base_task):
 
         self.enable_drawer(enable=True)
 
-        action = self.grasp_actor(self.cube, arm_tag=arm_tag, pre_grasp_dis=0.1, contact_point_id=3)
+        action = self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.1, contact_point_id=3)
         if action:
             action[1][1].target_pose[2] += 0.04 # grasp center of box
         self.move(action)
@@ -113,13 +113,13 @@ class put_rubikscube_shelf(Office_base_task):
         # Lift the box upward by 0.1 meters in z-direction
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.03))
 
-        self.attach_object(self.cube, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/073_rubikscube/collision/base{self.cube_id}.glb", str(arm_tag))
+        self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/073_rubikscube/collision/base{self.cube_id}.glb", str(arm_tag))
 
         self.move(
             self.place_actor(
-                self.cube,
+                self.target_obj,
                 arm_tag=arm_tag,
-                target_pose=self.target,
+                target_pose=self.des_obj_pose,
                 constrain="align",
                 pre_dis=0.08,
                 dis=-0.02,
@@ -147,7 +147,7 @@ class put_rubikscube_shelf(Office_base_task):
     def check_success(self):
         mouse_pose = self.mouse.get_pose().p
         mouse_qpose = np.abs(self.mouse.get_pose().q)
-        target_pos = self.target.get_pose().p
+        target_pos = self.des_obj_pose.get_pose().p
         eps1 = 0.015
         eps2 = 0.012
 

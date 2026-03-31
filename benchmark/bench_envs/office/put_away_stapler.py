@@ -44,14 +44,14 @@ class put_away_stapler(Office_base_task):
         cabinet_pose[1]-= 0.19  
         self.prohibited_area["table"].append([cabinet_pose[0]-0.11, cabinet_pose[1]-0.1, cabinet_pose[0]+0.11, cabinet_pose[1]+0.1])
 
-        # set up stapler --------------------------------------------------
+        # set up target_obj --------------------------------------------------
         self.stapler_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["048_stapler"])
         if self.side == "left":
             xlim = [self.office_info["table_lims"][0]+0.03, 0.1]
         else:
             xlim = [-0.1, self.office_info["table_lims"][2]-0.03]
 
-        success, self.stapler = rand_create_cluttered_actor(
+        success, self.target_obj = rand_create_cluttered_actor(
             scene=self,
             xlim=xlim,
             ylim=[self.office_info["table_lims"][1]+0.04, self.office_info["shelf_lims"][1]-0.1],
@@ -71,8 +71,8 @@ class put_away_stapler(Office_base_task):
             is_static=False,
         )
         if not success:
-            raise RuntimeError("Failed to load stapler")
-        self.add_prohibit_area(self.stapler, padding=0.01)
+            raise RuntimeError("Failed to load target_obj")
+        self.add_prohibit_area(self.target_obj, padding=0.01)
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
@@ -92,16 +92,16 @@ class put_away_stapler(Office_base_task):
 
         self.enable_drawer(enable=True)
 
-        self.move(self.grasp_actor(self.stapler, arm_tag=arm_tag, pre_grasp_dis=0.07, grasp_dis=0.025, contact_point_id=[0,1]))
+        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.07, grasp_dis=0.025, contact_point_id=[0,1]))
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.03))
-        self.attach_object(self.stapler, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/048_stapler/collision/base{self.stapler_id}.glb", str(arm_tag))
+        self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/048_stapler/collision/base{self.stapler_id}.glb", str(arm_tag))
 
-        target_pose = self.cabinet.get_functional_point(0)
-        # target_pose[3:] = euler2quat(np.pi/2,0, np.pi, axes='sxyz')
+        des_obj_pose = self.cabinet.get_functional_point(0)
+        # des_obj_pose[3:] = euler2quat(np.pi/2,0, np.pi, axes='sxyz')
         self.move(self.place_actor(
-            self.stapler,
+            self.target_obj,
             arm_tag=arm_tag,
-            target_pose=target_pose,
+            des_obj_pose=des_obj_pose,
             pre_dis=0.05,
             dis=0.05,
             constrain="align",

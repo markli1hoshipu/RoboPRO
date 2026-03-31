@@ -35,14 +35,14 @@ class place_stapler_drawer(Office_base_task):
         cabinet_pose[1]-= 0.19  
         self.prohibited_area["table"].append([cabinet_pose[0]-0.11, cabinet_pose[1]-0.1, cabinet_pose[0]+0.11, cabinet_pose[1]+0.1])
 
-        # set up stapler --------------------------------------------------
+        # set up target_obj --------------------------------------------------
         self.stapler_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["048_stapler"])
         if self.side == "left":
             xlim = [self.office_info["table_lims"][0]+0.03, 0.1]
         else:
             xlim = [-0.1, self.office_info["table_lims"][2]-0.03]
 
-        success, self.stapler = rand_create_cluttered_actor(
+        success, self.target_obj = rand_create_cluttered_actor(
             scene=self,
             xlim=xlim,
             ylim=[self.office_info["table_lims"][1]+0.04, self.office_info["shelf_lims"][1]-0.1],
@@ -62,21 +62,21 @@ class place_stapler_drawer(Office_base_task):
             is_static=False,
         )
         if not success:
-            raise RuntimeError("Failed to load stapler")
-        self.add_prohibit_area(self.stapler, padding=0.01)
+            raise RuntimeError("Failed to load target_obj")
+        self.add_prohibit_area(self.target_obj, padding=0.01)
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side)
 
-        self.move(self.grasp_actor(self.stapler, arm_tag=arm_tag, pre_grasp_dis=0.05, contact_point_id=[0,1]))
+        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.05, contact_point_id=[0,1]))
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.03))
-        self.attach_object(self.stapler, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/048_stapler/collision/base{self.stapler_id}.glb", str(arm_tag))
+        self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/048_stapler/collision/base{self.stapler_id}.glb", str(arm_tag))
 
         target_pose = self.cabinet.get_functional_point(0)
         # target_pose[3:] = euler2quat(np.pi/2,0, np.pi, axes='sxyz')
         self.move(self.place_actor(
-            self.stapler,
+            self.target_obj,
             arm_tag=arm_tag,
             target_pose=target_pose,
             pre_dis=0.05,
@@ -94,13 +94,13 @@ class place_stapler_drawer(Office_base_task):
         # return self.info
 
     def check_success(self):
-        mouse_pose = self.mouse.get_pose().p
-        mouse_qpose = np.abs(self.mouse.get_pose().q)
-        target_pos = self.target.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
+        end_pose_actual = self.target_obj.get_pose().p
+        end_pose_desired = self.cabinet.get_functional_point(0)
+        end_pose_desired[2] = self.office_info["file_holder_height"]
+        eps1 = 0.04
+        eps2 = 0.04
+        eps3 = 0.02
 
-        return (np.all(abs(mouse_pose[:2] - target_pos[:2]) < np.array([eps1, eps2]))
-                and (np.abs(mouse_qpose[2] * mouse_qpose[3] - 0.49) < eps1
-                     or np.abs(mouse_qpose[0] * mouse_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
+        return (np.all(abs(end_pose_actual[:3] - end_pose_desired[:3]) < np.array([eps1, eps2, eps3]))
+                and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

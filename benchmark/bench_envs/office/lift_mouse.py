@@ -10,7 +10,7 @@ import glob
 from transforms3d.euler import euler2quat
 
 
-class pick_mouse(Office_base_task):
+class lift_mouse(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
@@ -46,7 +46,7 @@ class pick_mouse(Office_base_task):
         pose = self.cabinet.get_pose().p
         pose[1]-= 0.2
         pose[2] = self.office_info["table_height"]+0.03
-        self.mouse = rand_create_actor(
+        self.target_obj = rand_create_actor(
             scene=self,
             xlim = [pose[0]],
             ylim = [pose[1]],
@@ -60,14 +60,15 @@ class pick_mouse(Office_base_task):
             model_id=self.mouse_id,
             is_static=False,
         )
+        self.target_obj_pose = self.target_obj.get_pose().p.tolist()
 
     def play_once(self):
-        # Determine which arm to use based on mouse position (right if on right side, left otherwise)
+        # Determine which arm to use based on target_obj position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side)
         self.
 
-        self.move(self.grasp_actor(self.mouse, arm_tag=arm_tag, pre_grasp_dis=0.05,grasp_dis=0.02))
-        self.attach_object(self.mouse, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/047_mouse/collision/base{self.mouse_id}.glb", str(arm_tag))
+        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.05,grasp_dis=0.02))
+        self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/047_mouse/collision/base{self.mouse_id}.glb", str(arm_tag))
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1, y=-0.25))
 
         # Record information about the objects and arm used in the task
@@ -79,13 +80,11 @@ class pick_mouse(Office_base_task):
         # return self.info
 
     def check_success(self):
-        mouse_pose = self.mouse.get_pose().p
-        mouse_qpose = np.abs(self.mouse.get_pose().q)
-        target_pos = self.target.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
-
-        return (np.all(abs(mouse_pose[:2] - target_pos[:2]) < np.array([eps1, eps2]))
-                and (np.abs(mouse_qpose[2] * mouse_qpose[3] - 0.49) < eps1
-                     or np.abs(mouse_qpose[0] * mouse_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
-                and self.robot.is_right_gripper_open())
+        end_pose_actual = self.target_obj.get_pose().p
+        end_pose_desired = self.target_obj_pose
+        end_pose_desired[1] -= 0.25
+        end_pose_desired[2] += 0.1
+        eps1 = 0.04
+        eps2 = 0.04
+        eps3 = 0.04
+        return np.all(abs(end_pose_actual[:3] - end_pose_desired[:3]) < np.array([eps1, eps2, eps3]))
