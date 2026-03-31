@@ -309,7 +309,7 @@ class Kitchen_base_large(Bench_base_task):
         self.microwave_left_scale = 1.4
 
         self.basket_right_rot = [0.0, 0.0, 90.0]
-        self.basket_right_scale = 1.4
+        self.basket_right_scale = 1
 
         # Cabinet scale: currently only uniform scaling is supported by SAPIEN's URDF loader.
         # This parameter allows you to uniformly resize the cabinet; to truly scale only height,
@@ -569,8 +569,8 @@ class Kitchen_base_large(Bench_base_task):
 
     def _load_basket_on_table(self, table_height: float, table_xy_bias):
         """Place the static basket on the left front edge of the table."""
-        y_front = table_xy_bias[1] + 0.30
-        x_right = table_xy_bias[0] - 0.45
+        y_front = table_xy_bias[1] + 0.15
+        x_right = table_xy_bias[0] - 0.37
         z_basket = table_height + 0.02
 
         br_roll_deg, br_pitch_deg, br_yaw_deg = self.basket_right_rot
@@ -581,7 +581,7 @@ class Kitchen_base_large(Bench_base_task):
         basket_quat = [bqw, bqx, bqy, bqz]
 
         pose_basket = sapien.Pose([x_right, y_front, z_basket], basket_quat)
-        intrinsic_scale = self._get_asset_model_scale_create_actor(modelname="110_basket", model_id=0)
+        intrinsic_scale = self._get_asset_model_scale_create_actor(modelname="110_basket", model_id=3)
         final_scale = intrinsic_scale * float(self.basket_right_scale)
         basket_actor = create_actor(
             scene=self.scene,
@@ -592,7 +592,7 @@ class Kitchen_base_large(Bench_base_task):
             scale=final_scale,
             is_static=True,
             convex=False,
-            model_id=0,
+            model_id=3,
         )
         if basket_actor is not None:
             self.basket_right = basket_actor

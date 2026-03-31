@@ -113,7 +113,7 @@ class put_milk_box_in_fridge(Kitchen_base_large):
             pose=spawn_pose,
             modelname=self.milk_box_modelname,
             model_id=self.milk_box_model_id,
-            is_static=True,   # requested: start static
+            is_static=False,   # requested: start static
             convex=True,
             scale=final_scale,
         )
