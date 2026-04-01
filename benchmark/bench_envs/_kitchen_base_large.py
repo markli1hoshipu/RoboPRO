@@ -310,6 +310,9 @@ class Kitchen_base_large(Bench_base_task):
 
         self.basket_right_rot = [0.0, 0.0, 90.0]
         self.basket_right_scale = 1.4
+        # World-frame additive jitter on nominal basket pose (table_xy_bias frame).
+        self.basket_right_position_jitter_x = (-0.04, 0.04)
+        self.basket_right_position_jitter_y = (-0.04, 0.04)
         # Table-side container (tasks use `basket_right` as the reference actor).
         self.basket_right_modelname = "063_tabletrashbin"
         self.basket_right_model_id = 6
@@ -572,8 +575,10 @@ class Kitchen_base_large(Bench_base_task):
 
     def _load_basket_on_table(self, table_height: float, table_xy_bias):
         """Place the static table-side container (`063_tabletrashbin`) on the left front edge of the table."""
-        y_front = table_xy_bias[1] + 0.12
-        x_right = table_xy_bias[0] - 0.37
+        jx = float(np.random.uniform(self.basket_right_position_jitter_x[0], self.basket_right_position_jitter_x[1]))
+        jy = float(np.random.uniform(self.basket_right_position_jitter_y[0], self.basket_right_position_jitter_y[1]))
+        y_front = table_xy_bias[1] + 0.12 + jy
+        x_right = table_xy_bias[0] - 0.37 + jx
         z_basket = table_height + 0.02
 
         br_roll_deg, br_pitch_deg, br_yaw_deg = self.basket_right_rot
