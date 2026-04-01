@@ -82,7 +82,7 @@ class phone_to_holder(Office_base_task):
         center_y = (self.target_obj.get_pose().p[1] + self.des_obj.get_pose().p[1]) / 2
         self.bottle = rand_create_actor(
             self,
-            xlim=[center_x-0.03,center_x+0.03],
+            xlim=[center_x-0.01,center_x+0.01],
             ylim=[center_y-0.03,center_y+0.03],
             modelname="001_bottle",
             rotate_rand=True,
