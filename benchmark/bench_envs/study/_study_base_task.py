@@ -135,7 +135,7 @@ class Study_base_task(Bench_base_task):
         self.right_joint_path = kwags.get("right_joint_path", [])
         self.left_cnt = 0
         self.right_cnt = 0
-        self.scene_id = kwags.get("scene_id", 0)
+        self.scene_id = kwags.get("scene_id") or np.random.randint(0,3)  # for furniture arrangement
 
         self.instruction = None  # for Eval
 
@@ -196,7 +196,7 @@ class Study_base_task(Bench_base_task):
         self.table_xy_bias = table_xy_bias
         wall_texture, table_texture, floor_texture = None, None, None
         table_height += self.table_z_bias
-
+        print_c(f"Scene {self.scene_id} is selected", "YELLOW")
         # Setup textures 
         if self.random_background:
             texture_type = "seen" if not self.eval_mode else "unseen"
