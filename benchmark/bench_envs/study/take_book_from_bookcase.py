@@ -28,7 +28,7 @@ class take_book_from_bookcase(Study_base_task):
         bcs_bb = get_actor_boundingbox(self.bookcase)
         x_w = bcs_bb[1][0] - bcs_bb[0][0]
         y_l = bcs_bb[1][1] - bcs_bb[0][1]
-        delta_idx = 1 # np.random.choice(2)
+        delta_idx = np.random.choice(2)
         delta = (x_w/5, "left") if delta_idx == 0 else (x_w - x_w/5, "right")
         p = [bcs_bb[0][0]+ delta[0], bcs_bb[0][1] + y_l/2, self.table.get_pose().p[-1] + 0.03]
         q = (0,180,90)
