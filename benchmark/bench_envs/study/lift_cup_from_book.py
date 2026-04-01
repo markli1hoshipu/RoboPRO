@@ -49,10 +49,6 @@ class lift_cup_from_book(Study_base_task):
             place_actor(self.target_name, self, task_objs = task_objs,
                     obj_pose=self.target_pose, mass = 0.2)
         self.init_tar_pose = self.target_obj.get_pose()
-        # self.collision_list.append({
-        #     "actor":self.target_obj,
-        #     "collision_path": self.col_temp.format(object=self.target_name, object_id=self.target_id)
-        # })
 
         self.lift_height = 0.2
         xy_thr = 0.2
@@ -70,8 +66,7 @@ class lift_cup_from_book(Study_base_task):
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
 
         # Lift the mouse upward by 0.1 meters in z-direction
-        self.move(self.move_by_displacement(arm_tag=arm_tag, x= self.ep_lift, 
-                                            z=self.lift_height))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=self.ep_lift, z=self.lift_height))
 
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
 

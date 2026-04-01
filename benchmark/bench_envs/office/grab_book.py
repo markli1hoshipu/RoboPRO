@@ -48,7 +48,25 @@ class grab_book(Office_base_task):
         arm_tag = ArmTag("left") if self.book.get_pose().p[0] < 0 else ArmTag("right")
 
         self.move(self.grasp_actor(self.book, arm_tag=arm_tag, pre_grasp_dis=0.04, grasp_dis=0.02))
+<<<<<<< HEAD:benchmark/bench_envs/office/grab_book.py
         self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.2))
+=======
+        # self.attach_object(self.book, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/043_book/collision/base0.glb", str(arm_tag))
+
+        self.target_pose = self.file_holder.get_pose().p.tolist() + euler2quat(np.pi, 0, 0, axes='sxyz').tolist()
+        self.target_pose[2]+=0.1
+        self.target_pose[1]-=0.1
+
+        self.move(
+            self.place_actor(
+                self.book,
+                arm_tag=arm_tag,
+                target_pose=self.target_pose,
+                constrain="free",
+                pre_dis=0.01,
+                dis=0.005,
+            ))
+>>>>>>> 9ea999a (Fix: remove the constraint pose parameter):benchmark/bench_envs/office/place_notebook.py
 
         # Record information about the objects and arm used in the task
         # self.info["info"] = {

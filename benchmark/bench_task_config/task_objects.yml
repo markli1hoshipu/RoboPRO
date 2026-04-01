@@ -2,13 +2,16 @@
 objects:
   office:
     targets:
-      077_phone: [0,1,2,3]
-      092_notebook: [0,1,2]
-      043_book: [0,1]
+      077_phone: [0,1,2,4]
+      043_book: [0]
       046_alarm-clock: [0,1,2,3]
+      048_stapler: [0,1,2,3,4]
       101_milk-tea: [0,1,2,4]
       047_mouse: [0,1,2]
       061_battery: [0,1,2,3]
+      112_tea-box: [0,1,2,3,4,5]
+      073_rubikscube: [0,2]
+      059_pencup: [0, 1, 2, 3, 5]
     obstacles:
       short:
         017_calculator: [0,1,2,3,4]
@@ -17,10 +20,12 @@ objects:
         055_small-speaker: [1,2,3]
         073_rubikscube: [0,2]
       tall:
-        # 001_bottle: [1,11,14,16,21]
+        001_bottle: [1,11,14,16,21]
         089_globe: [2,3]
+        090_trophy: [0,1,2]
         099_fan: [0,4]
         120_plant: [0]
+        119_mini-chalkboard: [0]
   study:
     targets:
       021_cup: [0,1,2,3]
@@ -101,6 +106,7 @@ object_ood:
         039_mug: [9]
         058_markpen: [5]
         095_glue: [5]
+        048_stapler: [5,6]
       obstacles:
         023_tissue-box: [5,6]
         057_toycar: [5]

@@ -178,17 +178,14 @@
         "032_screwdriver"
     ],
     "037_box": [
-        "023_tissue-box",
         "042_wooden_box",
         "062_plastic_box"
     ],
     "042_wooden_box": [
-        "023_tissue-box",
         "037_box",
         "062_plastic_box"
     ],
     "062_plastic_box": [
-        "023_tissue-box",
         "037_box",
         "042_wooden_box"
     ],
