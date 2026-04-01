@@ -41,6 +41,7 @@ class put_pen_in_box(Study_base_task):
 
         p = self.des_obj.get_pose().p.tolist() 
         p[-1] = des_bb[1][-1]
+        p[0] += 0.05 if self.side_to_place == "left" else -0.05
         self.des_obj_pose = p + self.target_obj.get_pose().q.tolist()
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 

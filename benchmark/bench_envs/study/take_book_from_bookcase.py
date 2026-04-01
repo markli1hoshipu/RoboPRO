@@ -12,12 +12,12 @@ from envs._GLOBAL_CONFIGS import *
 from copy import deepcopy
 from bench_envs.utils.scene_gen_utils import get_position_limits, get_actor_boundingbox, get_collison_with_objs
 from bench_envs.utils.scene_gen_utils import print_c, place_actor
-from transforms3d.euler import euler2quat
 
 class take_book_from_bookcase(Study_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
+        kwargs["include_collison"] = False
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
@@ -28,8 +28,9 @@ class take_book_from_bookcase(Study_base_task):
         bcs_bb = get_actor_boundingbox(self.bookcase)
         x_w = bcs_bb[1][0] - bcs_bb[0][0]
         y_l = bcs_bb[1][1] - bcs_bb[0][1]
-        delta_idx = np.random.choice(2)
-        delta = (x_w/5, "left") if delta_idx == 0 else (x_w - x_w/5, "right")
+        delta_choice = ((x_w/5, "left"), (x_w/2, "right"), (x_w - x_w/5, "right"))
+        delta_idx =  np.random.choice(3)
+        delta = delta_choice[delta_idx]
         p = [bcs_bb[0][0]+ delta[0], bcs_bb[0][1] + y_l/2, self.table.get_pose().p[-1] + 0.03]
         q = (0,180,90)
         if self.scene_id < 2:
@@ -37,7 +38,7 @@ class take_book_from_bookcase(Study_base_task):
         else:
             self.arm_side = "left" if delta[1] == 0 else "right"
 
-        self.target_name = "043_book"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
+        self.target_name = "043_book"
         
         self.target_obj, self.target_id, self.target_pose = \
         place_actor(self.target_name, self, task_objs = task_objs,obj_id = 0,

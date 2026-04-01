@@ -136,7 +136,7 @@ class Study_base_task(Bench_base_task):
         self.left_cnt = 0
         self.right_cnt = 0
         self.scene_id = kwags.get("scene_id") or np.random.randint(0,3)  # for furniture arrangement
-
+        self.incl_collision = kwags.get("include_collison", True)
         self.instruction = None  # for Eval
 
         self.collision_list = [] # list of collision objects for curobo planner
@@ -277,10 +277,14 @@ class Study_base_task(Bench_base_task):
                     is_static=param.get('is_static', True)
                 )
                 self.scene_objs.append(value)
-                # if "bookcase" not in obj:
-                #     self.collision_list.append((value, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj}/collision/base{param.get('model_id', 0)}.glb", param.get("scale", [1,1,1])))
+                if self.incl_collision:
+                    print_c(f"Adding collision for {obj} with id {param.get('model_id', 0)}", "GREEN")
+                    self.collision_list.append({
+                        "actor":value,
+                        "collision_path": self.col_temp.format(object=obj, object_id=param.get('model_id', 0))
+                    })
 
-                self.add_prohibit_area(value, padding=0.0, area="table")
+                self.add_prohibit_area(value, padding=0.05, area="table")
 
             elif param.get("obj_type", "actor") == "table":
                 value= create_table(

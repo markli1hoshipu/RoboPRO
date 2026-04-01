@@ -34,6 +34,7 @@ class move_cups_into_box(Study_base_task):
         self.target_objects = []
         self.des_obj_poses = []
         des_pos = self.box.get_pose().p
+        box_bb = get_actor_boundingbox(self.box.actor)
         place_gap = 0.10
         self.target_name = "021_cup"
         for i, tn in enumerate(["021_cup","021_cup"]):
@@ -43,7 +44,7 @@ class move_cups_into_box(Study_base_task):
                         mass = 0.1, rotation=False, obj_id=None)
 
             self.target_objects.append((tn, target_id, target_obj))
-            self.des_obj_poses.append([des_pos[0], des_pos[1] - place_gap + (i*place_gap), des_pos[-1]]+[1,0,0,0])
+            self.des_obj_poses.append([des_pos[0], des_pos[1] - place_gap + (i*place_gap), box_bb[1][-1]]+[1,0,0,0])
             self.add_prohibit_area(target_obj, padding=0.08, area="table")
 
         print_c(f"Placement destination pose {des_pos}", "RED")

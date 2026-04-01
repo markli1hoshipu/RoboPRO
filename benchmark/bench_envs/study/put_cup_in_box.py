@@ -17,6 +17,7 @@ class put_cup_in_box(Study_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
+        kwargs["include_collison"] = True
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
@@ -24,7 +25,7 @@ class put_cup_in_box(Study_base_task):
             task_objs = yaml.safe_load(f)
         
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-                                                              boundary_thr=0.20, side="left" if self.scene_id == 0 else "right")
+                                                              boundary_thr=0.15, side="left" if self.scene_id == 0 else "right")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
   
@@ -48,7 +49,7 @@ class put_cup_in_box(Study_base_task):
 
      
       
-    def play_once(self, z = 0.1, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
+    def play_once(self, z = 0.05, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side_to_place ) 
         # Grasp the mouse with the selected arm
@@ -56,7 +57,8 @@ class put_cup_in_box(Study_base_task):
 
         # Lift the mouse upward by 0.1 meters in z-direction
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
-
+        # x_move = z if self.side_to_place == "right" else -z
+        # self.move(self.move_by_displacement(arm_tag=arm_tag,x=x_move, z=z))
         # Place the mouse at the target location with alignment constraint
         self.move(
             self.place_actor(

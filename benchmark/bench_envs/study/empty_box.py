@@ -18,6 +18,7 @@ class empty_box(Study_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
+
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
@@ -101,7 +102,7 @@ class empty_box(Study_base_task):
     def pick_place_seal(self, arm_tag, pre_grasp_dist=0.1,
                         z = 0.10, pre_dis= 0.05, dis=0.005):
         self.move(self.grasp_actor(self.seal_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
-        self.move(self.move_by_displacement(arm_tag=arm_tag,x=-z if self.side_to_place == "left" else z, z=z,
+        self.move(self.move_by_displacement(arm_tag=arm_tag,x=z if self.side_to_place == "left" else -z, z=z,
                                             constraint_pose=None))
         self.attach_object(self.seal_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.seal_name}/collision/base{self.seal_obj_id}.glb", str(arm_tag))
         self.move(
