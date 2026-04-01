@@ -631,8 +631,7 @@ class Bench_base_task(Base_Task):
             else:
                 actor_data = {}
             scale = actor.scale
-
-
+            
         origin_bounding_size = (np.array(actor_data.get("extents", [0.1, 0.1, 0.1])) * scale / 2)
         origin_bounding_pts = (np.array([
             [-1, -1, -1],
@@ -1109,12 +1108,7 @@ class Bench_base_task(Base_Task):
                     if os.path.isdir(collision_path): # if actor is made from multiple obj files
                         name_prefix = actor.get_name()
                         if "link" in info:
-                            if isinstance(info["link"], list):
-                                pose = sapien.Pose()
-                                pose.p = actor.get_link_pose(info["link"][0]).p
-                                pose.q = actor.get_link_pose(info["link"][1]).q
-                            else:
-                                pose = actor.get_link_pose(info["link"])
+                            pose = actor.get_link_pose(info["link"])
                         elif "pose" in info:
                             pose = info["pose"]
                         else:

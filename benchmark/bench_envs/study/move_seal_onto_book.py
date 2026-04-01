@@ -152,9 +152,9 @@ class move_seal_onto_book(Study_base_task):
 
         # Grab seal from box
         self.move(self.grasp_actor(self.seal_obj, arm_tag=seal_arm_tag, pre_grasp_dis=pre_grasp_dist))
-        seal_x_disp = self.lift_height if seal_x <= 0 else -self.lift_height
+        seal_x_disp = 0.15 if seal_x <= 0 else -0.15
         self.move(self.move_by_displacement(arm_tag=seal_arm_tag, x=seal_x_disp,
-                                            z=self.lift_height))
+                                            z=0.15))
         self.attach_object(self.seal_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.seal_name}/collision/base{self.seal_id}.glb", str(seal_arm_tag))
 
         # Place seal directly on top of the book
