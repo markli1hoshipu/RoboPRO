@@ -304,7 +304,6 @@ class Study_base_task(Bench_base_task):
         self.prohibited_area["table"].append([box_bb[0][0], case_bb[0][1],
                                                 box_bb[1][0], case_bb[1][1]])
 
-
     def create_static_elementsv2(self, table_xy_bias=[0, 0], table_height=0.74):
         self.table_xy_bias = table_xy_bias
         wall_texture, table_texture, floor_texture = None, None, None
@@ -432,7 +431,7 @@ class Study_base_task(Bench_base_task):
                 continue
             task_objects_list.append(actor_name)
 
-        cluttered_item_info, obj_names_short, obj_names_tall = get_cluttered_objects_subset_2(
+        cluttered_item_info, obj_names_short, obj_names_tall = get_obstacle_objects_subset(
             "study", self.sample_d, task_objects_list
         )
         self.clutter_surface_split(xlim, ylim, zlim, self.prohibited_area["table"], self.obstacle_density, cluttered_item_info, obj_names_short, obj_names_tall)
