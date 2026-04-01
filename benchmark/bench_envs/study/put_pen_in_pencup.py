@@ -24,19 +24,20 @@ class put_pen_in_pencup(Study_base_task):
         print_c(self.seed, "YELLOW")
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
-        
+
+        object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
+
+        self.target_name = "058_markpen"
+
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
                                          boundary_thr=[0.15, 0.25],
                                            side="right" if self.scene_id == 0 else "left")
-      
-        object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
-        
-        self.target_name = "058_markpen"
+
         self.target_obj, self.target_id, self.target_pose = \
         place_actor(self.target_name, self, col_thr=0.15, xlim=[xlim[0], (xlim[0]+xlim[1])/2],
                     ylim=ylim, qpos=(90,0,90),object_bounds= object_bounds,
                      task_objs=task_objs,  obj_id = 0, mass = 0.1)
-        
+
 
         tar_bb = get_actor_boundingbox(self.target_obj.actor)
         object_bounds.append(tar_bb)
@@ -46,11 +47,11 @@ class put_pen_in_pencup(Study_base_task):
                         ylim= ylim, qpos=(90,0,90),
                         object_bounds=object_bounds, task_objs=task_objs,
                         obj_id = 1, mass = 0.2, rotation=False)
-        
+
         # Get the placement pose
         self.des_obj_pose = self.des_obj_pose.p.tolist() + euler2quat(0,0,np.deg2rad(90)).tolist()
         self.des_obj_pose[2] = 0.90
- 
+
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
         self.collision_list.append({
@@ -62,7 +63,7 @@ class put_pen_in_pencup(Study_base_task):
 
     def play_once(self, z = 0.15, pre_dis= 0.01, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.side_to_place ) 
+        arm_tag = ArmTag(self.side_to_place )
         # Grasp the mouse with the selected arm
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
@@ -78,7 +79,7 @@ class put_pen_in_pencup(Study_base_task):
                 dis=dis,
                 actor_axis_type="world"
             ))
-        
+
         # Record information about the objects and arm used in the task
         self.info["info"] = {
             "{A}": f"{self.target_name}/base{self.target_id}",

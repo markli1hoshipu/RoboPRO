@@ -83,3 +83,4 @@ class move_seal_next_to_box(Study_base_task):
         return (dist_to_box < dist_thr
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
+
