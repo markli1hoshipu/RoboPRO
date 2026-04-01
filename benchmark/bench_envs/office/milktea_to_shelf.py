@@ -61,7 +61,7 @@ class milktea_to_shelf(Office_base_task):
             model_id=self.milktea_id, 
         )
         self.target_obj.set_mass(0.06)
-        self.add_prohibit_area(self.target_obj, padding=0.01)
+        self.add_prohibit_area(self.target_obj, padding=0)
         self.des_obj_pose += self.target_obj.get_pose().q.tolist()
 
     def play_once(self):
@@ -70,8 +70,8 @@ class milktea_to_shelf(Office_base_task):
 
         # Grasp the mouse with the selected arm
         action = self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.1, grasp_dis=0.02, contact_point_id=2)
-        action[1][0].des_obj_pose[2] += 0.04
-        action[1][1].des_obj_pose[2] += 0.04
+        action[1][0].target_pose[2] += 0.04
+        action[1][1].target_pose[2] += 0.04
         self.move(action)
 
         # Lift the mouse upward by 0.1 meters in z-direction
@@ -89,7 +89,7 @@ class milktea_to_shelf(Office_base_task):
                 dis=0.0,
                 local_up_axis=[0,0,1]
             )
-        # action[1][0].des_obj_pose[2] += 0.03
+        # action[1][0].target_pose[2] += 0.03
         self.move(action)
 
         # # Record information about the objects and arm used in the task
@@ -101,11 +101,10 @@ class milktea_to_shelf(Office_base_task):
         # return self.info
 
     def check_success(self):
-        end_pose_actual = self.target_obj.get_pose().p
-        end_pose_desired = self.des_obj.get_pose().p
-        end_pose_desired[2] += 0.01
-        eps3 = 0.02
+        end_pose_actual = self.target_obj.get_pose().p[2]
+        end_pose_desired = self.office_info["shelf_heights"][0]
+        eps = 0.02
 
-        return (np.all(abs(end_pose_actual[2] - end_pose_desired[2]) < np.array([eps1, eps2]))
+        return (abs(end_pose_actual - end_pose_desired) < eps
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

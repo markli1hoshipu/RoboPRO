@@ -38,7 +38,7 @@ class stack_book(Office_base_task):
             is_static=False,
             scale = self.item_info['scales']['043_book'][f'{model_id1}']
         )
-        self.target_obj.set_mass(0.1)
+        self.target_obj.set_mass(0.05)
         self.stabilize_object(self.target_obj)
 
         xlim = [-0.55,0.1] if self.target_obj.get_pose().p[0] < 0 else [-0.1,0.55]

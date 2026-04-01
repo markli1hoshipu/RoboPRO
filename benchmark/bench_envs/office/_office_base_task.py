@@ -161,10 +161,10 @@ class Office_base_task(Bench_base_task):
             "shelf_area":[0.62, 0.26], # x,y area 
             "shelf_lims": [],
             "shelf_padding": 0.09, # required distance from edge of shelf for gripper to fit
-            "file_holder_height": 0.76,
             "file_holder_area":[0.22, 0.16], # x,y area 
             "file_holder_lims": [],
             "file_holder_heights": [0.82,0.942],
+            "drawer_height": 0.76,
             "furn_x_v": { # x position of furniture for each arrangement version
                 "shelf": [-0.24,0,0.24],
                 "cabinet": [0.23,0.48,-0.48],

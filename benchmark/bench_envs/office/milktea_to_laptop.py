@@ -19,7 +19,7 @@ class milktea_to_laptop(Office_base_task):
 
     def load_actors(self):
         # add table as collision
-        self.cuboid_collision_list.append(("table", [1.2, 0.7, 0.002], [0,0,0.74,1,0,0,0]))
+        self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
         self.side = np.random.choice(["left", "right"])
         laptop_id = np.random.choice([9748,9912,9960,9968,9992,9996,10040,10098,10101,10125,10211])
         laptop_id = 9912
@@ -71,7 +71,7 @@ class milktea_to_laptop(Office_base_task):
             name="box",
             is_static=True,
         )
-        self.add_prohibit_area(self.des_obj, padding=0.06, area="table")
+        self.add_prohibit_area(self.des_obj, padding=0.01, area="table")
         
         success, self.target_obj = rand_create_cluttered_actor(
             scene=self.scene,
@@ -107,8 +107,8 @@ class milktea_to_laptop(Office_base_task):
 
         # Grasp the mouse with the selected arm
         action = self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.1, grasp_dis=0.02, contact_point_id=2)
-        action[1][0].des_obj_pose[2] += 0.04
-        action[1][1].des_obj_pose[2] += 0.04
+        action[1][0].target_pose[2] += 0.04
+        action[1][1].target_pose[2] += 0.04
         self.move(action)
 
         # Lift the mouse upward by 0.1 meters in z-direction
@@ -126,16 +126,16 @@ class milktea_to_laptop(Office_base_task):
                 dis=0.0,
                 local_up_axis=[0,0,1]
             )
-        action[1][0].des_obj_pose[2] += 0.03
+        action[1][0].target_pose[2] += 0.03
         self.move(action)
 
         # Record information about the objects and arm used in the task
-        self.info["info"] = {
-            "{A}": f"047_mouse/base{self.mouse_id}",
-            "{B}": f"{self.color_name}",
-            "{a}": str(arm_tag),
-        }
-        return self.info
+        # self.info["info"] = {
+        #     "{A}": f"047_mouse/base{self.mouse_id}",
+        #     "{B}": f"{self.color_name}",
+        #     "{a}": str(arm_tag),
+        # }
+        # return self.info
 
     def check_success(self):
         end_pose_actual = self.target_obj.get_pose().p

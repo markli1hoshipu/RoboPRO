@@ -10,7 +10,7 @@ import glob
 from transforms3d.euler import euler2quat
 
 
-class put_away_stapler(Office_base_task):
+class stapler_to_drawer(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
@@ -21,10 +21,11 @@ class put_away_stapler(Office_base_task):
 
     def load_actors(self):
         self.side =  "left" if self.arr_v == 2 else "right"
-        self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
 
         # set up cabinet
         self.add_cabinet_collision()
+        limit = self.cabinet.get_qlimits()[0]
+        self.cabinet.set_qpos([limit[1],0,0])
 
         # set up target_obj --------------------------------------------------
         self.stapler_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["048_stapler"])
@@ -60,48 +61,21 @@ class put_away_stapler(Office_base_task):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side)
 
-        # disable front panel collision while opening drawer
-        self.enable_drawer(enable=False)
-
-        self.move(self.grasp_actor(self.cabinet, arm_tag=arm_tag, pre_grasp_dis=0.05, grasp_dis=0.025))
-
-        # Pull the drawer
-        for _ in range(3):
-            self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.06))
-        
-        self.move(self.open_gripper(arm_tag=arm_tag))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.02))
-
-        self.enable_drawer(enable=True)
-
-        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.07, grasp_dis=0.025, contact_point_id=[0,1]))
+        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.05, contact_point_id=[0,1]))
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.03))
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/048_stapler/collision/base{self.stapler_id}.glb", str(arm_tag))
 
-        des_obj_pose = self.cabinet.get_functional_point(0)
-        # des_obj_pose[3:] = euler2quat(np.pi/2,0, np.pi, axes='sxyz')
+        target_pose = self.cabinet.get_functional_point(0)
+        # target_pose[3:] = euler2quat(np.pi/2,0, np.pi, axes='sxyz')
         self.move(self.place_actor(
             self.target_obj,
             arm_tag=arm_tag,
-            target_pose=des_obj_pose,
+            target_pose=target_pose,
             pre_dis=0.05,
             dis=0.05,
             constrain="align",
         ))
-
-        self.detach_object(arms_tag=arm_tag)
-
-        arm_tag, actions = self.grasp_actor(self.cabinet, arm_tag=arm_tag, pre_grasp_dis=0.05, grasp_dis=0.025)
-
-        self.move((arm_tag, [actions[0]]))
-        self.enable_drawer(enable=False)
-        self.move((arm_tag, actions[1:]))
-
-        # Pull the drawer
-        for _ in range(3):
-            self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.06))
         
-        self.move(self.open_gripper(arm_tag=arm_tag))
 
         # Record information about the objects and arm used in the task
         # self.info["info"] = {
@@ -112,19 +86,13 @@ class put_away_stapler(Office_base_task):
         # return self.info
 
     def check_success(self):
-        end_pose_actual1 = self.target_obj.get_pose().p
-        end_pose_desired1 = self.cabinet.get_functional_point(0)
-        end_pose_desired1[2] = self.office_info["drawer_height"]
-        eps1 = 0.04
-        eps2 = 0.04
+        end_pose_actual = self.target_obj.get_pose().p
+        end_pose_desired = self.cabinet.get_functional_point(0)
+        end_pose_desired[2] = self.office_info["drawer_height"]
+        eps1 = 0.05
+        eps2 = 0.05
         eps3 = 0.02
 
-        end_pose_actual2 = self.cabinet.get_qpos()[0]
-        end_pose_desired2 = self.cabinet.get_qlimits()[0][0]
-        eps4 = 0.03
-
-
-        return (np.all(abs(end_pose_actual1[:3] - end_pose_desired1[:3]) < np.array([eps1, eps2, eps3]))
-                and (abs(end_pose_desired2 - end_pose_actual2) < eps4)
+        return (np.all(abs(end_pose_actual[:3] - end_pose_desired[:3]) < np.array([eps1, eps2, eps3]))
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

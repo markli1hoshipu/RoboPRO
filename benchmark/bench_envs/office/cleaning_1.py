@@ -165,7 +165,7 @@ class cleaning_1(Office_base_task):
             is_static=False,
             scale = self.item_info['scales']['043_book'][f'{book_id}']
         )
-        self.target_obj_3.set_mass(0.06)
+        self.target_obj_3.set_mass(0.05)
         self.stabilize_object(self.target_obj_3)
 
 
@@ -175,7 +175,7 @@ class cleaning_1(Office_base_task):
         armR = ArmTag("right")
         arms = [
             armL if self.target_obj_1.get_pose().p[0] < 0 else armR,
-            armL if self.target_obj_2.get_pose().p[0] < 0 else armR,
+            armL if self.des_obj_2.get_pose().p[0] < 0 else armR,
             armR if self.arr_v == 0 else armL,
         ]
 
@@ -204,6 +204,11 @@ class cleaning_1(Office_base_task):
         self.move(action)
         self.detach_object(arms_tag=str(arms[0]))
         self.move(self.move_by_displacement(arm_tag=arms[0], y=-0.05, z=0.04))
+        self.collision_list.append({
+            "actor": self.target_obj_1,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/101_milk-tea/collision/base{self.milktea_id}.glb",
+        })
+        self.update_world()
 
         if arms[0] != arms[1]:
             self.move(self.back_to_origin(arms[0]))
@@ -260,13 +265,23 @@ class cleaning_1(Office_base_task):
         # return self.info
 
     def check_success(self):
-        mouse_pose = self.mouse.get_pose().p
-        mouse_qpose = np.abs(self.mouse.get_pose().q)
-        target_pos = self.target.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
+        end_pose_actual1 = self.target_obj_1.get_pose().p
+        end_pose_desired1 = self.des_obj_1.get_pose().p
 
-        return (np.all(abs(mouse_pose[:2] - target_pos[:2]) < np.array([eps1, eps2]))
-                and (np.abs(mouse_qpose[2] * mouse_qpose[3] - 0.49) < eps1
-                     or np.abs(mouse_qpose[0] * mouse_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
+        end_pose_actual2 = self.target_obj_2.get_pose().p[2]
+        end_pose_desired2 = self.office_info["shelf_heights"][1]+0.03 # 0.03 for height of rubiks cube
+
+        end_pose_actual3 = self.target_obj_3.get_pose().p
+        end_pose_desired3 = self.des_obj_3.get_pose().p
+
+        eps1 = 0.02
+        eps2 = 0.02
+        eps3 = 0.02
+        eps4 = 0.02
+        eps5 = 0.04
+
+        return (np.all(abs(end_pose_actual1[:2] - end_pose_desired1[:2]) < np.array([eps1, eps2]))
+                and abs(end_pose_actual2 - end_pose_desired2) < eps3
+                and np.all(abs(end_pose_actual3[:2] - end_pose_desired3[:2]) < np.array([eps4, eps5]))
+                and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

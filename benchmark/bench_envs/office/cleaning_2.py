@@ -48,7 +48,7 @@ class cleaning_2(Office_base_task):
             xlim1 = [self.office_info["table_lims"][0]+self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"], 0.1]
         else:
             xlim1 = [-0.1, self.office_info["table_lims"][2]-self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"]]
-        ylim1 = [self.office_info["table_lims"][1] + 0.3, self.office_info["shelf_lims"][1]-0.05]
+        ylim1 = [self.office_info["table_lims"][1] + 0.3, self.office_info["shelf_lims"][1]-0.06]
 
         self.target_obj_3 = rand_create_actor(
             self,
@@ -87,7 +87,7 @@ class cleaning_2(Office_base_task):
             scale=self.item_info['scales']['047_mouse'].get(f'{self.mouse_id}',None),
         )
         self.target_obj_1.set_mass(0.05)
-        self.add_prohibit_area(self.target_obj_1, padding=0.03, area="table")
+        self.add_prohibit_area(self.target_obj_1, padding=0.01, area="table")
 
         # des_obj_pose_1 ------------------------------------------------------------
         target_rand_pose = rand_pose(
@@ -98,12 +98,12 @@ class cleaning_2(Office_base_task):
         )
 
         colors = {
-            # "Red": (1, 0, 0),
-            # "Green": (0, 1, 0),
+            "Red": (1, 0, 0),
+            "Green": (0, 1, 0),
             "Blue": (0, 0, 1),
-            # "Yellow": (1, 1, 0),
+            "Yellow": (1, 1, 0),
             "Cyan": (0, 1, 1),
-            # "Magenta": (1, 0, 1),
+            "Magenta": (1, 0, 1),
             "Black": (0, 0, 0),
             "Gray": (0.5, 0.5, 0.5),
         }
@@ -111,7 +111,7 @@ class cleaning_2(Office_base_task):
         color_items = list(colors.items())
         color_index = np.random.choice(len(color_items))
         self.color_name, self.color_value = color_items[color_index]
-        half_size = [0.035, 0.065, 0.0005]
+        half_size = [0.06, 0.06, 0.0005]
         self.des_obj_1 = create_box(
             scene=self,
             pose=target_rand_pose,
@@ -120,7 +120,7 @@ class cleaning_2(Office_base_task):
             name="des_obj_1",
             is_static=True,
         )
-        self.add_prohibit_area(self.des_obj_1, padding=0.04, area="table")
+        self.add_prohibit_area(self.des_obj_1, padding=0.01, area="table")
         self.des_obj_pose_1 = self.des_obj_1.get_pose().p.tolist() + [0, 0, 0, 1]
 
         # target2 ------------------------------------------------------------
@@ -145,7 +145,7 @@ class cleaning_2(Office_base_task):
             "actor": self.des_obj_2,
             "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/078_phonestand/collision/base{self.stand_id}.glb",
         })
-        self.add_prohibit_area(self.des_obj_2, padding=0.06, area="table")
+        self.add_prohibit_area(self.des_obj_2, padding=0.01, area="table")
 
         # target_obj_2 ------------------------------------------------------------
         ori_quat = [
@@ -276,13 +276,26 @@ class cleaning_2(Office_base_task):
         # return self.info
 
     def check_success(self):
-        mouse_pose = self.target_obj_1.get_pose().p
-        mouse_qpose = np.abs(self.target_obj_1.get_pose().q)
-        target_pos = self.target.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
+        end_pose_actual1 = self.target_obj_1.get_pose().p
+        end_pose_desired1 = self.des_obj_1.get_pose().p
 
-        return (np.all(abs(mouse_pose[:2] - target_pos[:2]) < np.array([eps1, eps2]))
-                and (np.abs(mouse_qpose[2] * mouse_qpose[3] - 0.49) < eps1
-                     or np.abs(mouse_qpose[0] * mouse_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
+        end_pose_actual2 = np.array(self.target_obj_2.get_pose().p)
+        end_pose_desired2 = np.array(self.des_obj_2.get_functional_point(0))
+        end_pose_desired2[1] -= 0.01
+        end_pose_desired2[2] += 0.05
+
+        end_pose_actual3 = self.target_obj_3.get_pose().p[2]
+        end_pose_desired3 = self.office_info["shelf_heights"][0]
+
+        eps1 = 0.02
+        eps2 = 0.02
+        eps3 = 0.045
+        eps4 = 0.04
+        eps5 = 0.04
+        eps6 = 0.02
+
+        return (np.all(abs(end_pose_actual1[:2] - end_pose_desired1[:2]) < np.array([eps1, eps2]))
+                and np.all(abs(end_pose_actual2[:3] - end_pose_desired2[:3]) < np.array([eps3, eps4, eps5]))
+                and abs(end_pose_actual3 - end_pose_desired3) < eps6
+                and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

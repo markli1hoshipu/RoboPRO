@@ -46,12 +46,12 @@ class put_rubikscube_shelf(Office_base_task):
         self.target_obj.set_mass(0.1)
         # des_obj_pose ------------------------------------------------------
         self.side = "left" if self.arr_v == 2 else "right"
-        level = np.random.choice([0,1])
+        self.level = np.random.choice([0,1])
         xlim = [self.office_info["shelf_lims"][0] + 0.07, 0.05] if self.side == "left" else [-0.05, self.office_info["shelf_lims"][2] -0.07]
         target_rand_pose = rand_pose(
             xlim=xlim,
             ylim=[self.office_info["shelf_lims"][1] + 0.055],
-            zlim = [self.office_info["shelf_heights"][level]],
+            zlim = [self.office_info["shelf_heights"][self.level]],
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
         )
@@ -67,7 +67,7 @@ class put_rubikscube_shelf(Office_base_task):
         )
         self.des_obj_pose = self.des_obj.get_pose().p.tolist() + euler2quat(np.pi/2,np.pi, 0, axes='sxyz').tolist()
         self.des_obj_pose[2] += 0.06 # raise des_obj_pose 0.02 meters
-        self.add_prohibit_area(self.des_obj, padding=0.05, area=f"shelf{level}")
+        self.add_prohibit_area(self.des_obj, padding=0.05, area=f"shelf{self.level}")
 
 
     def play_once(self):
@@ -94,7 +94,7 @@ class put_rubikscube_shelf(Office_base_task):
         self.move(action)
 
         # Lift the box upward by 0.1 meters in z-direction
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.03))
+        # self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.03))
 
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/073_rubikscube/collision/base{self.cube_id}.glb", str(arm_tag))
 
@@ -118,6 +118,8 @@ class put_rubikscube_shelf(Office_base_task):
         # Pull the drawer
         for _ in range(3):
             self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.06))
+        
+        self.move(self.open_gripper(arm_tag=arm_tag))
 
         # Record information about the objects and arm used in the task
         # self.info["info"] = {
@@ -128,13 +130,17 @@ class put_rubikscube_shelf(Office_base_task):
         # return self.info
 
     def check_success(self):
-        mouse_pose = self.mouse.get_pose().p
-        mouse_qpose = np.abs(self.mouse.get_pose().q)
-        target_pos = self.des_obj_pose.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
+        end_pose_actual1 = self.target_obj.get_pose().p[2]
+        end_pose_desired1 = self.office_info["shelf_heights"][self.level] + 0.03
 
-        return (np.all(abs(mouse_pose[:2] - target_pos[:2]) < np.array([eps1, eps2]))
-                and (np.abs(mouse_qpose[2] * mouse_qpose[3] - 0.49) < eps1
-                     or np.abs(mouse_qpose[0] * mouse_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
+        end_pose_actual2 = self.cabinet.get_qpos()[0]
+        end_pose_desired2 = self.cabinet.get_qlimits()[0][0]
+
+        eps1 = 0.02
+        eps2 = 0.03
+
+
+        return (abs(end_pose_actual1 - end_pose_desired1) < eps1
+                and abs(end_pose_desired2 - end_pose_actual2) < eps2
+                and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

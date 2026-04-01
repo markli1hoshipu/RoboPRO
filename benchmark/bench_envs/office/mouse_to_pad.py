@@ -8,7 +8,7 @@ from copy import deepcopy
 import glob
 
 
-class mouse_on_pad(Office_base_task):
+class mouse_to_pad(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
@@ -69,7 +69,7 @@ class mouse_on_pad(Office_base_task):
         color_index = np.random.choice(len(color_items))
         self.color_name, self.color_value = color_items[color_index]
 
-        half_size = [0.035, 0.065, 0.0005]
+        half_size = [0.06, 0.06, 0.0005]
         self.des_obj = create_box(
             scene=self,
             pose=target_rand_pose,
@@ -78,8 +78,8 @@ class mouse_on_pad(Office_base_task):
             name="box",
             is_static=True,
         )
-        self.add_prohibit_area(self.des_obj, padding=0.06, area="table")
-        self.add_prohibit_area(self.target_obj, padding=0.03, area="table")
+        self.add_prohibit_area(self.des_obj, padding=0.01, area="table")
+        self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
         # Construct des_obj pose with position from des_obj object and identity orientation
         self.des_obj_pose = self.des_obj.get_pose().p.tolist() + [0, 0, 0, 1]
 
@@ -131,12 +131,12 @@ class mouse_on_pad(Office_base_task):
             ))
 
         # Record information about the objects and arm used in the task
-        self.info["info"] = {
-            "{A}": f"047_mouse/base{self.mouse_id}",
-            "{B}": f"{self.color_name}",
-            "{a}": str(arm_tag),
-        }
-        return self.info
+        # self.info["info"] = {
+        #     "{A}": f"047_mouse/base{self.mouse_id}",
+        #     "{B}": f"{self.color_name}",
+        #     "{a}": str(arm_tag),
+        # }
+        # return self.info
 
     def check_success(self):
         end_pose_actual = self.target_obj.get_pose().p

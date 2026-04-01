@@ -10,7 +10,7 @@ import glob
 from transforms3d.euler import euler2quat
 
 
-class place_rubikscube(Office_base_task):
+class rubikscube_to_milktea(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
@@ -60,7 +60,7 @@ class place_rubikscube(Office_base_task):
             "actor": self.milktea,
             "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/101_milk-tea/collision/base{self.milktea_id}.glb",
         })
-        self.add_prohibit_area(self.milktea, padding=0.01, area="table")
+        self.add_prohibit_area(self.milktea, padding=0, area="table")
     
         half_size = [0.03, 0.03, 0.0005]
         p = self.milktea.get_pose().p.tolist()
@@ -75,7 +75,7 @@ class place_rubikscube(Office_base_task):
             name="box",
             is_static=True,
         )
-        self.add_prohibit_area(self.des_obj, padding=0.05, area="table")
+        self.add_prohibit_area(self.des_obj, padding=0.04, area="table")
 
         self.des_obj_pose = des_obj_pose.p.tolist() + [0, 0, 0.7071, 0.7071]
 

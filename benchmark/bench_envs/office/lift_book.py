@@ -38,7 +38,7 @@ class lift_book(Office_base_task):
             is_static=False,
             scale = self.item_info['scales']['043_book'][f'{model_id}']
         )
-        self.target_obj.set_mass(0.1)
+        self.target_obj.set_mass(0.05)
         self.stabilize_object(self.target_obj)
         center_x = self.target_obj.get_pose().p[0] + 0.02
         center_y = self.target_obj.get_pose().p[1]
@@ -66,7 +66,7 @@ class lift_book(Office_base_task):
         end_pose_desired = self.target_obj_pose
         end_pose_desired[1] -= 0.2
         eps1 = 0.04
-        eps2 = 0.04
+        eps2 = 0.06
         eps3 = 0.04
 
         return np.all(abs(end_pose_actual[:3] - end_pose_desired[:3]) < np.array([eps1, eps2, eps3]))

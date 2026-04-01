@@ -62,7 +62,7 @@ class cleaning_3(Office_base_task):
             is_static=False,
             scale = self.item_info['scales']['043_book'][f'{model_id}']
         )
-        self.target_obj_2.set_mass(0.1)
+        self.target_obj_2.set_mass(0.05)
         self.stabilize_object(self.target_obj_2)
         center_x = self.target_obj_2.get_pose().p[0] + 0.02
         center_y = self.target_obj_2.get_pose().p[1]
@@ -120,7 +120,7 @@ class cleaning_3(Office_base_task):
         color_index = np.random.choice(len(color_items))
         self.color_name, self.color_value = color_items[color_index]
 
-        half_size = [0.035, 0.065, 0.0005]
+        half_size = [0.06, 0.06, 0.0005]
         self.des_obj_1 = create_box(
             scene=self,
             pose=target_rand_pose,
@@ -129,7 +129,7 @@ class cleaning_3(Office_base_task):
             name="box",
             is_static=True,
         )
-        self.add_prohibit_area(self.des_obj_1, padding=0.06, area="table")
+        self.add_prohibit_area(self.des_obj_1, padding=0.01, area="table")
         # Construct target pose with position from target object and identity orientation
         self.des_obj_pose_1 = self.des_obj_1.get_pose().p.tolist() + [0, 0, 0, 1]
 
@@ -195,13 +195,27 @@ class cleaning_3(Office_base_task):
         # return self.info
 
     def check_success(self):
-        mouse_pose = self.target_obj_1.get_pose().p
-        mouse_qpose = np.abs(self.target_obj_1.get_pose().q)
-        target_pos = self.target.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
+        end_pose_actual1 = self.target_obj_1.get_pose().p
+        end_pose_desired1 = self.des_obj_1.get_pose().p
 
-        return (np.all(abs(mouse_pose[:2] - target_pos[:2]) < np.array([eps1, eps2]))
-                and (np.abs(mouse_qpose[2] * mouse_qpose[3] - 0.49) < eps1
-                     or np.abs(mouse_qpose[0] * mouse_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
+        end_pose_actual2 = self.cabinet.get_qpos()[0]
+        end_pose_desired2 = self.cabinet.get_qlimits()[0][0]
+
+        end_pose_actual3 = self.target_obj_2.get_pose().p
+        end_pose_desired3 = self.file_holder.get_pose().p
+        end_pose_desired3[1] -= 0.07
+        end_pose_desired3[2] += 0.05
+
+        eps1 = 0.02
+        eps2 = 0.02
+        eps3 = 0.03
+        eps4 = 0.02
+        eps5 = 0.1
+        eps6 = 0.06
+
+
+        return (np.all(abs(end_pose_actual1[:2] - end_pose_desired1[:2]) < np.array([eps1, eps2]))
+                and abs(end_pose_desired2 - end_pose_actual2) < eps3
+                and np.all(abs(end_pose_actual3 - end_pose_desired3) < np.array([eps4, eps5, eps6]))
+                and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

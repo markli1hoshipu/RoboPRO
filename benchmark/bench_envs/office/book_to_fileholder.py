@@ -10,7 +10,7 @@ import glob
 from transforms3d.euler import euler2quat
 
 
-class place_book_to_holder(Office_base_task):
+class book_to_fileholder(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
@@ -52,7 +52,7 @@ class place_book_to_holder(Office_base_task):
             is_static=False,
             scale = self.item_info['scales']['043_book'][f'{model_id}']
         )
-        self.target_obj.set_mass(0.1)
+        self.target_obj.set_mass(0.05)
         self.stabilize_object(self.target_obj)
         center_x = self.target_obj.get_pose().p[0] + 0.02
         center_y = self.target_obj.get_pose().p[1]
@@ -94,9 +94,11 @@ class place_book_to_holder(Office_base_task):
     def check_success(self):
         end_pose_actual = self.target_obj.get_pose().p
         end_pose_desired = self.file_holder.get_pose().p
+        end_pose_desired[1] -= 0.07
+        end_pose_desired[2] += 0.05
         eps1 = 0.02
-        eps2 = 0.1
-        eps3 = 0.06
+        eps2 = 0.08
+        eps3 = 0.04
 
         return (np.all(abs(end_pose_actual[:3] - end_pose_desired[:3]) < np.array([eps1, eps2, eps3]))
                 and self.robot.is_left_gripper_open()

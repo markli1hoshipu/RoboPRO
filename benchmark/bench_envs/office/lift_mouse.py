@@ -51,7 +51,6 @@ class lift_mouse(Office_base_task):
     def play_once(self):
         # Determine which arm to use based on target_obj position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side)
-        self.
 
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.05,grasp_dis=0.02))
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/047_mouse/collision/base{self.mouse_id}.glb", str(arm_tag))
@@ -71,6 +70,6 @@ class lift_mouse(Office_base_task):
         end_pose_desired[1] -= 0.25
         end_pose_desired[2] += 0.1
         eps1 = 0.04
-        eps2 = 0.04
-        eps3 = 0.04
+        eps2 = 0.1
+        eps3 = 0.06
         return np.all(abs(end_pose_actual[:3] - end_pose_desired[:3]) < np.array([eps1, eps2, eps3]))

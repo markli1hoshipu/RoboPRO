@@ -35,6 +35,8 @@ class open_drawer(Office_base_task):
         # Pull the drawer
         for _ in range(3):
             self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.06))
+        
+        self.move(self.open_gripper(arm_tag=arm_tag))
 
         # Record information about the objects and arm used in the task
         # self.info["info"] = {
@@ -45,13 +47,11 @@ class open_drawer(Office_base_task):
         # return self.info
 
     def check_success(self):
-        mouse_pose = self.mouse.get_pose().p
-        mouse_qpose = np.abs(self.mouse.get_pose().q)
-        target_pos = self.target.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
+        end_pose_actual = self.cabinet.get_qpos()[0]
+        end_pose_desired = self.cabinet.get_qlimits()[0][1]
 
-        return (np.all(abs(mouse_pose[:2] - target_pos[:2]) < np.array([eps1, eps2]))
-                and (np.abs(mouse_qpose[2] * mouse_qpose[3] - 0.49) < eps1
-                     or np.abs(mouse_qpose[0] * mouse_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
+        eps1 = 0.03
+
+        return (abs(end_pose_desired - end_pose_actual) < eps1
+                and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
