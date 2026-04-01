@@ -428,7 +428,7 @@ class Study_base_task(Bench_base_task):
                 continue
             task_objects_list.append(actor_name)
 
-        cluttered_item_info, obj_names_short, obj_names_tall = get_obstacle_objects_subset(
+        cluttered_item_info, obj_names_short, obj_names_tall = get_cluttered_objects_subset_2(
             "study", self.sample_d, task_objects_list
         )
         self.clutter_surface_split(xlim, ylim, zlim, self.prohibited_area["table"], self.obstacle_density, cluttered_item_info, obj_names_short, obj_names_tall)

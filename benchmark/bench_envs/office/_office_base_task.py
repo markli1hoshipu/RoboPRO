@@ -501,7 +501,7 @@ class Office_base_task(Bench_base_task):
                 continue
             task_objects_list.append(actor_name)
 
-        cluttered_item_info, obj_names_short, obj_names_tall = get_obstacle_objects_subset(
+        cluttered_item_info, obj_names_short, obj_names_tall = get_cluttered_objects_subset_2(
             "office", self.sample_d, task_objects_list
         )
 
@@ -522,7 +522,7 @@ class Office_base_task(Bench_base_task):
             if actor_name in ["table", "wall", "ground"]:
                 continue
             task_objects_list.append(actor_name)
-        cluttered_item_info, obj_names = get_obstacle_objects_subset("office", task_objects_list)
+        cluttered_item_info, obj_names = get_cluttered_objects_subset("office", task_objects_list)
         if not obj_names:
             return
         n = len(obj_names)

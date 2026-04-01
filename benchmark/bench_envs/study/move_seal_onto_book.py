@@ -55,7 +55,7 @@ class move_seal_onto_book(Study_base_task):
         des_bb = get_actor_boundingbox(self.box.actor)
         self.seal_name = "100_seal"
         box_pose = self.box.get_pose().p
-        seal_place_pose = [[box_pose[0], box_pose[1]+0.08, des_bb[0][-1] + 0.03], (90, 0, 180)]
+        seal_place_pose = [[box_pose[0], box_pose[1]+0.02, des_bb[0][-1] + 0.03], (90, 0, 180)]
 
         self.seal_obj, self.seal_id, self.seal_obj_pose = \
             place_actor(self.seal_name, self, task_objs=task_objs,
@@ -100,11 +100,13 @@ class move_seal_onto_book(Study_base_task):
         if _robotwin_log_move():
             print(f"[move_seal_onto_book] placing book at {self.book_des_pose}")
         self.add_prohibit_area(self.target_obj_1, padding=0.12, area="table")
+        self.add_prohibit_area(self.book_des_pose, padding=0.12, area="table")
 
       
     def play_once(self, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # --- Step 1: Move book from bookcase to table ---
-        book_arm_tag = ArmTag(self.arm_side)
+        book_x = self.target_obj_1.get_pose().p[0]
+        book_arm_tag = ArmTag("right" if book_x > 0 else "left")
 
         if _robotwin_log_move():
             _p = self.target_obj_1.get_pose()
@@ -150,7 +152,9 @@ class move_seal_onto_book(Study_base_task):
 
         # Grab seal from box
         self.move(self.grasp_actor(self.seal_obj, arm_tag=seal_arm_tag, pre_grasp_dis=pre_grasp_dist))
-        self.move(self.move_by_displacement(arm_tag=seal_arm_tag, z=self.lift_height))
+        seal_x_disp = self.lift_height if seal_x <= 0 else -self.lift_height
+        self.move(self.move_by_displacement(arm_tag=seal_arm_tag, x=seal_x_disp,
+                                            z=self.lift_height))
         self.attach_object(self.seal_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.seal_name}/collision/base{self.seal_id}.glb", str(seal_arm_tag))
 
         # Place seal directly on top of the book
