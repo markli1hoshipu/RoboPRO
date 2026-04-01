@@ -17,8 +17,8 @@ class put_bottle_in_basket(Kitchen_base_large):
     BASKET_Z_BOUNDS = (-0.10, 0.25)
 
     # Left-arm motion tuning.
-    APPROACH_DELTA_1 = dict(x=-0.05, y=0.285, z=0.10)
-    APPROACH_DELTA_2 = dict(z=-0.10)
+    APPROACH_DELTA_1 = dict(x=-0.05, y=0.29, z=0.10)
+    APPROACH_DELTA_2 = dict(z=-0.13)
     RETREAT_DELTA = dict(y=-0.20)
     GRASP_PRE_DIS = 0.07
     GRASP_DIS = 0.0

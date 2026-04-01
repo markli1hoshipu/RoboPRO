@@ -299,7 +299,7 @@ class Kitchen_base_large(Bench_base_task):
         self.left_cnt = 0
         self.right_cnt = 0
 
-        # Fridge, microwave, and basket configuration on the table front edge.
+        # Fridge, microwave, and table-side container (`basket_right`) on the table front edge.
         # Rotations in degrees (roll, pitch, yaw) and uniform scales.
         # Fixed at the base env level (shared by all tasks).
         self.fridge_left_rot = [-90.0, 0.0, 90.0]
@@ -309,7 +309,10 @@ class Kitchen_base_large(Bench_base_task):
         self.microwave_left_scale = 1.4
 
         self.basket_right_rot = [0.0, 0.0, 90.0]
-        self.basket_right_scale = 1
+        self.basket_right_scale = 1.4
+        # Table-side container (tasks use `basket_right` as the reference actor).
+        self.basket_right_modelname = "063_tabletrashbin"
+        self.basket_right_model_id = 6
 
         # Cabinet scale: currently only uniform scaling is supported by SAPIEN's URDF loader.
         # This parameter allows you to uniformly resize the cabinet; to truly scale only height,
@@ -568,8 +571,8 @@ class Kitchen_base_large(Bench_base_task):
             self.add_prohibit_area(self.microwave_left, padding=0.01, area="table")
 
     def _load_basket_on_table(self, table_height: float, table_xy_bias):
-        """Place the static basket on the left front edge of the table."""
-        y_front = table_xy_bias[1] + 0.15
+        """Place the static table-side container (`063_tabletrashbin`) on the left front edge of the table."""
+        y_front = table_xy_bias[1] + 0.12
         x_right = table_xy_bias[0] - 0.37
         z_basket = table_height + 0.02
 
@@ -581,18 +584,20 @@ class Kitchen_base_large(Bench_base_task):
         basket_quat = [bqw, bqx, bqy, bqz]
 
         pose_basket = sapien.Pose([x_right, y_front, z_basket], basket_quat)
-        intrinsic_scale = self._get_asset_model_scale_create_actor(modelname="110_basket", model_id=3)
+        modelname = str(self.basket_right_modelname)
+        model_id = int(self.basket_right_model_id)
+        intrinsic_scale = self._get_asset_model_scale_create_actor(modelname=modelname, model_id=model_id)
         final_scale = intrinsic_scale * float(self.basket_right_scale)
         basket_actor = create_actor(
             scene=self.scene,
             pose=pose_basket,
-            modelname="110_basket",
+            modelname=modelname,
             # `create_actor.py` treats `scale=` as absolute, so multiply
             # by intrinsic model_data scale to keep historical multiplier semantics.
             scale=final_scale,
             is_static=True,
             convex=False,
-            model_id=3,
+            model_id=model_id,
         )
         if basket_actor is not None:
             self.basket_right = basket_actor
