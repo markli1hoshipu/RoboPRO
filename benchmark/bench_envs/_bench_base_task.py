@@ -835,7 +835,7 @@ class Bench_base_task(Base_Task):
             z_transform = True
 
         end_effector_pose = (self.robot.get_left_ee_pose() if arm_tag == "left" else self.robot.get_right_ee_pose())
-        print(f"[bench base task] constraint in get_place_pose {constrain}")
+        # print(f"[bench base task] constraint in get_place_pose {constrain}")
         if constrain == "auto":
             grasp_direct_vec = place_start_pose.p - end_effector_pose[:3]
             if np.abs(np.dot(grasp_direct_vec, [0, 0, 1])) <= 0.1:
@@ -873,8 +873,8 @@ class Bench_base_task(Base_Task):
                 local_up_axis=local_up_axis,
             )
         
-        print(f"[base_task] place_pose target pose {target_pose}, place_start_pose {place_start_pose}")
-        print(f"[base_task] place_pose after get_place_pose {place_pose}")
+        # print(f"[base_task] place_pose target pose {target_pose}, place_start_pose {place_start_pose}")
+        # print(f"[base_task] place_pose after get_place_pose {place_pose}")
         
         start2target = (transforms._toPose(place_pose).to_transformation_matrix()[:3, :3]
                         @ place_start_pose.to_transformation_matrix()[:3, :3].T)
@@ -1135,9 +1135,7 @@ class Bench_base_task(Base_Task):
 
         if self.cuboid_collision_list:
             for info in self.cuboid_collision_list:
-                name = info["name"]
-                dims = info["dims"]
-                pose = info["pose"]
+                name, dims, pose = info
                 collision_dict["cuboid"][name] = {
                     "dims": dims,
                     "pose": pose,
