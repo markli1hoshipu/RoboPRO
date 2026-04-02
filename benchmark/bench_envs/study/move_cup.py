@@ -35,11 +35,15 @@ class move_cup(Study_base_task):
                     qpos=(90,0,90), object_bounds=object_bounds, task_objs=task_objs,
                      mass = 0.1, rotation=False)
 
-        self.move_thr = 0.3
+        
         self.init_tar_pose = deepcopy(self.target_obj.get_pose().p.tolist()) 
         p = self.target_obj.get_pose().p.tolist() 
 
-        p[0] += self.move_thr if self.side_to_place == "right" else -self.move_thr 
+        self.move_thr = 0.3
+        table_box = get_actor_boundingbox(self.table)
+
+        p[0] = min(table_box[1][0]-0.05, p[0]+self.move_thr) if self.side_to_place == "right" else \
+             max(table_box[0][0]+0.05, p[0]-self.move_thr)
         self.des_obj_pose = p + [1,0,0,0] 
 
 

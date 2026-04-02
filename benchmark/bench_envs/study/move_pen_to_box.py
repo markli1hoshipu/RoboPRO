@@ -23,6 +23,8 @@ class move_pen_to_box(Study_base_task):
     def load_actors(self):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
+        object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
+
         if np.random.rand() > self.clean_background_rate and self.obstacle_density >0:
             des_bb = get_actor_boundingbox(self.box.actor)
             self.obstacle_density = max(0, self.obstacle_density-1) 
@@ -41,13 +43,11 @@ class move_pen_to_box(Study_base_task):
                 "collision_path": self.col_temp.format(object=box_obs,
                                                         object_id=obs_tar_id)
             })
-       
+            object_bounds.append(get_actor_boundingbox(box_obs_tar.actor))
+
         xlim, ylim, self.arm_side= get_position_limits(self.table,
                                       boundary_thr=0.15, side="left" if self.scene_id == 0 else "right")
       
-
-        object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
-
         self.des_obj_name = "059_pencup"
         
         self.des_obj, self.des_obj_id, self.des_obj_pose = \

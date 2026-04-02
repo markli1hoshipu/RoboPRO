@@ -24,7 +24,12 @@ class empty_box(Study_base_task):
         print_c(self.seed, "YELLOW")
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
+            
+        xlim, ylim, self.side_to_place = get_position_limits(self.table,
+                                         boundary_thr=[0.10, 0.20],
+                                        side="left" if self.scene_id == 0 else "right")
 
+        object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         # Place a bottle next to the box
         if np.random.rand() > self.clean_background_rate and self.obstacle_density >0:
             self.obstacle_density = max(0, self.obstacle_density-1)  # Ensure non-negative density
@@ -44,12 +49,8 @@ class empty_box(Study_base_task):
                 "collision_path": self.col_temp.format(object=box_obs,
                                                         object_id=obs_tar_id)
             })
+            object_bounds.append(get_actor_boundingbox(box_obs_tar.actor))
 
-        xlim, ylim, self.side_to_place = get_position_limits(self.table,
-                                         boundary_thr=[0.10, 0.20],
-                                        side="left" if self.scene_id == 0 else "right")
-        print(ylim)
-        object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
    
         des_bb = get_actor_boundingbox(self.box.actor)
     
@@ -61,8 +62,7 @@ class empty_box(Study_base_task):
             place_actor(self.seal_name, self, task_objs = task_objs,
                     obj_pose=place_pose, mass = 0.1)
 
-        # [xlim[0]+ np.mean(xlim), xlim[1]]
-        self.seal_des_pose = get_random_place_pose(xlim =xlim, ylim=ylim,
+        self.seal_des_pose = get_random_place_pose(xlim =[xlim[0]+ np.mean(xlim), xlim[1]], ylim=ylim,
                                              col_thr=0.1, object_bounds=object_bounds)
         self.add_prohibit_area(self.seal_des_pose, padding=0.1, area="table")
 
@@ -86,8 +86,7 @@ class empty_box(Study_base_task):
 
         # Get the placement pose
         self.seal_des_pose = self.seal_des_pose.p.tolist() + [1,0,0,0]
-        # [xlim[0]+ np.mean(xlim), xlim[1]]
-        self.cup_des_pose = get_random_place_pose(xlim = xlim, ylim=ylim,
+        self.cup_des_pose = get_random_place_pose(xlim = [xlim[0]+ np.mean(xlim), xlim[1]], ylim=ylim,
                                              col_thr=0.1, object_bounds=object_bounds)
        
         self.add_prohibit_area(self.cup_des_pose, padding=0.1, area="table")

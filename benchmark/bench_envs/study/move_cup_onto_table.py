@@ -25,7 +25,8 @@ class move_cup_onto_table(Study_base_task):
             task_objs = yaml.safe_load(f)
         
         self.des_obj = self.box
-    
+        object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
+
         des_bb = get_actor_boundingbox(self.des_obj.actor)
 
         #place obstacles inside and next to the box
@@ -46,6 +47,8 @@ class move_cup_onto_table(Study_base_task):
                 "collision_path": self.col_temp.format(object=box_obs,
                                                         object_id=obs_tar_id)
             })
+            object_bounds.append(get_actor_boundingbox(box_obs_tar.actor))
+
             box_obs = "001_bottle"
             gap = 0.1
             bid = np.random.choice(task_objs["objects"]["study"]["obstacles"]["tall"][box_obs])
@@ -61,6 +64,7 @@ class move_cup_onto_table(Study_base_task):
                 "collision_path": self.col_temp.format(object=box_obs,
                                                         object_id=obs_tar_id)
             })
+            object_bounds.append(get_actor_boundingbox(box_obs_tar.actor))
 
         self.target_name = "021_cup"
 
@@ -77,7 +81,6 @@ class move_cup_onto_table(Study_base_task):
                                         boundary_thr=0.05, side="left"
                                         if self.scene_id == 0 else "right")
         
-        object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
 
         self.cup_des_pose = get_random_place_pose(xlim = xlim, ylim=ylim,
                                         col_thr=0.15,zlim=[0.78],
