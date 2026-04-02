@@ -9,7 +9,7 @@ from envs._GLOBAL_CONFIGS import *
 from copy import deepcopy
 from bench_envs.study._study_base_task import Study_base_task
 from envs.utils import *
-from bench_envs.utils.scene_gen_utils import get_position_limits, get_actor_boundingbox, get_collison_with_objs
+from bench_envs.utils.scene_gen_utils import get_position_limits, get_actor_boundingbox
 from bench_envs.utils.scene_gen_utils import print_c, place_actor
 from transforms3d.euler import euler2quat
 
@@ -35,14 +35,13 @@ class move_cup(Study_base_task):
                     qpos=(90,0,90), object_bounds=object_bounds, task_objs=task_objs,
                      mass = 0.1, rotation=False)
 
-        move_thr = 0.3
-        self.init_tar_pose = self.target_obj.get_pose().p
-
+        self.move_thr = 0.3
+        self.init_tar_pose = deepcopy(self.target_obj.get_pose().p.tolist()) 
         p = self.target_obj.get_pose().p.tolist() 
 
-        p[0] += move_thr if self.side_to_place == "right" else -move_thr 
+        p[0] += self.move_thr if self.side_to_place == "right" else -self.move_thr 
         self.des_obj_pose = p + [1,0,0,0] 
-        print(self.side_to_place)
+
 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
         self.add_prohibit_area(self.target_obj, padding=0.05, area="table")
@@ -79,6 +78,6 @@ class move_cup(Study_base_task):
 
     def check_success(self):
         if self.side_to_place == "right":
-            return self.target_obj.get_pose().p[1] > self.init_tar_pose[1] 
+            return self.target_obj.get_pose().p[0] > (self.init_tar_pose[0] + self.move_thr/2)
         else:
-            return self.target_obj.get_pose().p[1] < self.init_tar_pose[1] 
+            return self.target_obj.get_pose().p[0] < (self.init_tar_pose[0] - self.move_thr/2)

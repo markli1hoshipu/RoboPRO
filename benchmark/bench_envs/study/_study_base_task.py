@@ -85,6 +85,8 @@ class Study_base_task(Bench_base_task):
 
         self.enable_collision_metrics = kwags.get("enable_collision_metrics", False)
         self.scene_objs = []
+        self.scene_obj_info = []
+
         self.need_topp = True  # TODO
 
         # Random
@@ -155,7 +157,7 @@ class Study_base_task(Bench_base_task):
         self.cuboid_collision_list = []
         self.robot.set_origin_endpose()
         self.load_actors()
-
+        
         if self.cluttered_table:
             self.get_cluttered_surfaces()
 
@@ -191,7 +193,13 @@ class Study_base_task(Bench_base_task):
 
         self.stage_success_tag = False
 
-
+    def add_collision(self):
+        for obj in self.scene_obj_info:
+                print_c(f"Adding collision for {obj[0]} with id {obj[2]}", "GREEN")
+                self.collision_list.append({
+                    "actor":obj[1],
+                    "collision_path": self.col_temp.format(object=obj[0], object_id=obj[2])
+            })
     def create_static_elements(self, table_xy_bias=[0, 0], table_height=0.74):
         self.table_xy_bias = table_xy_bias
         wall_texture, table_texture, floor_texture = None, None, None
@@ -277,13 +285,7 @@ class Study_base_task(Bench_base_task):
                     is_static=param.get('is_static', True)
                 )
                 self.scene_objs.append(value)
-                if self.incl_collision:
-                    print_c(f"Adding collision for {obj} with id {param.get('model_id', 0)}", "GREEN")
-                    self.collision_list.append({
-                        "actor":value,
-                        "collision_path": self.col_temp.format(object=obj, object_id=param.get('model_id', 0))
-                    })
-
+                self.scene_obj_info.append((obj,value, param.get('model_id', 0)))
                 self.add_prohibit_area(value, padding=0.05, area="table")
 
             elif param.get("obj_type", "actor") == "table":
@@ -298,7 +300,9 @@ class Study_base_task(Bench_base_task):
                         texture_id=param.get('texture_id', self.table_texture),
                     )
             setattr(self, obj.split("_")[-1], value)
-
+        if self.incl_collision:
+            self.add_collision()
+            
         box_bb = get_actor_boundingbox(self.box.actor)
         case_bb = get_actor_boundingbox(self.bookcase.actor)
         self.prohibited_area["table"].append([box_bb[0][0], case_bb[0][1],

@@ -26,35 +26,44 @@ class move_seal_cup_next_to_box(Study_base_task):
                                       boundary_thr=0.10, side= "left" if self.scene_id == 0 else "right")
         
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
+        # Place a cup as target
+ 
         self.target_name = "100_seal"
-        move_thr = 0.25
+        self.move_thr = 0.08
 
-        xlim_m = [xlim[0] + move_thr+0.1, xlim[1]] if self.side_to_place == "left" else \
-        [xlim[0], xlim[1] - move_thr-0.1]
+        xlim_s = [xlim[0] + self.move_thr + 0.15, xlim[1]] if self.scene_id == 0 \
+        else [xlim[0], xlim[1] - self.move_thr - 0.15]
 
         self.target_obj, self.target_id, self.target_pose = \
-        place_actor(self.target_name, self, col_thr=0.15, xlim=xlim_m, ylim=ylim, 
+        place_actor(self.target_name, self, col_thr=0.15, xlim=xlim_s, ylim=ylim, 
                     qpos=(90,0,0), object_bounds=object_bounds, task_objs=task_objs,
-                     mass = 0.1, rotation=False)
+                     mass = 0.2, rotation=False)
         object_bounds.append(get_actor_boundingbox(self.target_obj.actor))
+        bb_box = get_actor_boundingbox(self.box.actor)        
+        self.des_obj_pose = [bb_box[1][0] + self.move_thr if self.side_to_place == "left" else bb_box[0][0] - self.move_thr,
+             np.random.uniform(low=bb_box[0][1]+0.05, high=bb_box[1][1]-0.05),
+             bb_box[1][-1]-0.02] + [1,0,0,0]
 
+        # Place a cup as target
         self.target_name_2 = "021_cup"
+
+        xlim_c = [xlim[0] + 0.1, xlim[1]] if self.scene_id == 0 \
+        else [xlim[0], xlim[1] - self.move_thr]
         self.target_obj_2, self.target_id_2, self.target_pose_2 = \
-        place_actor(self.target_name_2, self, col_thr=0.15, xlim=xlim_m, ylim=ylim, 
+        place_actor(self.target_name_2, self, col_thr=0.15, xlim=xlim_c, ylim=ylim, 
                     qpos=(90,0,90), object_bounds=object_bounds, task_objs=task_objs,
                      mass = 0.1, rotation=False)
-        
-   
-        p = self.box.get_pose().p.tolist() 
-        p[0] += move_thr if self.side_to_place == "left" else -move_thr
-        self.des_obj_pose = p + [1,0,0,0] 
-        
-        self.add_prohibit_area(sapien.Pose(p = p, q = [1,0,0,0]), padding=0.12, area="table")
 
-        des_bb = get_actor_boundingbox(self.box.actor)
+
+
+        
+        self.add_prohibit_area(sapien.Pose(p = self.des_obj_pose[:3], 
+                                           q = [1,0,0,0]), 
+                                           padding=0.12, area="table")
+
         p = self.box.get_pose().p.tolist() 
         p[1] -= 0.1
-        p[2] = des_bb[1][-1] -0.05 
+        p[2] = bb_box[1][-1] -0.05 
 
         self.des_obj_pose_2 = p + [1, 0, 0, 0]
 
@@ -64,10 +73,10 @@ class move_seal_cup_next_to_box(Study_base_task):
         if np.random.rand() > self.clean_background_rate:
             box_obs = "001_bottle"
             gap = 0.1
-            place_pose =  [[np.random.choice([des_bb[0][0]+gap,
-                                              des_bb[1][0]-gap]), 
-                        des_bb[1][1]-gap,
-                        des_bb[0][-1]],(90,0,0)]
+            place_pose =  [[np.random.choice([bb_box[0][0]+gap,
+                                              bb_box[1][0]-gap]), 
+                        bb_box[1][1]-gap,
+                        bb_box[0][-1]],(90,0,0)]
             
             box_obs_tar, obs_tar_id, _= place_actor(box_obs, self, 
                            task_objs = task_objs, obj_id = 0,

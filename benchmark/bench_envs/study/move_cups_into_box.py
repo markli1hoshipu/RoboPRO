@@ -25,7 +25,25 @@ class move_cups_into_box(Study_base_task):
     def load_actors(self):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
-        
+                #place obstacles inside and next to the box
+        if np.random.rand() > self.clean_background_rate:
+            des_bb = get_actor_boundingbox(self.box.actor)
+            box_obs = "001_bottle"
+            gap = 0.05
+            bid = np.random.choice(task_objs["objects"]["study"]["obstacles"]["tall"][box_obs])
+            place_pose =  [[des_bb[1][0]+gap if self.scene_id == 0 else des_bb[0][0]-gap, 
+                           des_bb[1][1]-np.random.uniform(low=0, 
+                                    high=des_bb[1][1]-des_bb[0][1]),
+                           des_bb[0][-1]],(90,0,0)]
+            bid = np.random.choice(task_objs["objects"]["study"]["obstacles"]["tall"][box_obs])
+            box_obs_tar, obs_tar_id, _= place_actor(box_obs, self, 
+                           task_objs = task_objs, obj_id = bid,
+                          obj_pose=place_pose, mass = 0.5, is_static=False)
+            self.collision_list.append({
+                "actor":box_obs_tar,
+                "collision_path": self.col_temp.format(object=box_obs,
+                                                        object_id=obs_tar_id)
+            })
         xlim, ylim, self.side_to_place = get_position_limits(self.table, boundary_thr=0.20, 
                                                              side="right" if self.scene_id else "left")
       
@@ -57,9 +75,9 @@ class move_cups_into_box(Study_base_task):
         for t, d in zip(self.target_objects,self.des_obj_poses):
             # Grasp the mouse with the selected arm
             self.move(self.grasp_actor(t[-1], arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
-
+            x = z if self.side_to_place == "right" else -z
             # Lift the mouse upward by 0.1 meters in z-direction
-            self.move(self.move_by_displacement(arm_tag=arm_tag, x=-z, z=z,
+            self.move(self.move_by_displacement(arm_tag=arm_tag, x=x, z=z,
                                                 constraint_pose =[0,0,0.8, 0, 0, 0]))
 
             self.attach_object(t[-1], f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{t[0]}/collision/base{t[1]}.glb", str(arm_tag))

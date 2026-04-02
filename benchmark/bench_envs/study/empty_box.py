@@ -18,14 +18,16 @@ class empty_box(Study_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
-
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
         print_c(self.seed, "YELLOW")
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
-        if np.random.rand() > self.clean_background_rate:
+
+        # Place a bottle next to the box
+        if np.random.rand() > self.clean_background_rate and self.obstacle_density >0:
+            self.obstacle_density = max(0, self.obstacle_density-1)  # Ensure non-negative density
             des_bb = get_actor_boundingbox(self.box.actor)
             box_obs = "001_bottle"
             gap = 0.05
@@ -33,19 +35,20 @@ class empty_box(Study_base_task):
                            des_bb[1][1]-np.random.uniform(low=0, 
                                     high=des_bb[1][1]-des_bb[0][1]),
                            des_bb[0][-1]],(90,0,0)]
-            
+            bid = np.random.choice(task_objs["objects"]["study"]["obstacles"]["tall"][box_obs])
             box_obs_tar, obs_tar_id, _= place_actor(box_obs, self, 
-                           task_objs = task_objs, obj_id = np.random.choice([0,19,3,20]),
+                           task_objs = task_objs, obj_id = bid,
                           obj_pose=place_pose, mass = 0.5, is_static=False)
             self.collision_list.append({
                 "actor":box_obs_tar,
                 "collision_path": self.col_temp.format(object=box_obs,
                                                         object_id=obs_tar_id)
             })
+
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-                                         boundary_thr=[0.15, 0.25],
+                                         boundary_thr=[0.10, 0.20],
                                         side="left" if self.scene_id == 0 else "right")
-      
+        print(ylim)
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
    
         des_bb = get_actor_boundingbox(self.box.actor)
@@ -58,8 +61,8 @@ class empty_box(Study_base_task):
             place_actor(self.seal_name, self, task_objs = task_objs,
                     obj_pose=place_pose, mass = 0.1)
 
-        
-        self.seal_des_pose = get_random_place_pose(xlim = [xlim[0]+ np.mean(xlim), xlim[1]-0.1], ylim=ylim,
+        # [xlim[0]+ np.mean(xlim), xlim[1]]
+        self.seal_des_pose = get_random_place_pose(xlim =xlim, ylim=ylim,
                                              col_thr=0.1, object_bounds=object_bounds)
         self.add_prohibit_area(self.seal_des_pose, padding=0.1, area="table")
 
@@ -69,7 +72,7 @@ class empty_box(Study_base_task):
         self.cup_name = "021_cup" 
         self.cup_obj, self.cup_obj_id, self.cup_obj_pose = \
             place_actor(self.cup_name, self, task_objs = task_objs,
-                    obj_pose=place_pose, mass = 0.4)
+                    obj_pose=place_pose, mass = 0.4, obj_id=2, scale=0.1)
 
         cup_bb = get_actor_boundingbox(self.cup_obj.actor)
 
@@ -83,9 +86,10 @@ class empty_box(Study_base_task):
 
         # Get the placement pose
         self.seal_des_pose = self.seal_des_pose.p.tolist() + [1,0,0,0]
-
-        self.cup_des_pose = get_random_place_pose(xlim = [xlim[0]+ np.mean(xlim), xlim[1]-0.1], ylim=ylim,
+        # [xlim[0]+ np.mean(xlim), xlim[1]]
+        self.cup_des_pose = get_random_place_pose(xlim = xlim, ylim=ylim,
                                              col_thr=0.1, object_bounds=object_bounds)
+       
         self.add_prohibit_area(self.cup_des_pose, padding=0.1, area="table")
 
         self.cup_des_pose = self.cup_des_pose.p.tolist() + [1,0,0,0]
@@ -160,11 +164,13 @@ class empty_box(Study_base_task):
         
         obj_poses = np.stack([ob.get_pose().p[:2] for ob in [self.cup_obj, self.seal_obj]], 
                              axis=0)
-        objects_in_box = np.all((box_bb[0][:2] <= obj_poses)  &  (obj_poses <= box_bb[1][:2]))
+        cup_in_box = np.all((box_bb[0][:2] <= self.cup_obj.get_pose().p[:2])  &  (self.cup_obj.get_pose().p[:2] <= box_bb[1][:2]))
+        seal_in_box = np.all((box_bb[0][:2] <= self.seal_obj.get_pose().p[:2])  &  (self.seal_obj.get_pose().p[:2] <= box_bb[1][:2]))
+
         table_bb = get_actor_boundingbox(self.table)
         objects_on_table = np.all((table_bb[0][:2] <= obj_poses)  &  (obj_poses <= table_bb[1][:2]))
         objects_on_table &= (obj_poses[..., -1] - table_bb[1][-1]) < eps  
-
-        return (not objects_in_box and np.all(objects_on_table)
+        
+        return (not cup_in_box and not seal_in_box and np.all(objects_on_table)
                 and self.robot.is_left_gripper_open() 
                 and self.robot.is_right_gripper_open())

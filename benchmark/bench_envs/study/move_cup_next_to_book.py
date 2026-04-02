@@ -22,33 +22,42 @@ class move_cup_next_to_book(Study_base_task):
     def load_actors(self):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
-        move_thr = 0.12
+        
+        self.move_thr = 0.05
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-                                      boundary_thr=0.10, side="right" if self.scene_id == 0 else "left")
+                                      boundary_thr=0.05, side="right"
+                                        if self.scene_id == 0 else "left")
         
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         self.target_name = "021_cup"
 
-        xlim_m = [xlim[0], (xlim[0] + xlim[1])/2 - move_thr- 0.05] 
+        place_gap = self.move_thr + 0.15
+        if self.side_to_place  == "right":
+            xlim_b = [xlim[0], np.mean(xlim) - place_gap] 
+            xlim_c = [np.mean(xlim), xlim[1]]
+        else:
+            xlim_c = [xlim[0], np.mean(xlim) - place_gap] 
+            xlim_b = [np.mean(xlim), xlim[1]] 
+
+
         self.target_obj, self.target_id, self.target_pose = \
-        place_actor(self.target_name, self, col_thr=0.20, xlim=xlim_m, ylim=ylim, 
+        place_actor(self.target_name, self, col_thr=0.20, xlim=xlim_c, ylim=ylim, 
                     qpos=(90,0,0), object_bounds=object_bounds, task_objs=task_objs,
                      mass = 0.1, rotation=False)
         
         tar_bb = get_actor_boundingbox(self.target_obj.actor)
         object_bounds.append(tar_bb)
-        xlim_b = [(xlim[0] + xlim[1])/2 + 0.05, xlim[1]] 
 
         self.des_obj, self.des_obj_id, self.des_obj_pose = \
             place_actor("043_book", self, col_thr=0.15, xlim=xlim_b,
                         ylim= ylim, qpos=(90,0,0),
                         object_bounds=object_bounds, task_objs=task_objs,
-                        obj_id = "0", mass = 0.2, rotation=False)
+                        obj_id = None, mass = 0.2, rotation=False)
         
-     
-        p = self.des_obj.get_pose().p.tolist() 
-        p[0] -= move_thr
-        self.des_obj_pose = p + [1,0,0,0]  
+        b_box = get_actor_boundingbox(self.des_obj.actor)
+        self.des_obj_pose = [b_box[0][0] - self.move_thr if self.side_to_place == "left" else b_box[1][0] + self.move_thr,
+             np.random.uniform(low=b_box[0][1], high=b_box[1][1]),
+             b_box[1][-1]] + [1,0,0,0]
 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
@@ -87,11 +96,10 @@ class move_cup_next_to_book(Study_base_task):
         return self.info
 
     def check_success(self):
-        dist_thr = 0.12
         book_bb = get_actor_boundingbox(self.des_obj.actor)
         dist_to_cup = point_to_box_distance(self.target_obj.get_pose().p, book_bb[0], book_bb[1])
 
-        return (dist_to_cup < dist_thr
+        return (dist_to_cup < self.move_thr +0.02
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
 

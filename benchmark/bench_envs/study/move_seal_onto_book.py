@@ -27,6 +27,7 @@ class move_seal_onto_book(Study_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
+        kwargs["include_collison"] = False
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
@@ -119,6 +120,8 @@ class move_seal_onto_book(Study_base_task):
         self.move(self.move_by_displacement(arm_tag=book_arm_tag, y=self.ep_lift,
                                             z=self.lift_height))
         self.attach_object(self.target_obj_1, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id_1}.glb", str(book_arm_tag))
+        self.add_collision()
+        self.update_world()
         self.move(
             self.place_actor(
                 self.target_obj_1,
@@ -142,6 +145,9 @@ class move_seal_onto_book(Study_base_task):
         book_pose = self.target_obj_1.get_pose()
         seal_arm_tag = ArmTag("right" if seal_x > 0 else "left")
 
+        if seal_arm_tag != book_arm_tag:
+            self.move(self.back_to_origin(book_arm_tag))
+
         if _robotwin_log_move():
             _p = self.seal_obj.get_pose()
             print(
@@ -150,6 +156,7 @@ class move_seal_onto_book(Study_base_task):
             )
             print(f"[move_seal_onto_book] seal_arm={seal_arm_tag}")
 
+       
         # Grab seal from box
         self.move(self.grasp_actor(self.seal_obj, arm_tag=seal_arm_tag, pre_grasp_dis=pre_grasp_dist))
         seal_x_disp = 0.15 if seal_x <= 0 else -0.15
@@ -158,10 +165,10 @@ class move_seal_onto_book(Study_base_task):
         self.attach_object(self.seal_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.seal_name}/collision/base{self.seal_id}.glb", str(seal_arm_tag))
 
         # Place seal directly on top of the book
-        book_bb = get_actor_boundingbox(self.target_obj_1)
+        book_bb = get_actor_boundingbox(self.target_obj_1.actor)
         seal_des_pose = sapien.Pose(
-            [book_pose.p[0], book_pose.p[1], book_bb[1][2] + 0.01],
-            [-0.0044,  0.0065,  0.7064,  0.7077],
+            [book_pose.p[0], book_pose.p[1], book_bb[1][2] + 0.03],
+            [1,0,0,0]
         )
         self.move(
             self.place_actor(

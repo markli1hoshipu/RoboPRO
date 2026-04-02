@@ -127,14 +127,20 @@ def get_collison_with_objs(object_bounds, obj_pose, x_thr, y_thr = None):
             return True
     return False
 
-def get_random_place_pose(xlim, ylim, object_bounds=None, col_thr=0.15, qpos=(0,0,0),
+def get_random_place_pose(xlim, ylim, zlim=None, object_bounds=None, col_thr=0.15, 
+                          qpos=(0,0,0), euler=True,
                           rotation=False, rotate_lim = (0,0,0)):
-        
+    
+    if euler:
+        qpos = euler2quat(*[np.deg2rad(d) for d in qpos])
+    else:
+        qpos = qpos
     while True:
         obj_pose = rand_pose(
             xlim=xlim,
             ylim=ylim,
-            qpos=euler2quat(*[np.deg2rad(d) for d in qpos]), #[0.5, 0.5, 0.5, 0.5],
+            zlim = zlim or [0.741],
+            qpos=qpos, 
             rotate_rand=rotation,
             rotate_lim=rotate_lim,
         )
@@ -144,7 +150,7 @@ def get_random_place_pose(xlim, ylim, object_bounds=None, col_thr=0.15, qpos=(0,
 def place_actor(obj_name, scene, task_objs, col_thr=0.15, object_bounds=None, 
                 obj_id = None, mass = 0.1,  xlim=None, ylim=None, obj_pose=None, 
                 qpos=(0,0,0), rotation=False, rotate_lim = (0,0,0),
-                is_static=False):
+                is_static=False, scale = None):
     
     if obj_pose is None:
         # Threshold between the objects
@@ -164,7 +170,6 @@ def place_actor(obj_name, scene, task_objs, col_thr=0.15, object_bounds=None,
     obj_id = obj_id if obj_id is not None else np.random.choice(task_objs['objects']['study']['targets'][obj_name])
     
     print_c(f"Generating {obj_name} with id {obj_id} at position {obj_pose}", "BLUE")
-
     obj = create_actor(
             scene=scene,
             pose=obj_pose,
@@ -172,7 +177,7 @@ def place_actor(obj_name, scene, task_objs, col_thr=0.15, object_bounds=None,
             convex=True,
             model_id= obj_id,
             is_static=is_static,
-            scale= None if task_objs['scales'].get(obj_name) is None else \
+            scale= scale or None if task_objs['scales'].get(obj_name) is None else \
                 task_objs['scales'][obj_name].get(str(obj_id)) 
     )
     obj.set_mass(mass)

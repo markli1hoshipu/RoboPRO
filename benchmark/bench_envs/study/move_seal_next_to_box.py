@@ -27,7 +27,7 @@ class move_seal_next_to_box(Study_base_task):
         
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         self.target_name = "100_seal"
-        self.move_thr = 0.20
+        self.move_thr = 0.05
 
         xlim_m = [xlim[0] + self.move_thr + 0.1, xlim[1]] if self.scene_id == 0 \
         else [xlim[0], xlim[1] - self.move_thr - 0.1]
@@ -36,10 +36,11 @@ class move_seal_next_to_box(Study_base_task):
                     qpos=(90,0,0), object_bounds=object_bounds, task_objs=task_objs,
                      mass = 0.1, rotation=False)
         
-        
-        p = self.box.get_pose().p.tolist() 
-        p[0] += self.move_thr if self.side_to_place == "left" else -self.move_thr
-        self.des_obj_pose = p + [1,0,0,0] 
+        bb_box = get_actor_boundingbox(self.box.actor)        
+        self.des_obj_pose = [bb_box[1][0] + self.move_thr if self.side_to_place == "left" else bb_box[0][0] - self.move_thr,
+             np.random.uniform(low=bb_box[0][1]+0.05, high=bb_box[1][1]-0.05),
+             bb_box[1][-1]] + [1,0,0,0]
+
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
         self.add_prohibit_area(self.target_obj, padding=0.1, area="table")

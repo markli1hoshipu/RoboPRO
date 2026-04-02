@@ -24,7 +24,8 @@ class move_cup_put_pen_in_cup(Study_base_task):
         print_c(self.seed, "YELLOW")
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
-        if np.random.rand() > self.clean_background_rate:
+        if np.random.rand() > self.clean_background_rate and self.obstacle_density >0:
+            self.obstacle_density = max(0, self.obstacle_density-1) 
             des_bb = get_actor_boundingbox(self.box.actor)
             box_obs = "001_bottle"
             gap = 0.05
@@ -32,15 +33,17 @@ class move_cup_put_pen_in_cup(Study_base_task):
                            des_bb[1][1]-np.random.uniform(low=0, 
                                     high=des_bb[1][1]-des_bb[0][1]),
                            des_bb[0][-1]],(90,0,0)]
-            
+            bid = np.random.choice(task_objs["objects"]["study"]["obstacles"]["tall"][box_obs])
+
             box_obs_tar, obs_tar_id, _= place_actor(box_obs, self, 
-                           task_objs = task_objs, obj_id = np.random.choice([0,19,3,20]),
+                           task_objs = task_objs, obj_id = bid,
                           obj_pose=place_pose, mass = 0.5, is_static=False)
             self.collision_list.append({
                 "actor":box_obs_tar,
                 "collision_path": self.col_temp.format(object=box_obs,
                                                         object_id=obs_tar_id)
             })
+            
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
                                          boundary_thr=[0.15, 0.25], side="left" if self.scene_id == 0 else "right")
       
@@ -94,7 +97,7 @@ class move_cup_put_pen_in_cup(Study_base_task):
 
         return self.cup_obj.get_pose()
     
-    def play_once(self, z = 0.15, pre_dis= 0.05, dis=0.005, pre_grasp_dist=0.1):
+    def play_once(self, z = 0.1, pre_dis= 0.05, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
 
@@ -137,7 +140,7 @@ class move_cup_put_pen_in_cup(Study_base_task):
 
         pen_in_cup = np.all(abs(cup_pose[:2] - self.target_obj.get_pose().p[:2]) < np.array([eps, eps]))
 
-
+        print(cup_pose, cup_in_box, box_bb)
         return (not cup_in_box and cup_on_table and pen_in_cup
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
