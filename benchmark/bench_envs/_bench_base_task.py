@@ -1143,7 +1143,7 @@ class Bench_base_task(Base_Task):
                     else:
                         pose = actor.get_pose()
                         np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                        collision_dict["mesh"][f"{actor.get_name()}_{np_pose}"] = {
+                        collision_dict["mesh"][f"{actor.get_name()}_{np_pose}_{self.seed}"] = {
                                 "file_path": collision_path,
                                 "pose": np_pose,
                                 "scale": actor.scale,
@@ -1154,7 +1154,7 @@ class Bench_base_task(Base_Task):
                 name = info["name"]
                 dims = info["dims"]
                 pose = info["pose"]
-                collision_dict["cuboid"][name] = {
+                collision_dict["cuboid"][f"{name}_{pose}_{self.seed}"] = {
                     "dims": dims,
                     "pose": pose,
                 }
