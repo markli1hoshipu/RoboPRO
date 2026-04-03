@@ -32,6 +32,8 @@ class close_drawer(Office_base_task):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag("left") if self.arr_v == 2 else ArmTag("right")
 
+        self.disable_panel()
+
         _, actions = self.grasp_actor(self.cabinet, arm_tag=arm_tag, pre_grasp_dis=0.05, grasp_dis=0.025)
 
         self.move((arm_tag, [actions[0]]))
@@ -40,7 +42,7 @@ class close_drawer(Office_base_task):
 
         # Pull the drawer
         for _ in range(3):
-            self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.06))
+            self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.0633))
         
         self.move(self.open_gripper(arm_tag=arm_tag))
 

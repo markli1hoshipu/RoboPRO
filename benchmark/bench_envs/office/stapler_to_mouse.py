@@ -54,7 +54,7 @@ class stapler_to_mouse(Office_base_task):
             name="box",
             is_static=True,
         )
-        self.add_prohibit_area(self.des_obj, padding=0.01, area="table")
+        self.add_prohibit_area(self.des_obj, padding=0.03, area="table")
         self.des_obj_pose = self.des_obj.get_pose().p.tolist() + euler2quat(np.pi/2, 0, np.pi, axes='sxyz').tolist()
         self.des_obj_pose[2] += 0.02
 
@@ -85,7 +85,7 @@ class stapler_to_mouse(Office_base_task):
         )
         if not success:
             raise RuntimeError("Failed to load target_obj")
-        self.add_prohibit_area(self.target_obj, padding=0.01, area="table")
+        self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
 
     def play_once(self):
         # Determine which arm to use based on target_obj position (right if on right side, left otherwise)

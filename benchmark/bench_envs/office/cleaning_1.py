@@ -20,11 +20,12 @@ class cleaning_1(Office_base_task):
         return set()
 
     def load_actors(self):
+        # self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
         # target_obj_1 ------------------------------------------------------------
         self.milktea_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["101_milk-tea"])
         self.target_obj_1 = rand_create_actor(
             self,
-            xlim=[self.office_info["shelf_lims"][0]+0.05, self.office_info["shelf_lims"][2]-0.05],
+            xlim=[self.office_info["shelf_lims"][0]+self.office_info["shelf_padding"], self.office_info["shelf_lims"][2]-self.office_info["shelf_padding"]],
             ylim=[self.office_info["shelf_lims"][1]+0.04],
             zlim=[self.office_info["shelf_heights"][0]],
             modelname="101_milk-tea",
@@ -46,7 +47,7 @@ class cleaning_1(Office_base_task):
         self.des_obj_1 = rand_create_actor(
             self,
             xlim=xlim,
-            ylim=[self.office_info["table_lims"][1] + 0.25, self.office_info["shelf_lims"][1]-0.05],
+            ylim=[0.02, self.office_info["shelf_lims"][1]-0.05],
             zlim=[self.office_info["table_height"]],
             modelname="019_coaster",
             rotate_rand=False,
@@ -56,8 +57,9 @@ class cleaning_1(Office_base_task):
             is_static=False,
         )
         self.add_prohibit_area(self.des_obj_1, padding=0.01, area="table")
+        self.add_operating_area(self.des_obj_1.get_pose().p)
         self.des_obj_pose_1 = self.des_obj_1.get_pose().p.tolist() + self.target_obj_1.get_pose().q.tolist()   # wxyz
-        self.des_obj_pose_1[2] += 0.02
+        self.des_obj_pose_1[2] += 0.03
 
         # des_obj_pose_2 ------------------------------------------------------------
         target_rand_pose = rand_pose(
@@ -142,7 +144,8 @@ class cleaning_1(Office_base_task):
         if not success:
             raise RuntimeError("Failed to load des_obj_3")
         self.des_obj_3.set_mass(0.1)
-        self.add_prohibit_area(self.des_obj_3, padding=0.05, area="table")
+        self.add_prohibit_area(self.des_obj_3, padding=0.01, area="table")
+        self.add_operating_area(self.des_obj_3.get_pose().p)
         self.target3 = self.des_obj_3.get_pose().p.tolist() + euler2quat(np.pi, np.pi/6, np.pi/2, axes='sxyz').tolist()
         self.target3[2]+=0.05
         self.target3[1]+=0.015
@@ -181,12 +184,12 @@ class cleaning_1(Office_base_task):
 
         # target_obj_1 --------------------------------------------------
         action = self.grasp_actor(self.target_obj_1, arm_tag=arms[0], pre_grasp_dis=0.1, grasp_dis=0.02, contact_point_id=2)
-        action[1][0].target_pose[2] += 0.04
-        action[1][1].target_pose[2] += 0.04
+        action[1][0].target_pose[2] += 0.03
+        action[1][1].target_pose[2] += 0.03
         self.move(action)
 
         # Lift the mouse upward by 0.1 meters in z-direction
-        self.move(self.move_by_displacement(arm_tag=arms[0], z=0.01))
+        self.move(self.move_by_displacement(arm_tag=arms[0], z=0.01, y=-0.08))
 
         self.attach_object(self.target_obj_1, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/101_milk-tea/collision/base{self.milktea_id}.glb", str(arms[0]))
 
@@ -203,7 +206,8 @@ class cleaning_1(Office_base_task):
         action[1][0].target_pose[2] += 0.03
         self.move(action)
         self.detach_object(arms_tag=str(arms[0]))
-        self.move(self.move_by_displacement(arm_tag=arms[0], y=-0.05, z=0.04))
+        self.move(self.move_by_displacement(arm_tag=arms[0], y=-0.03))
+        self.move(self.move_by_displacement(arm_tag=arms[0], y=-0.02, z = 0.05))
         self.collision_list.append({
             "actor": self.target_obj_1,
             "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/101_milk-tea/collision/base{self.milktea_id}.glb",
@@ -220,7 +224,7 @@ class cleaning_1(Office_base_task):
         self.move(action)
 
         # Lift the box upward by 0.1 meters in z-direction
-        self.move(self.move_by_displacement(arm_tag=arms[1], z=0.01))
+        self.move(self.move_by_displacement(arm_tag=arms[1], z=0.03))
 
         self.attach_object(self.target_obj_2, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/073_rubikscube/collision/base{self.rubikscube_id}.glb", str(arms[1]))
 
@@ -255,6 +259,7 @@ class cleaning_1(Office_base_task):
                 dis=0.005,
                 local_up_axis=[0,1,0]
             ))
+        
 
         # Record information about the objects and arm used in the task
         # self.info["info"] = {

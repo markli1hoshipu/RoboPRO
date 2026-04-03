@@ -72,7 +72,7 @@ class phone_to_holder(Office_base_task):
             "actor": self.des_obj,
             "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/078_phonestand/collision/base{self.stand_id}.glb",
         })
-        self.add_prohibit_area(self.target_obj, padding=0.01, area="table")
+        self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
         self.add_prohibit_area(self.des_obj, padding=0.01, area=f"table")
 
         #  ---------------------------------------------------------------------
@@ -94,7 +94,7 @@ class phone_to_holder(Office_base_task):
         )
         
         self.stabilize_object(self.bottle)
-        self.add_prohibit_area(self.bottle, padding=0.01, area="table")
+        self.add_prohibit_area(self.bottle, padding=-0.02, area="table")
         self.collision_list.append({
             "actor": self.bottle,
             "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb",
@@ -119,6 +119,7 @@ class phone_to_holder(Office_base_task):
                 arm_tag=arm_tag,
                 target_pose=stand_func_pose,
                 functional_point_id=0,
+                pre_dis=0.05,
                 dis=0,
                 constrain="align",
             ))
@@ -138,6 +139,6 @@ class phone_to_holder(Office_base_task):
         end_pose_desired = np.array(self.des_obj.get_functional_point(0)[:3])
         end_pose_desired[1] -= 0.01
         end_pose_desired[2] += 0.05
-        eps = np.array([0.045, 0.04, 0.04])
+        eps = np.array([0.045, 0.05, 0.04])
         return (np.all(np.abs(end_pose_actual - end_pose_desired)[:3] < eps) and self.is_left_gripper_open()
                 and self.is_right_gripper_open())

@@ -20,7 +20,7 @@ class rubikscube_to_drawer(Office_base_task):
         return set()
 
     def load_actors(self):
-        self.add_cabinet_collision()
+        # self.add_cabinet_collision()
         limit = self.cabinet.get_qlimits()[0]
         self.cabinet.set_qpos([limit[1],0,0])
 
@@ -53,7 +53,7 @@ class rubikscube_to_drawer(Office_base_task):
             model_id=self.cube_id,
             is_static=False,
         )
-        self.add_prohibit_area(self.target_obj, padding=0.02, area=f"shelf{level}")
+        self.add_prohibit_area(self.target_obj, padding=0.03, area=f"shelf{level}")
 
 
     def play_once(self):
@@ -70,7 +70,7 @@ class rubikscube_to_drawer(Office_base_task):
             self.target_obj,
             arm_tag=arm_tag,
             target_pose=target_pose,
-            pre_dis=0.05,
+            pre_dis=0.06,
             dis=0.05,
             constrain="align",
         ))

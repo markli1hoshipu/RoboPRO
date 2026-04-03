@@ -72,6 +72,7 @@ class milktea_to_laptop(Office_base_task):
             is_static=True,
         )
         self.add_prohibit_area(self.des_obj, padding=0.01, area="table")
+        self.add_operating_area(self.des_obj.get_pose().p)
         
         success, self.target_obj = rand_create_cluttered_actor(
             scene=self.scene,
@@ -97,6 +98,7 @@ class milktea_to_laptop(Office_base_task):
             raise RuntimeError("Failed to load target_obj")
         self.target_obj.set_mass(0.06)
         self.add_prohibit_area(self.target_obj, padding=0.01, area="table")
+        self.add_operating_area(self.target_obj.get_pose().p)
 
         self.des_obj_pose = des_obj_pose.p.tolist() + self.target_obj.get_pose().q.tolist()
         self.des_obj_pose[2] += 0.02

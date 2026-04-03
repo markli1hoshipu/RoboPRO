@@ -62,6 +62,7 @@ class milktea_to_shelf(Office_base_task):
         )
         self.target_obj.set_mass(0.06)
         self.add_prohibit_area(self.target_obj, padding=0)
+        self.add_operating_area(self.target_obj.get_pose().p)
         self.des_obj_pose += self.target_obj.get_pose().q.tolist()
 
     def play_once(self):
@@ -85,7 +86,7 @@ class milktea_to_shelf(Office_base_task):
                 arm_tag=arm_tag,
                 target_pose=self.des_obj_pose,
                 constrain="free",
-                pre_dis=0.0,
+                pre_dis=0.05,
                 dis=0.0,
                 local_up_axis=[0,0,1]
             )

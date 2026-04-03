@@ -21,6 +21,11 @@ class book_to_fileholder(Office_base_task):
 
     def load_actors(self):
         self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
+
+        holder_pose = self.file_holder.get_pose().p
+        holder_pose[1]-= 0.19  
+        self.prohibited_area["table"].append([holder_pose[0]-0.11, holder_pose[1]-0.1, holder_pose[0]+0.11, holder_pose[1]+0.1])
+
         model_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["043_book"])
         
         # target_obj ------------------------------------------------------------
@@ -56,7 +61,7 @@ class book_to_fileholder(Office_base_task):
         self.stabilize_object(self.target_obj)
         center_x = self.target_obj.get_pose().p[0] + 0.02
         center_y = self.target_obj.get_pose().p[1]
-        self.prohibited_area[f"shelf{level}"].append([center_x-0.025, center_y-0.06, center_x+0.025, center_y+0.06])
+        self.prohibited_area[f"shelf{level}"].append([center_x-0.035, center_y-0.06, center_x+0.035, center_y+0.06])
 
         self.des_obj_pose = self.file_holder.get_pose().p.tolist() + euler2quat(np.pi, np.pi/12, np.pi/2, axes='sxyz').tolist()
         self.des_obj_pose[1]-= 0.06
@@ -81,7 +86,7 @@ class book_to_fileholder(Office_base_task):
                 local_up_axis=[0,1,0]
             ))
         
-        self.move(self.move_by_displacement(arm_tag=arm_tag2, y=-0.05))
+        # self.move(self.move_by_displacement(arm_tag=arm_tag2, y=-0.05))
 
         # Record information about the objects and arm used in the task
         # self.info["info"] = {

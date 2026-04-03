@@ -31,7 +31,7 @@ class stapler_to_book(Office_base_task):
         self.stapler_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["048_stapler"])
         pose = self.cabinet.get_pose().p
         pose[1]-= 0.2
-        pose[2] = self.office_info["table_height"]+0.03
+        pose[2] = self.office_info["table_height"]+0.025
         self.target_obj = rand_create_actor(
             scene=self,
             xlim = [pose[0]],

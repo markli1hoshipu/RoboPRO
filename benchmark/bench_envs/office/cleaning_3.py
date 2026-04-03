@@ -31,6 +31,7 @@ class cleaning_3(Office_base_task):
         holder_pose = self.file_holder.get_pose().p
         holder_pose[1]-= 0.19  
         self.prohibited_area["table"].append([holder_pose[0]-0.11, holder_pose[1]-0.1, holder_pose[0]+0.11, holder_pose[1]+0.1])
+        
         model_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["043_book"])
         
         # target_obj_2 ------------------------------------------------------------
@@ -66,11 +67,12 @@ class cleaning_3(Office_base_task):
         self.stabilize_object(self.target_obj_2)
         center_x = self.target_obj_2.get_pose().p[0] + 0.02
         center_y = self.target_obj_2.get_pose().p[1]
-        self.prohibited_area[f"shelf{level}"].append([center_x-0.025, center_y-0.06, center_x+0.025, center_y+0.06])
+        self.prohibited_area[f"shelf{level}"].append([center_x-0.035, center_y-0.06, center_x+0.035, center_y+0.06])
 
         self.target = self.file_holder.get_pose().p.tolist() + euler2quat(np.pi, np.pi/12, np.pi/2, axes='sxyz').tolist()
         self.target[1]-= 0.06
         self.target[2]+=0.08
+        self.add_operating_area(self.target[:3])
 
         # target_obj_1 ------------------------------------------------------------
         self.mouse_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["047_mouse"])
@@ -148,7 +150,7 @@ class cleaning_3(Office_base_task):
                 arm_tag=arm_tag1,
                 target_pose=self.des_obj_pose_1,
                 constrain="align",
-                pre_dis=0.02,
+                pre_dis=0.03,
                 dis=0.02,
             ))
         self.detach_object(arms_tag=str(arm_tag1))
@@ -161,17 +163,19 @@ class cleaning_3(Office_base_task):
 
         # Pull the drawer
         for _ in range(3):
-            self.move(self.move_by_displacement(arm_tag=arm_tag1, y=0.06))
+            self.move(self.move_by_displacement(arm_tag=arm_tag1, y=0.0633))
         
         self.move(self.open_gripper(arm_tag=arm_tag1))
         
         if arm_tag1 != arm_tag2:
             self.move(self.back_to_origin(arm_tag1))
+        else:
+            self.move(self.move_by_displacement(arm_tag=arm_tag1, y=-0.04))
 
         # target_obj_2 ------------------------------------------------------------
         self.move(self.grasp_actor(self.target_obj_2, arm_tag=arm_tag2, pre_grasp_dis=0.04, grasp_dis=0.02))
 
-        self.move(self.move_by_displacement(arm_tag=arm_tag2, z=0.015))
+        self.move(self.move_by_displacement(arm_tag=arm_tag2, z=0.015, y=-0.04))
         self.attach_object(self.target_obj_2, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/043_book/collision/base0.glb", str(arm_tag2))
 
         self.move(

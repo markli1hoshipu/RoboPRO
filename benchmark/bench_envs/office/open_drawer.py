@@ -24,17 +24,20 @@ class open_drawer(Office_base_task):
         cabinet_pose = self.cabinet.get_pose().p
         cabinet_pose[1]-= 0.19  
         self.prohibited_area["table"].append([cabinet_pose[0]-0.11, cabinet_pose[1]-0.1, cabinet_pose[0]+0.11, cabinet_pose[1]+0.1])
+        self.add_operating_area(cabinet_pose, width = 0.12, length = 0.4)
 
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag("left") if self.arr_v == 2 else ArmTag("right")
 
+        self.disable_panel()
+
         self.move(self.grasp_actor(self.cabinet, arm_tag=arm_tag, pre_grasp_dis=0.05, grasp_dis=0.025))
 
         # Pull the drawer
         for _ in range(3):
-            self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.06))
+            self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.0633))
         
         self.move(self.open_gripper(arm_tag=arm_tag))
 

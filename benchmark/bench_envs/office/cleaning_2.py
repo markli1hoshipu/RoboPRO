@@ -42,29 +42,6 @@ class cleaning_2(Office_base_task):
         self.des_obj_pose_3[2] += 0.02 # raise target 0.02 meters
         self.add_prohibit_area(self.des_obj_3, padding=0.05, area=f"shelf0")
 
-        # target_obj_3 ------------------------------------------------------------
-        self.milktea_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["101_milk-tea"])
-        if self.des_obj_3.get_pose().p[0] < 0:
-            xlim1 = [self.office_info["table_lims"][0]+self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"], 0.1]
-        else:
-            xlim1 = [-0.1, self.office_info["table_lims"][2]-self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"]]
-        ylim1 = [self.office_info["table_lims"][1] + 0.3, self.office_info["shelf_lims"][1]-0.06]
-
-        self.target_obj_3 = rand_create_actor(
-            self,
-            xlim=xlim1,
-            ylim=ylim1,
-            modelname="101_milk-tea",
-            rotate_rand=False,
-            rotate_lim=[0, 1, 0],
-            qpos=euler2quat(np.pi/2,0, 0, axes='sxyz'),
-            convex=True,
-            model_id=self.milktea_id, 
-        )
-        self.target_obj_3.set_mass(0.06)
-        self.add_prohibit_area(self.target_obj_3, padding=0.01)
-        self.des_obj_pose_3 += self.target_obj_3.get_pose().q.tolist()
-
         # target_obj_1 ------------------------------------------------------------
         if self.des_obj_3.get_pose().p[0] < 0:
             xlim = [0.3, 0.45]
@@ -72,7 +49,7 @@ class cleaning_2(Office_base_task):
             xlim = [-0.45, -0.3]
         rand_pos = rand_pose(
             xlim=xlim,
-            ylim=[-0.23, self.office_info["shelf_lims"][1]-0.05],
+            ylim=[-0.23, self.office_info["shelf_lims"][1]-0.11],
             qpos=[0.5, 0.5, 0.5, 0.5],
             rotate_rand=True,
             rotate_lim=[0, 3.14, 0],
@@ -92,7 +69,7 @@ class cleaning_2(Office_base_task):
         # des_obj_pose_1 ------------------------------------------------------------
         target_rand_pose = rand_pose(
             xlim=[0],
-            ylim=[-0.23, self.office_info["shelf_lims"][1]-0.05],
+            ylim=[-0.23, self.office_info["shelf_lims"][1]-0.1],
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
         )
@@ -163,8 +140,8 @@ class cleaning_2(Office_base_task):
         success, self.target_obj_2 = rand_create_cluttered_actor(
             scene=self.scene,
             xlim=xlim,
-            ylim=[self.office_info["table_lims"][1]+0.05, self.office_info["shelf_lims"][1]-0.05],
-            zlim=[self.office_info["table_height"]],
+            ylim=[self.office_info["table_lims"][1]+0.05, self.office_info["shelf_lims"][1]-0.09],
+            zlim=[self.office_info["table_height"]+0.01],
             modelname="077_phone",
             modelid=self.phone_id,
             modeltype="glb",
@@ -183,6 +160,42 @@ class cleaning_2(Office_base_task):
             raise RuntimeError("Failed to load target_obj_2")
         self.target_obj_2.set_mass(0.01)
         self.add_prohibit_area(self.target_obj_2, padding=0.01, area="table")
+
+        # target_obj_3 ------------------------------------------------------------
+        self.milktea_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["101_milk-tea"])
+        if self.des_obj_3.get_pose().p[0] < 0:
+            xlim1 = [self.office_info["table_lims"][0]+self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"], 0.1]
+        else:
+            xlim1 = [-0.1, self.office_info["table_lims"][2]-self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"]]
+        ylim1 = [self.office_info["table_lims"][1] + 0.3, self.office_info["shelf_lims"][1]-0.06]
+
+        success, self.target_obj_3 = rand_create_cluttered_actor(
+            scene=self.scene,
+            xlim=xlim1,
+            ylim=ylim1,
+            zlim=[self.office_info["table_height"]],
+            modelname="101_milk-tea",
+            modelid=self.milktea_id,
+            modeltype="glb",
+            rotate_rand=False,
+            rotate_lim=[0, 1, 0],
+            qpos=euler2quat(np.pi/2,0, 0, axes='sxyz'),
+            obj_radius=0.03,
+            z_offset=0,
+            z_max=0.1,
+            prohibited_area=self.prohibited_area["table"],
+            constrained=False,
+            is_static=False,
+            size_dict=dict(),
+            scale = self.item_info["scales"]["101_milk-tea"]
+        )
+        if not success:
+            raise RuntimeError("Failed to load target_obj")
+
+        self.target_obj_3.set_mass(0.06)
+        self.add_prohibit_area(self.target_obj_3, padding=0.01)
+        self.add_operating_area(self.target_obj_3.get_pose().p)
+        self.des_obj_pose_3 += self.target_obj_3.get_pose().q.tolist()
 
 
     def play_once(self):
@@ -290,7 +303,7 @@ class cleaning_2(Office_base_task):
         eps1 = 0.02
         eps2 = 0.02
         eps3 = 0.045
-        eps4 = 0.04
+        eps4 = 0.05
         eps5 = 0.04
         eps6 = 0.02
 

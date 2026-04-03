@@ -47,7 +47,7 @@ class put_rubikscube_shelf(Office_base_task):
         # des_obj_pose ------------------------------------------------------
         self.side = "left" if self.arr_v == 2 else "right"
         self.level = np.random.choice([0,1])
-        xlim = [self.office_info["shelf_lims"][0] + 0.07, 0.05] if self.side == "left" else [-0.05, self.office_info["shelf_lims"][2] -0.07]
+        xlim = [self.office_info["shelf_lims"][0] + self.office_info["shelf_padding"], 0.05] if self.side == "left" else [-0.05, self.office_info["shelf_lims"][2] -self.office_info["shelf_padding"]]
         target_rand_pose = rand_pose(
             xlim=xlim,
             ylim=[self.office_info["shelf_lims"][1] + 0.055],
@@ -81,7 +81,7 @@ class put_rubikscube_shelf(Office_base_task):
 
         # Pull the drawer
         for _ in range(3):
-            self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.06))
+            self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.0633))
         
         self.move(self.open_gripper(arm_tag=arm_tag))
         self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.02))
@@ -117,7 +117,7 @@ class put_rubikscube_shelf(Office_base_task):
 
         # Pull the drawer
         for _ in range(3):
-            self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.06))
+            self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.0633))
         
         self.move(self.open_gripper(arm_tag=arm_tag))
 

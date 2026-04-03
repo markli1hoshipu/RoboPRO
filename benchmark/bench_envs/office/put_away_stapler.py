@@ -21,7 +21,7 @@ class put_away_stapler(Office_base_task):
 
     def load_actors(self):
         self.side =  "left" if self.arr_v == 2 else "right"
-        self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
+        # self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
 
         # set up cabinet
         self.add_cabinet_collision()
@@ -45,7 +45,7 @@ class put_away_stapler(Office_base_task):
             rotate_lim=[0, np.pi/4, 0],
             qpos=euler2quat(np.pi/2, 0, np.pi, axes='sxyz'),
             size_dict=dict(),
-            obj_radius=0.03,
+            obj_radius=0.04,
             z_offset=0,
             z_max=0.04,
             prohibited_area=self.prohibited_area["table"],
@@ -55,6 +55,7 @@ class put_away_stapler(Office_base_task):
         if not success:
             raise RuntimeError("Failed to load target_obj")
         self.add_prohibit_area(self.target_obj, padding=0.01)
+        self.target_obj.set_mass(0.01)
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
@@ -67,14 +68,14 @@ class put_away_stapler(Office_base_task):
 
         # Pull the drawer
         for _ in range(3):
-            self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.06))
+            self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.0633))
         
         self.move(self.open_gripper(arm_tag=arm_tag))
         self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.02))
 
         self.enable_drawer(enable=True)
 
-        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.07, grasp_dis=0.025, contact_point_id=[0,1]))
+        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.07, contact_point_id=[0,1]))
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.03))
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/048_stapler/collision/base{self.stapler_id}.glb", str(arm_tag))
 
@@ -84,7 +85,7 @@ class put_away_stapler(Office_base_task):
             self.target_obj,
             arm_tag=arm_tag,
             target_pose=des_obj_pose,
-            pre_dis=0.05,
+            pre_dis=0.06,
             dis=0.05,
             constrain="align",
         ))
@@ -99,7 +100,7 @@ class put_away_stapler(Office_base_task):
 
         # Pull the drawer
         for _ in range(3):
-            self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.06))
+            self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.0633))
         
         self.move(self.open_gripper(arm_tag=arm_tag))
 
