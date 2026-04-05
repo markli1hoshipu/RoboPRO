@@ -20,7 +20,7 @@ class rubikscube_to_drawer(Office_base_task):
         return set()
 
     def load_actors(self):
-        # self.add_cabinet_collision()
+        self.add_cabinet_collision()
         limit = self.cabinet.get_qlimits()[0]
         self.cabinet.set_qpos([limit[1],0,0])
 
@@ -65,15 +65,17 @@ class rubikscube_to_drawer(Office_base_task):
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/073_rubikscube/collision/base{self.cube_id}.glb", str(arm_tag))
 
         target_pose = self.cabinet.get_functional_point(0)
-        # target_pose[3:] = euler2quat(np.pi/2,0, np.pi, axes='sxyz')
-        self.move(self.place_actor(
+        target_pose[1] -= 0.005
+
+        _, actions = self.place_actor(
             self.target_obj,
             arm_tag=arm_tag,
             target_pose=target_pose,
-            pre_dis=0.06,
-            dis=0.05,
+            pre_dis=0.02,
+            dis=0.02,
             constrain="align",
-        ))
+        )
+        self.move((arm_tag, actions[1:]))
 
         # Record information about the objects and arm used in the task
         # self.info["info"] = {
@@ -90,7 +92,6 @@ class rubikscube_to_drawer(Office_base_task):
         eps1 = 0.05
         eps2 = 0.05
         eps3 = 0.02
-
         return (np.all(abs(end_pose_actual[:3] - end_pose_desired[:3]) < np.array([eps1, eps2, eps3]))
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
