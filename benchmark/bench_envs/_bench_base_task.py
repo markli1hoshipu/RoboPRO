@@ -1149,8 +1149,9 @@ class Bench_base_task(Base_Task):
                                 "scale": actor.scale,
                             }
 
-        if self.cuboid_collision_list:
-            for info in self.cuboid_collision_list:
+        cuboid_collision_list = getattr(self, "cuboid_collision_list", None) or []
+        if cuboid_collision_list:
+            for info in cuboid_collision_list:
                 name = info["name"]
                 dims = info["dims"]
                 pose = info["pose"]
