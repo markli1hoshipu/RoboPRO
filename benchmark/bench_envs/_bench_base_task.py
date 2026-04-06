@@ -225,7 +225,6 @@ class Bench_base_task(Base_Task):
             obj_idx = ids_for_obj[rand_idx]
 
             if obj_idx in placed_objects.get(obj_name, []):
-            if obj_idx in placed_objects.get(obj_name, []):
                 trys += 1
                 continue
 
@@ -341,7 +340,6 @@ class Bench_base_task(Base_Task):
             rand_idx = np.random.randint(len(ids_for_obj))
             obj_idx = ids_for_obj[rand_idx]
 
-            if obj_idx in placed_objects.get(obj_name, []):
             if obj_idx in placed_objects.get(obj_name, []):
                 trys += 1
                 continue
