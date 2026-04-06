@@ -13,34 +13,34 @@ from bench_envs.utils.scene_gen_utils import get_position_limits, get_actor_boun
 from bench_envs.utils.scene_gen_utils import print_c, place_actor
 from transforms3d.euler import euler2quat
 
-class put_pen_in_box(Study_base_task):
+class put_mug_in_box(Study_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
-        print_c(self.seed, "YELLOW")
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
         
-        xlim, ylim, self.side_to_place = get_position_limits(self.table,
-         boundary_thr=0.15, side="left")
+        xlim, ylim, self.side_to_place = get_position_limits(self.table, boundary_thr=0.20, side="left")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
-        
-        self.target_name = "058_markpen"
+  
+      
+        self.target_name = "039_mug"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
         self.target_obj, self.target_id, self.target_pose = \
         place_actor(self.target_name, self, col_thr=0.10, xlim=xlim, ylim=ylim, 
                     qpos=(90,0,90), object_bounds=object_bounds, task_objs=task_objs,
-                     mass = 0.1,  rotation=True, rotate_lim = [0, 0, 3.14])
+                     mass = 0.1, rotation=False)
         
+     
         self.des_obj = self.box
-        des_bb = get_actor_boundingbox(self.des_obj.actor)
 
+        des_bb = get_actor_boundingbox(self.des_obj.actor)
         p = self.des_obj.get_pose().p.tolist() 
         p[-1] = des_bb[1][-1]
-        self.des_obj_pose = p + self.target_obj.get_pose().q.tolist()
+        self.des_obj_pose = p + [1, 0, 0, 0]
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
 
@@ -49,7 +49,7 @@ class put_pen_in_box(Study_base_task):
 
      
       
-    def play_once(self, z = 0.08, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
+    def play_once(self, z = 0.1, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
 
@@ -67,7 +67,7 @@ class put_pen_in_box(Study_base_task):
                 self.target_obj,
                 arm_tag=arm_tag,
                 target_pose= self.des_obj_pose,
-                constrain= "auto",
+                constrain="auto",
                 pre_dis=pre_dis,
                 dis=dis,
             ))
@@ -88,5 +88,5 @@ class put_pen_in_box(Study_base_task):
         eps2 = 0.012
 
         return (np.all(abs(target_pose[:2] - target_des_pos[:2]) < np.array([eps1, eps2]))
-            and self.robot.is_left_gripper_open()
+                    and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

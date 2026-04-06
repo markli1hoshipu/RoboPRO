@@ -8,14 +8,14 @@ from copy import deepcopy
 import glob
 
 
-class mouse_on_pad(Office_base_task):
+class mouse_to_pad(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
 
     def _get_target_object_names(self) -> set[str]:
-        return {self.mouse.get_name()}
+        return {self.target_obj.get_name()}
 
     def load_actors(self):
         rand_pos = rand_pose(
@@ -34,15 +34,16 @@ class mouse_on_pad(Office_base_task):
             rotate_lim=[0, 3.14, 0],
         )
 
-        self.mouse_id = np.random.choice([0, 1, 2], 1)[0]
-        self.mouse = create_actor(
+        self.mouse_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["047_mouse"])
+        self.target_obj = create_actor(
             scene=self,
             pose=rand_pos,
             modelname="047_mouse",
             convex=True,
             model_id=self.mouse_id,
+            scale=self.item_info['scales']['047_mouse'].get(f'{self.mouse_id}',None),
         )
-        self.mouse.set_mass(0.05)
+        self.target_obj.set_mass(0.05)
 
         xlim=[0]
         
@@ -68,8 +69,8 @@ class mouse_on_pad(Office_base_task):
         color_index = np.random.choice(len(color_items))
         self.color_name, self.color_value = color_items[color_index]
 
-        half_size = [0.035, 0.065, 0.0005]
-        self.target = create_box(
+        half_size = [0.06, 0.06, 0.0005]
+        self.des_obj = create_box(
             scene=self,
             pose=target_rand_pose,
             half_size=half_size,
@@ -77,14 +78,14 @@ class mouse_on_pad(Office_base_task):
             name="box",
             is_static=True,
         )
-        self.add_prohibit_area(self.target, padding=0.06, area="table")
-        self.add_prohibit_area(self.mouse, padding=0.03, area="table")
-        # Construct target pose with position from target object and identity orientation
-        self.target_pose = self.target.get_pose().p.tolist() + [0, 0, 0, 1]
+        self.add_prohibit_area(self.des_obj, padding=0.01, area="table")
+        self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
+        # Construct des_obj pose with position from des_obj object and identity orientation
+        self.des_obj_pose = self.des_obj.get_pose().p.tolist() + [0, 0, 0, 1]
 
         # ------------------------------------------------------------
-        center_x = (self.mouse.get_pose().p[0] + self.target.get_pose().p[0]) / 2
-        center_y = (self.mouse.get_pose().p[1] + self.target.get_pose().p[1]) / 2
+        center_x = (self.target_obj.get_pose().p[0] + self.des_obj.get_pose().p[0]) / 2
+        center_y = (self.target_obj.get_pose().p[1] + self.des_obj.get_pose().p[1]) / 2
         id_list = [i for i in range(4)]
         self.milk_box_id = np.random.choice(id_list)
         self.milk_box = rand_create_actor(
@@ -101,47 +102,48 @@ class mouse_on_pad(Office_base_task):
         
         self.milk_box.set_mass(0.1)
         self.add_prohibit_area(self.milk_box, padding=0.01, area="table")
-        self.collision_list.append((self.milk_box, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.milk_box_id}.glb", [1,1,1]))
+        self.collision_list.append({
+            "actor": self.milk_box,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.milk_box_id}.glb",
+        })
 
     def play_once(self):
-        # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag("right" if self.mouse.get_pose().p[0] > 0 else "left")
+        # Determine which arm to use based on target_obj position (right if on right side, left otherwise)
+        arm_tag = ArmTag("right" if self.target_obj.get_pose().p[0] > 0 else "left")
 
-        # Grasp the mouse with the selected arm
-        self.move(self.grasp_actor(self.mouse, arm_tag=arm_tag, pre_grasp_dis=0.1))
+        # Grasp the target_obj with the selected arm
+        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.1))
 
-        # Lift the mouse upward by 0.1 meters in z-direction
+        # Lift the target_obj upward by 0.1 meters in z-direction
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
 
-        self.attach_object(self.mouse, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/047_mouse/collision/base{self.mouse_id}.glb", str(arm_tag))
+        self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/047_mouse/collision/base{self.mouse_id}.glb", str(arm_tag))
 
-        # Place the mouse at the target location with alignment constraint
+        # Place the target_obj at the des_obj location with alignment constraint
         self.move(
             self.place_actor(
-                self.mouse,
+                self.target_obj,
                 arm_tag=arm_tag,
-                target_pose=self.target_pose,
+                target_pose=self.des_obj_pose,
                 constrain="align",
                 pre_dis=0.07,
                 dis=0.005,
             ))
 
         # Record information about the objects and arm used in the task
-        self.info["info"] = {
-            "{A}": f"047_mouse/base{self.mouse_id}",
-            "{B}": f"{self.color_name}",
-            "{a}": str(arm_tag),
-        }
-        return self.info
+        # self.info["info"] = {
+        #     "{A}": f"047_mouse/base{self.mouse_id}",
+        #     "{B}": f"{self.color_name}",
+        #     "{a}": str(arm_tag),
+        # }
+        # return self.info
 
     def check_success(self):
-        mouse_pose = self.mouse.get_pose().p
-        mouse_qpose = np.abs(self.mouse.get_pose().q)
-        target_pos = self.target.get_pose().p
-        eps1 = 0.04
-        eps2 = 0.04
+        end_pose_actual = self.target_obj.get_pose().p
+        end_pose_desired = self.des_obj.get_pose().p
+        eps1 = 0.02
+        eps2 = 0.02
 
-        return (np.all(abs(mouse_pose[:2] - target_pos[:2]) < np.array([eps1, eps2]))
-                and (np.abs(mouse_qpose[2] * mouse_qpose[3] - 0.49) < eps1
-                     or np.abs(mouse_qpose[0] * mouse_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
+        return (np.all(abs(end_pose_actual[:2] - end_pose_desired[:2]) < np.array([eps1, eps2]))
+                and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

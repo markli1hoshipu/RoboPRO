@@ -137,9 +137,9 @@ def place_actor(obj_name, scene, task_objs, col_thr=0.15, object_bounds=None,
             if not get_collison_with_objs(object_bounds, obj_pose, col_thr):
                 break
     if isinstance(obj_pose, list):
-        sapien.Pose(obj_pose[0],
+        obj_pose = sapien.Pose(obj_pose[0],
                     euler2quat(*[np.deg2rad(d) for d in obj_pose[1]]))
-    obj_id = obj_id or np.random.choice(task_objs['objects']['study']['targets'][obj_name])
+    obj_id = obj_id if obj_id is not None else np.random.choice(task_objs['objects']['study']['targets'][obj_name])
     
     print_c(f"Generating {obj_name} with id {obj_id} at position {obj_pose}", "BLUE")
 
@@ -177,7 +177,6 @@ TEXT_COLOR = {"RED": '\033[31m',
             "CYON": '\033[36m',
              "WHITE": '\033[37m'   }
 def print_c(text, color="WHITE"):
-
     print(f"{TEXT_COLOR[color]}{text}{TEXT_COLOR['RESET']}")
 def get_task_objects_config(task_cfg_path=None):
     """

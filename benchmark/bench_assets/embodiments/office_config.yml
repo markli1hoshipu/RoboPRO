@@ -31,7 +31,7 @@ static_camera_list:
 - name: countertop_camera  # elevated overhead, tilted slightly forward
   type: D435
   position:
-    - 0.0
+    - -0.0
     - -0.50
     - 2.0
   forward:

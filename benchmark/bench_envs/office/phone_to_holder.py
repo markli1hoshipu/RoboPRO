@@ -1,4 +1,4 @@
-# Demo for placing phone on stand on shelf.
+# Demo for placing target_obj on des_obj on shelf.
 # from envs._base_task import Base_Task
 from bench_envs.office._office_base_task import Office_base_task
 from envs.utils import *
@@ -9,14 +9,14 @@ from copy import deepcopy
 import glob
 
 
-class place_phone_shelf(Office_base_task):
+class phone_to_holder(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
 
     def _get_target_object_names(self) -> set[str]:
-        return {self.phone.get_name()}
+        return {self.target_obj.get_name()}
 
     def load_actors(self):
         shelf_level = 0
@@ -28,27 +28,29 @@ class place_phone_shelf(Office_base_task):
             [0.5, -0.5, 0.5, -0.5],
         ]
 
-        self.phone_id = np.random.choice([0, 1, 2, 4], 1)[0]
+        self.phone_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["077_phone"])
         phone_pose = rand_pose(
             xlim = [0,0.1],
             # xlim = [0,0.35],
             ylim=[-0.2,0.08],
             # ylim=[-0.23, 0.05],
+            zlim=[self.office_info["table_height"]+0.01],
             qpos=ori_quat[self.phone_id],
             rotate_rand=True,
             rotate_lim=[0, 0.7, 0],
         )
-        self.phone = create_actor(
+        self.target_obj = create_actor(
             scene=self,
             pose=phone_pose,
             modelname="077_phone",
             convex=True,
             model_id=self.phone_id,
+            is_static=False,
         )
-        self.phone.set_mass(0.01)
+        self.target_obj.set_mass(0.01)
 
         stand_pose = rand_pose(
-                xlim = [self.phone.get_pose().p[0]+0.25,0.55],
+                xlim = [self.target_obj.get_pose().p[0]+0.25,0.55],
                 # ylim=[0.05],
                 ylim=[-0.15,0.08],
                 qpos=[0.7071, 0.7071, 0.0, 0.0],
@@ -57,27 +59,30 @@ class place_phone_shelf(Office_base_task):
             )
 
         self.stand_id = np.random.choice([1, 2], 1)[0]
-        self.stand = create_actor(
+        self.des_obj = create_actor(
             scene=self,
             pose=stand_pose,
             modelname="078_phonestand",
             convex=True,
             model_id=self.stand_id,
-            is_static=True,
+            is_static=False,
         )
-        self.stand.set_mass(2)
-        self.collision_list.append((self.stand, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/078_phonestand/collision/base{self.stand_id}.glb", [1,1,1]))
-        self.add_prohibit_area(self.phone, padding=0.08, area="table")
-        self.add_prohibit_area(self.stand, padding=0.06, area=f"table")
+        self.des_obj.set_mass(2)
+        self.collision_list.append({
+            "actor": self.des_obj,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/078_phonestand/collision/base{self.stand_id}.glb",
+        })
+        self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
+        self.add_prohibit_area(self.des_obj, padding=0.01, area=f"table")
 
         #  ---------------------------------------------------------------------
         self.id_list = [i for i in range(20)]
         self.bottle_id = np.random.choice(self.id_list)
-        center_x = (self.phone.get_pose().p[0] + self.stand.get_pose().p[0]) / 2
-        center_y = (self.phone.get_pose().p[1] + self.stand.get_pose().p[1]) / 2
+        center_x = (self.target_obj.get_pose().p[0] + self.des_obj.get_pose().p[0]) / 2
+        center_y = (self.target_obj.get_pose().p[1] + self.des_obj.get_pose().p[1]) / 2
         self.bottle = rand_create_actor(
             self,
-            xlim=[center_x-0.03,center_x+0.03],
+            xlim=[center_x-0.01,center_x+0.01],
             ylim=[center_y-0.03,center_y+0.03],
             modelname="001_bottle",
             rotate_rand=True,
@@ -89,28 +94,32 @@ class place_phone_shelf(Office_base_task):
         )
         
         self.stabilize_object(self.bottle)
-        self.add_prohibit_area(self.bottle, padding=0.04, area="table")
-        self.collision_list.append((self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb", [0.14, 0.14, 0.14]))
+        self.add_prohibit_area(self.bottle, padding=-0.02, area="table")
+        self.collision_list.append({
+            "actor": self.bottle,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb",
+        })  
 
     def play_once(self):
-        # Determine which arm to use based on phone's position (left if phone is on left side, else right)
+        # Determine which arm to use based on target_obj's position (left if target_obj is on left side, else right)
         arm_tag = ArmTag("right")
 
-        # Grasp the phone with specified arm
-        self.move(self.grasp_actor(self.phone, arm_tag=arm_tag, pre_grasp_dis=0.08))
+        # Grasp the target_obj with specified arm
+        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.08))
 
-        # Get stand's functional point as target for placement
-        stand_func_pose = self.stand.get_functional_point(0)
+        # Get des_obj's functional point as target for placement
+        stand_func_pose = self.des_obj.get_functional_point(0)
         
-        self.attach_object(self.phone, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/077_phone/collision/base{self.phone_id}.glb", str(arm_tag))
+        self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/077_phone/collision/base{self.phone_id}.glb", str(arm_tag))
 
-        # Place the phone onto the stand's functional point with alignment constraint
+        # Place the target_obj onto the des_obj's functional point with alignment constraint
         self.move(
             self.place_actor(
-                self.phone,
+                self.target_obj,
                 arm_tag=arm_tag,
                 target_pose=stand_func_pose,
                 functional_point_id=0,
+                pre_dis=0.05,
                 dis=0,
                 constrain="align",
             ))
@@ -118,16 +127,18 @@ class place_phone_shelf(Office_base_task):
         # self.move(self.move_by_displacement(arm_tag=arm_tag, z=-0.4))
 
 
-        self.info["info"] = {
-            "{A}": f"077_phone/base{self.phone_id}",
-            "{B}": f"078_phonestand/base{self.stand_id}",
-            "{a}": str(arm_tag),
-        }
-        return self.info
+        # self.info["info"] = {
+        #     "{A}": f"077_phone/base{self.phone_id}",
+        #     "{B}": f"078_phonestand/base{self.stand_id}",
+        #     "{a}": str(arm_tag),
+        # }
+        # return self.info
 
     def check_success(self):
-        phone_func_pose = np.array(self.phone.get_functional_point(0))
-        stand_func_pose = np.array(self.stand.get_functional_point(0))
-        eps = np.array([0.045, 0.04, 0.04])
-        return (np.all(np.abs(phone_func_pose - stand_func_pose)[:3] < eps) and self.is_left_gripper_open()
+        end_pose_actual = np.array(self.target_obj.get_pose().p)
+        end_pose_desired = np.array(self.des_obj.get_functional_point(0)[:3])
+        end_pose_desired[1] -= 0.01
+        end_pose_desired[2] += 0.05
+        eps = np.array([0.045, 0.05, 0.04])
+        return (np.all(np.abs(end_pose_actual - end_pose_desired)[:3] < eps) and self.is_left_gripper_open()
                 and self.is_right_gripper_open())

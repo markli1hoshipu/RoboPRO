@@ -141,121 +141,9 @@ class Bench_base_task(Base_Task):
     def get_cluttered_surfaces(self):
         pass
     
-    def clutter_surface(self, xlim, ylim, zlim, env_name, prohibited_area, obstacle_count):
+    def clutter_surface_split(self, xlim, ylim, zlim, prohibited_area, obstacle_count, cluttered_item_info, obj_names_short, obj_names_tall):
         """
-        Produce clutter on a given surface.
-        - xlim: x-axis limits of the surface
-        - ylim: y-axis limits of the surface
-        - zlim: z-axis limits of the surface
-        - env_name: environment key in task_objects.yml (e.g. "office"); obstacle list and ids are read from that file
-        - prohibited_area: areas that are prohibited from being cluttered
-        - obstacle_count: number of obstacles to be placed
-        """
-        # produce clutter on a given surface
-        self.record_cluttered_objects = []  # record cluttered objects
-        self.size_dict = list()
-
-        if np.random.rand() < self.clean_background_rate:
-            return
-
-        task_objects_list = []
-        for entity in self.scene.get_all_actors():
-            actor_name = entity.get_name()
-            if actor_name == "":
-                continue
-            if actor_name in ["table", "wall", "ground"]:
-                continue
-            task_objects_list.append(actor_name)
-
-        cluttered_item_info, obj_names = get_cluttered_objects_subset(env_name, task_objects_list)
-
-        success_count = 0
-        max_try = 50
-        trys = 0
-        placed_objects = {name: [] for name in obj_names}
-
-        while success_count < obstacle_count and trys < max_try:
-            obj = np.random.randint(len(obj_names))
-            obj_name = obj_names[obj]
-
-            obj_idx = np.random.randint(len(cluttered_item_info[obj_name]["ids"]))
-            if obj_name in self.unstable_objects or obj_idx in placed_objects[obj_name]:
-                continue
-            obj_idx = cluttered_item_info[obj_name]["ids"][obj_idx]
-            obj_radius = cluttered_item_info[obj_name]["params"][obj_idx]["radius"]
-            obj_offset = cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
-            obj_maxz = cluttered_item_info[obj_name]["params"][obj_idx]["z_max"]
-            scale = cluttered_item_info[obj_name]["params"][obj_idx]["scale"]
-
-            success, self.cluttered_obj = rand_create_cluttered_actor(
-                self.scene,
-                xlim=xlim,
-                ylim=ylim,
-                zlim=zlim,
-                modelname=obj_name,
-                modelid=obj_idx,
-                scale=scale,
-                modeltype=cluttered_item_info[obj_name]["type"],
-                rotate_rand=True,
-                rotate_lim=[0, 0, math.pi],
-                size_dict=self.size_dict,
-                obj_radius=obj_radius,
-                z_offset=obj_offset,
-                z_max=obj_maxz,
-                prohibited_area=prohibited_area,
-                is_static=False,
-                constrained=False,
-            )
-            if not success or self.cluttered_obj is None:
-                trys += 1
-                continue
-            self.cluttered_obj.set_name(f"{obj_name}")
-
-            # manage stability as distractors
-            self.stabilize_object(self.cluttered_obj)
-
-            self.cluttered_objs.append(self.cluttered_obj)
-            pose = self.cluttered_obj.get_pose().p.tolist()
-            pose.append(obj_radius)
-            self.size_dict.append(pose)
-            success_count += 1
-            self.record_cluttered_objects.append({"object_type": obj_name, "object_index": obj_idx})
-            placed_objects[obj_name].append(obj_idx)
-
-            # add to collision list--------------------------------------------------------------------------------
-            if cluttered_item_info[obj_name]["type"] == "urdf":
-                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
-            else:
-                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
-            self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale))
-
-            # # for viewing radius estimation
-            # half_size = [obj_radius, obj_radius, 0.0005]
-            # pose = self.cluttered_obj.get_pose()
-            # pose.q = [1,0,0,0]
-            # target = create_box(
-            #     scene=self,
-            #     pose=pose,
-            #     half_size=half_size,
-            #     color=(1, 0, 0),
-            #     name=f"{obj_name}_collision",
-            #     is_static=True,
-            # )
-
-        # if success_count < obstacle_count:
-        #     print(f"Warning: Only {success_count} cluttered objects are placed on the surface.")
-
-        self.size_dict = None
-        self.cluttered_objs = []
-    
-    def clutter_surface_2(self, xlim, ylim, zlim, env_name, prohibited_area, obstacle_count):
-        """
-        Produce clutter on a given surface, drawing 30%% of objects from the
-        "short" obstacles and 70%% from the "tall" obstacles as defined in
-        benchmark/bench_task_config/task_objects.yml for the given env.
-
-        Uses get_cluttered_objects_subset_2, which separates obstacle names into
-        short and tall groups while sharing a single cluttered_objects_info dict.
+        Produce clutter on a given surface from 2 object name pools
         """
         # # for viewing area estimation
         # for area in prohibited_area:
@@ -280,19 +168,6 @@ class Bench_base_task(Base_Task):
         if np.random.rand() < self.clean_background_rate:
             return
 
-        # collect objects already on the scene
-        task_objects_list = []
-        for entity in self.scene.get_all_actors():
-            actor_name = entity.get_name()
-            if actor_name == "":
-                continue
-            if actor_name in ["table", "wall", "ground"]:
-                continue
-            task_objects_list.append(actor_name)
-
-        cluttered_item_info, obj_names_short, obj_names_tall = get_cluttered_objects_subset_2(
-            env_name, self.sample_d, task_objects_list
-        )
         success_count = 0
         max_try = 50
         trys = 0
@@ -351,7 +226,7 @@ class Bench_base_task(Base_Task):
             rand_idx = np.random.randint(len(ids_for_obj))
             obj_idx = ids_for_obj[rand_idx]
 
-            if obj_name in self.unstable_objects or obj_idx in placed_objects.get(obj_name, []):
+            if obj_idx in placed_objects.get(obj_name, []):
                 trys += 1
                 continue
 
@@ -409,7 +284,10 @@ class Bench_base_task(Base_Task):
                 path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
             else:
                 path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
-            self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale))
+            self.collision_list.append({
+                "actor": self.cluttered_obj,
+                "collision_path": path,
+            })
 
             # # for viewing radius estimation
             # half_size = [obj_radius, obj_radius, 0.0005]
@@ -429,9 +307,120 @@ class Bench_base_task(Base_Task):
 
         self.size_dict = None
         self.cluttered_objs = []
+
+    def clutter_surface(self, xlim, ylim, zlim, prohibited_area, obstacle_count, cluttered_item_info, obj_names):
+        """
+        Produce clutter on a given surface
+        """
+        # # for viewing area estimation
+        # for area in prohibited_area:
+        #     x_min = area[0]
+        #     x_max = area[2]
+        #     y_min = area[1]
+        #     y_max = area[3]
+        #     half_size = [(x_max-x_min)/2, (y_max-y_min)/2, 0.0005]
+        #     target = create_box(
+        #         scene=self,
+        #         pose=sapien.Pose([x_min+half_size[0], y_min+half_size[1], zlim[0]], [1,0,0,0]),
+        #         half_size=half_size,
+        #         color=(1, 0, 0),
+        #         name=f"_collision",
+        #         is_static=True,
+        #     )
+
+        # record cluttered objects
+        self.record_cluttered_objects = []
+        self.size_dict = []
+
+        if np.random.rand() < self.clean_background_rate:
+            return
+
+        success_count = 0
+        max_try = 50
+        trys = 0
+
+        # Track which specific model ids have been placed per object name
+        placed_objects = {name: [] for name in cluttered_item_info.keys()}
+
+        obj_names = list(obj_names)
+        if not obj_names:
+            return
+
+        while success_count < obstacle_count and trys < max_try:
+            obj = np.random.randint(len(obj_names))
+            obj_name = obj_names[obj]
+
+            # Randomly choose an index within available ids for this object
+            ids_for_obj = cluttered_item_info[obj_name]["ids"]
+            rand_idx = np.random.randint(len(ids_for_obj))
+            obj_idx = ids_for_obj[rand_idx]
+
+            if obj_idx in placed_objects.get(obj_name, []):
+                trys += 1
+                continue
+
+            obj_radius = cluttered_item_info[obj_name]["params"][obj_idx]["radius"]
+            obj_offset = cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
+            obj_maxz = cluttered_item_info[obj_name]["params"][obj_idx]["z_max"]
+            scale = cluttered_item_info[obj_name]["params"][obj_idx]["scale"]
+
+            success, self.cluttered_obj = rand_create_cluttered_actor(
+                self.scene,
+                xlim=xlim,
+                ylim=ylim,
+                zlim=zlim,
+                modelname=obj_name,
+                modelid=obj_idx,
+                scale=scale,
+                modeltype=cluttered_item_info[obj_name]["type"],
+                rotate_rand=True,
+                rotate_lim=[0, 0, math.pi],
+                size_dict=self.size_dict,
+                obj_radius=obj_radius,
+                z_offset=obj_offset,
+                z_max=obj_maxz,
+                prohibited_area=prohibited_area,
+                is_static=False,
+                constrained=False,
+            )
+            if not success or self.cluttered_obj is None:
+                trys += 1
+                continue
+
+            self.cluttered_obj.set_name(f"{obj_name}")
+
+            # manage stability as distractors
+            self.stabilize_object(self.cluttered_obj)
+
+            self.cluttered_objs.append(self.cluttered_obj)
+            pose = self.cluttered_obj.get_pose().p.tolist()
+            pose.append(obj_radius)
+            self.size_dict.append(pose)
+            success_count += 1
+
+            self.record_cluttered_objects.append(
+                {"object_type": obj_name, "object_index": obj_idx}
+            )
+            placed_objects[obj_name].append(obj_idx)
+
+            # add to collision list
+            if cluttered_item_info[obj_name]["type"] == "urdf":
+                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
+            else:
+                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
+            self.collision_list.append({
+                "actor": self.cluttered_obj,
+                "collision_path": path,
+            })
+
+        if success_count < obstacle_count:
+            print(f"Warning: Only {success_count} cluttered objects are placed on the surface.")
+
+        self.size_dict = None
+        self.cluttered_objs = []
     
     def stabilize_object(self, object):
-        object.set_mass(1)
+        # object.set_mass(1)
         rb = object.actor.components[1]
         try:
             rb.set_linear_damping(5.0)
@@ -649,14 +638,15 @@ class Bench_base_task(Base_Task):
         if (isinstance(actor, sapien.Pose) or isinstance(actor, list) or isinstance(actor, np.ndarray)):
             actor_pose = transforms._toPose(actor)
             actor_data = {}
+            scale = 1
         else:
             actor_pose = actor.get_pose()
             if isinstance(actor, Actor):
                 actor_data = actor.config
             else:
                 actor_data = {}
-
-        scale = actor.scale
+            scale = actor.scale
+            
         origin_bounding_size = (np.array(actor_data.get("extents", [0.1, 0.1, 0.1])) * scale / 2)
         origin_bounding_pts = (np.array([
             [-1, -1, -1],
@@ -833,6 +823,97 @@ class Bench_base_task(Base_Task):
                 Action(arm_tag, "close", target_gripper_pos=gripper_pos),
             ]
 
+    def get_place_pose(
+        self,
+        actor: Actor,
+        arm_tag: ArmTag,
+        target_pose: list | np.ndarray,
+        constrain: Literal["free", "align", "auto"] = "auto",
+        align_axis: list[np.ndarray] | np.ndarray | list = None,
+        actor_axis: np.ndarray | list = [1, 0, 0],
+        actor_axis_type: Literal["actor", "world"] = "actor",
+        local_up_axis: np.ndarray | list | None = None,
+        functional_point_id: int = None,
+        pre_dis: float = 0.1,
+        pre_dis_axis: Literal["grasp", "fp"] | np.ndarray | list = "grasp",
+    ):
+
+        if not self.plan_success:
+            return [-1, -1, -1, -1, -1, -1, -1]
+
+        actor_matrix = actor.get_pose().to_transformation_matrix()
+        if functional_point_id is not None:
+            place_start_pose = actor.get_functional_point(functional_point_id, "pose")
+            z_transform = False
+        else:
+            place_start_pose = actor.get_pose()
+            z_transform = True
+
+        end_effector_pose = (self.robot.get_left_ee_pose() if arm_tag == "left" else self.robot.get_right_ee_pose())
+
+        if constrain == "auto":
+            grasp_direct_vec = place_start_pose.p - end_effector_pose[:3]
+            if np.abs(np.dot(grasp_direct_vec, [0, 0, 1])) <= 0.1:
+                place_pose = get_place_pose(
+                    place_start_pose,
+                    target_pose,
+                    constrain="align",
+                    actor_axis=grasp_direct_vec,
+                    actor_axis_type="world",
+                    align_axis=[1, 1, 0] if arm_tag == "left" else [-1, 1, 0],
+                    z_transform=z_transform,
+                    local_up_axis=local_up_axis,
+                )
+            else:
+                camera_vec = transforms._toPose(end_effector_pose).to_transformation_matrix()[:3, 2]
+                place_pose = get_place_pose(
+                    place_start_pose,
+                    target_pose,
+                    constrain="align",
+                    actor_axis=camera_vec,
+                    actor_axis_type="world",
+                    align_axis=[0, 1, 0],
+                    z_transform=z_transform,
+                    local_up_axis=local_up_axis,
+                )
+        else:
+            place_pose = get_place_pose(
+                place_start_pose,
+                target_pose,
+                constrain=constrain,
+                actor_axis=actor_axis,
+                actor_axis_type=actor_axis_type,
+                align_axis=align_axis,
+                z_transform=z_transform,
+                local_up_axis=local_up_axis,
+            )
+        start2target = (transforms._toPose(place_pose).to_transformation_matrix()[:3, :3]
+                        @ place_start_pose.to_transformation_matrix()[:3, :3].T)
+        target_point = (start2target @ (actor_matrix[:3, 3] - place_start_pose.p).reshape(3, 1)).reshape(3) + np.array(
+            place_pose[:3])
+
+        ee_pose_matrix = t3d.quaternions.quat2mat(end_effector_pose[-4:])
+        target_grasp_matrix = start2target @ ee_pose_matrix
+
+        res_matrix = np.eye(4)
+        res_matrix[:3, 3] = actor_matrix[:3, 3] - end_effector_pose[:3]
+        res_matrix[:3, 3] = np.linalg.inv(ee_pose_matrix) @ res_matrix[:3, 3]
+        target_grasp_qpose = t3d.quaternions.mat2quat(target_grasp_matrix)
+
+        grasp_bias = target_grasp_matrix @ res_matrix[:3, 3]
+        if pre_dis_axis == "grasp":
+            target_dis_vec = target_grasp_matrix @ res_matrix[:3, 3]
+            target_dis_vec /= np.linalg.norm(target_dis_vec)
+        else:
+            target_pose_mat = transforms._toPose(target_pose).to_transformation_matrix()
+            if pre_dis_axis == "fp":
+                pre_dis_axis = [0.0, 0.0, 1.0]
+            pre_dis_axis = np.array(pre_dis_axis)
+            pre_dis_axis /= np.linalg.norm(pre_dis_axis)
+            target_dis_vec = (target_pose_mat[:3, :3] @ np.array(pre_dis_axis).reshape(3, 1)).reshape(3)
+            target_dis_vec /= np.linalg.norm(target_dis_vec)
+        res_pose = (target_point - grasp_bias - pre_dis * target_dis_vec).tolist() + target_grasp_qpose.tolist()
+        return res_pose
 
     def take_action(self, action, action_type:Literal['qpos', 'ee']='qpos'):  # action_type: qpos or ee
         if self.take_action_cnt == self.step_lim or self.eval_success:
@@ -1031,31 +1112,52 @@ class Bench_base_task(Base_Task):
     def update_world(self):
         """Updates CuRobo Collision World Model with new collision objects"""
         collision_dict = {"mesh": {}, "cuboid": {}}
-        for actor, collision_path, scale in self.collision_list:
-                if os.path.isdir(collision_path): # if actor is made from multiple obj files
-                    name_prefix = actor.get_name()
-                    if name_prefix == "036_cabinet" or name_prefix == "015_laptop":
-                        pose = actor.get_link_pose("link_0")
+        if self.collision_list:
+            for info in self.collision_list:
+                    actor = info["actor"]
+                    collision_path = info["collision_path"]
+                    if os.path.isdir(collision_path): # if actor is made from multiple obj files
+                        name_prefix = actor.get_name()
+                        if "link" in info:
+                            if isinstance(info["link"], list):
+                                pose = sapien.Pose()
+                                pose.p = actor.get_link_pose(info["link"][0]).p
+                                pose.q = actor.get_link_pose(info["link"][1]).q
+                            else:
+                                pose = actor.get_link_pose(info["link"])
+                        elif "pose" in info:
+                            pose = info["pose"]
+                        else:
+                            pose = actor.get_pose()
+                        np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                        convex_collision_dict = self.collision_dict_from_convex_obj_dir(
+                            collision_path,
+                            pose=np_pose,
+                            scale=actor.scale,
+                            name_prefix = name_prefix,
+                            files = info.get("files", None)
+                        )
+                        collision_dict["mesh"] = (
+                            collision_dict["mesh"] | convex_collision_dict["mesh"]
+                        )
                     else:
                         pose = actor.get_pose()
-                    np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                    convex_collision_dict = self.collision_dict_from_convex_obj_dir(
-                        collision_path,
-                        pose=np_pose,
-                        scale=actor.scale,
-                        name_prefix = name_prefix
-                    )
-                    collision_dict["mesh"] = (
-                        collision_dict["mesh"] | convex_collision_dict["mesh"]
-                    )
-                else:
-                    pose = actor.get_pose()
-                    np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                    collision_dict["mesh"][f"{actor.get_name()}_{self.seed}"] = {
-                            "file_path": collision_path,
-                            "pose": np_pose,
-                            "scale": actor.scale,
-                        }
+                        np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                        collision_dict["mesh"][f"{actor.get_name()}_{np_pose}_{self.seed}"] = {
+                                "file_path": collision_path,
+                                "pose": np_pose,
+                                "scale": actor.scale,
+                            }
+
+        if self.cuboid_collision_list:
+            for info in self.cuboid_collision_list:
+                name = info["name"]
+                dims = info["dims"]
+                pose = info["pose"]
+                collision_dict["cuboid"][f"{name}_{pose}_{self.seed}"] = {
+                    "dims": dims,
+                    "pose": pose,
+                }
         self.robot.update_world(collision_dict)
     
     def collision_dict_from_convex_obj_dir(
@@ -1066,6 +1168,7 @@ class Bench_base_task(Base_Task):
         pose: tuple[float, float, float, float, float, float, float],  # [x,y,z,qw,qx,qy,qz]
         scale: tuple[float, float, float],  # e.g. (0.6, 0.8, 0.4)
         glob_pattern: str = "*.obj",
+        files: list[str] = None,
         recursive: bool = False,
     ) -> dict:
         """
@@ -1079,10 +1182,22 @@ class Bench_base_task(Base_Task):
         if not obj_dir.exists() or not obj_dir.is_dir():
             raise FileNotFoundError(f"OBJ directory not found or not a directory: {obj_dir}")
 
-        it = obj_dir.rglob(glob_pattern) if recursive else obj_dir.glob(glob_pattern)
-        obj_files = sorted([p for p in it if p.is_file()])
+        if files is not None:
+            obj_files = []
+            for file_name in files:
+                p = obj_dir / file_name
+                if p.is_file():
+                    obj_files.append(p)
+            obj_files = sorted(obj_files)
+        else:
+            it = obj_dir.rglob(glob_pattern) if recursive else obj_dir.glob(glob_pattern)
+            obj_files = sorted([p for p in it if p.is_file()])
 
         if not obj_files:
+            if files is not None:
+                raise FileNotFoundError(
+                    f"No requested OBJ files found in {obj_dir}. Requested files: {files}"
+                )
             raise FileNotFoundError(
                 f"No OBJ files found in {obj_dir} with pattern '{glob_pattern}' (recursive={recursive})"
             )
@@ -1107,7 +1222,7 @@ class Bench_base_task(Base_Task):
             if getattr(m, "faces", None) is None or len(m.faces) == 0:
                 continue
 
-            part_name = f"{name_prefix}_{i}_{p.stem}_{self.seed}"
+            part_name = f"{p}_{self.seed}"
             collision_dict["mesh"][part_name] = {
                 "file_path": str(p),
                 "pose": list(pose),
@@ -1140,3 +1255,6 @@ class Bench_base_task(Base_Task):
         Detach the attached objects from the robot in Curobo Planning.
         """
         self.robot.detach_object(arms_tag=arms_tag)
+    
+    def enable_obstacle(self, enable: bool, names: list[str]):
+        self.robot.enable_obstacle(enable, names)
