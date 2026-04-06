@@ -165,3 +165,4 @@ class put_sauce_can_in_cabinet(Kitchen_base_large):
 
     def check_success(self):
         return self._is_sauce_can_inside_cabinet()
+        
