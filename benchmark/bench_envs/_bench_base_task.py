@@ -225,6 +225,7 @@ class Bench_base_task(Base_Task):
             obj_idx = ids_for_obj[rand_idx]
 
             if obj_idx in placed_objects.get(obj_name, []):
+            if obj_idx in placed_objects.get(obj_name, []):
                 trys += 1
                 continue
 
@@ -341,6 +342,7 @@ class Bench_base_task(Base_Task):
             obj_idx = ids_for_obj[rand_idx]
 
             if obj_idx in placed_objects.get(obj_name, []):
+            if obj_idx in placed_objects.get(obj_name, []):
                 trys += 1
                 continue
 
@@ -405,6 +407,7 @@ class Bench_base_task(Base_Task):
         self.cluttered_objs = []
     
     def stabilize_object(self, object):
+        # object.set_mass(1)
         # object.set_mass(1)
         rb = object.actor.components[1]
         try:
@@ -624,12 +627,15 @@ class Bench_base_task(Base_Task):
             actor_pose = transforms._toPose(actor)
             actor_data = {}
             scale = 1
+            scale = 1
         else:
             actor_pose = actor.get_pose()
             if isinstance(actor, Actor):
                 actor_data = actor.config
             else:
                 actor_data = {}
+            scale = actor.scale
+            
             scale = actor.scale
             
         origin_bounding_size = (np.array(actor_data.get("extents", [0.1, 0.1, 0.1])) * scale / 2)
@@ -1127,7 +1133,7 @@ class Bench_base_task(Base_Task):
                     else:
                         pose = actor.get_pose()
                         np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                        collision_dict["mesh"][f"{actor.get_name()}_{np_pose}"] = {
+                        collision_dict["mesh"][f"{actor.get_name()}_{np_pose}_{self.seed}"] = {
                                 "file_path": collision_path,
                                 "pose": np_pose,
                                 "scale": actor.scale,
@@ -1205,6 +1211,7 @@ class Bench_base_task(Base_Task):
                 continue
 
             part_name = f"{p}_{self.seed}"
+            part_name = f"{p}_{self.seed}"
             collision_dict["mesh"][part_name] = {
                 "file_path": str(p),
                 "pose": list(pose),
@@ -1237,6 +1244,9 @@ class Bench_base_task(Base_Task):
         Detach the attached objects from the robot in Curobo Planning.
         """
         self.robot.detach_object(arms_tag=arms_tag)
+    
+    def enable_obstacle(self, enable: bool, names: list[str]):
+        self.robot.enable_obstacle(enable, names)
     
     def enable_obstacle(self, enable: bool, names: list[str]):
         self.robot.enable_obstacle(enable, names)

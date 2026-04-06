@@ -13,7 +13,7 @@ from transforms3d.euler import euler2quat
 class stack_book(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
-        kwargs["collision_cache"] = {"mesh": 200, "obb": 3}
+        kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
     
     def _get_target_object_names(self) -> set[str]:
@@ -23,9 +23,9 @@ class stack_book(Office_base_task):
         ylim = [self.file_holder.get_pose().p[1]]
         zlim = [self.office_info["file_holder_heights"][1]+0.1]
         xlim = [self.office_info["file_holder_lims"][0]+0.08, self.office_info["file_holder_lims"][2]-0.08]
-        model_id1 = 0
+        model_id1 = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["043_book"])
         model_id2 = 1
-        self.book = rand_create_actor(
+        self.target_obj = rand_create_actor(
             self,
             xlim=xlim,
             ylim=ylim,
@@ -38,12 +38,13 @@ class stack_book(Office_base_task):
             is_static=False,
             scale = self.item_info['scales']['043_book'][f'{model_id1}']
         )
-        self.book.set_mass(0.1)
+        self.target_obj.set_mass(0.05)
+        self.stabilize_object(self.target_obj)
 
-        xlim = [-0.55,0.1] if self.book.get_pose().p[0] < 0 else [-0.1,0.55]
+        xlim = [-0.55,0.1] if self.target_obj.get_pose().p[0] < 0 else [-0.1,0.55]
         ylim = [-0.15, self.office_info["file_holder_lims"][1]-0.1]
         zlim = [0.77]
-        self.target_book = rand_create_actor(
+        self.des_obj = rand_create_actor(
             self,
             xlim=xlim,
             ylim=ylim,
@@ -56,30 +57,30 @@ class stack_book(Office_base_task):
             is_static=False,
             scale = self.item_info['scales']['043_book'][f'{model_id2}']
         )
-        self.target_book.set_mass(0.3)
-        self.add_prohibit_area(self.target_book, padding=0.05)
-        self.target_pose = self.target_book.get_pose().p.tolist() + euler2quat(np.pi, np.pi/6, np.pi/2, axes='sxyz').tolist()
-        self.target_pose[2]+=0.05
-        self.target_pose[1]+=0.015
+        self.des_obj.set_mass(0.3)
+        self.add_prohibit_area(self.des_obj, padding=0.05)
+        self.des_obj_pose = self.des_obj.get_pose().p.tolist() + euler2quat(np.pi, np.pi/6, np.pi/2, axes='sxyz').tolist()
+        self.des_obj_pose[2]+=0.05
+        self.des_obj_pose[1]+=0.015
 
 
     def play_once(self):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag("left") if self.book.get_pose().p[0] < 0 else ArmTag("right")
+        arm_tag = ArmTag("left") if self.target_obj.get_pose().p[0] < 0 else ArmTag("right")
 
-        self.move(self.grasp_actor(self.book, arm_tag=arm_tag, pre_grasp_dis=0.04, grasp_dis=0.02))
+        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.04, grasp_dis=0.01))
         self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.01, z=0.01))
-        self.attach_object(self.book, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/043_book/collision/base0.glb", str(arm_tag))
+        self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/043_book/collision/base0.glb", str(arm_tag))
 
-        # self.target_pose = self.book.get_pose().p.tolist()
-        # self.target_pose.extend(euler2quat(np.pi, 0, np.pi/2, axes='sxyz').tolist())
-        # self.target_pose[1]-=0.2
+        # self.des_obj_pose = self.target_obj.get_pose().p.tolist()
+        # self.des_obj_pose.extend(euler2quat(np.pi, 0, np.pi/2, axes='sxyz').tolist())
+        # self.des_obj_pose[1]-=0.2
 
         self.move(
             self.place_actor(
-                self.book,
+                self.target_obj,
                 arm_tag=arm_tag,
-                target_pose=self.target_pose,
+                target_pose=self.des_obj_pose,
                 constrain="align",
                 pre_dis=0.01,
                 dis=0.005,
@@ -95,13 +96,11 @@ class stack_book(Office_base_task):
         # return self.info
 
     def check_success(self):
-        mouse_pose = self.mouse.get_pose().p
-        mouse_qpose = np.abs(self.mouse.get_pose().q)
-        target_pos = self.target.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
+        end_pose_actual = self.target_obj.get_pose().p
+        end_pose_desired = self.des_obj.get_pose().p
+        eps1 = 0.02
+        eps2 = 0.04
 
-        return (np.all(abs(mouse_pose[:2] - target_pos[:2]) < np.array([eps1, eps2]))
-                and (np.abs(mouse_qpose[2] * mouse_qpose[3] - 0.49) < eps1
-                     or np.abs(mouse_qpose[0] * mouse_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
+        return (np.all(abs(end_pose_actual[:2] - end_pose_desired[:2]) < np.array([eps1, eps2]))
+                and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
