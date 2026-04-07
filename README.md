@@ -11,7 +11,7 @@ Then follow installation instructions on [https://robotwin-platform.github.io/do
 
 ** switch to benchmark/implementation for both repos
 
-Copy the benchmark/bench_assets/120_storage-rack folder into  customized_robotwin/assets/objects_bench
+Copy the contents of benchmark/bench_assets into customized_robotwin/assets/objects_bench
 
 Copy all the benchmark/bench_assets/embodiments/aloha-agilex yml files into customized_robotwin/assets/embodiments/aloha-agilex (will overwrite existing files). You will need to update the paths in curobo_right.yml and curobo_left.yml
 
@@ -101,6 +101,7 @@ Note: Current implementation supports Aloha-Agilex. Attaching external objects t
 - Sphere placeholders in collision yaml: collision_spheres
 
 TODO:
-- Dynamically load updated embodiment yamls
-- Dynamically load updated assets
+- Finablize how to dynamically load updated embodiment yamls
+- Finablize how to dynamically load additional assets
+- Establish language instruction generation pipeline
 
