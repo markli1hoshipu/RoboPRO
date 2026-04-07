@@ -10,7 +10,7 @@ import glob
 from transforms3d.euler import euler2quat
 
 
-class stack_book(Office_base_task):
+class put_book_on_book(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}

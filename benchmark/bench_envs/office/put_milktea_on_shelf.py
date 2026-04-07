@@ -8,7 +8,7 @@ from copy import deepcopy
 import glob
 from transforms3d.euler import euler2quat
 
-class milktea_to_shelf(Office_base_task):
+class put_milktea_on_shelf(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
