@@ -86,8 +86,8 @@ class put_cup_on_table(Study_base_task):
         eps = 0.01
         b_pose = self.target_obj.get_pose().p
         table_bb = get_actor_boundingbox(self.table)
-        book_on_table = np.all((table_bb[0][:2] <= b_pose[:2])  &  (b_pose[:2] <= table_bb[1][:2]))
-        book_on_table &= (b_pose[-1] - table_bb[1][-1]) < eps  
-        return (book_on_table 
+        cup_on_table = np.all((table_bb[0][:2] <= b_pose[:2])  &  (b_pose[:2] <= table_bb[1][:2]))
+        cup_on_table &= (b_pose[-1] - table_bb[1][-1]) < eps  
+        return (cup_on_table 
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

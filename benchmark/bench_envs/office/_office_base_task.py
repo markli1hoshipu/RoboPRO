@@ -38,19 +38,11 @@ parent_directory = os.path.dirname(current_file_path)
 
 
 class Office_base_task(Bench_base_task):
-    # Office scene furniture: table, wall, ground, floor parts, shelf, cabinet, file holder (wooden_box)
-    FURNITURE_NAMES = {
-        "table", "wall", "ground",
-        # "floor_0", "floor_1", "floor_2", "floor_3",
-        "121_wall-shelf", "036_cabinet", "042_wooden_box",
-    }
+
+    FURNITURE_NAMES = {"table", "wall", "shelf", "ground"}
 
     def __init__(self):
         pass
-
-    def _get_target_object_names(self) -> set[str]:
-        """Default for tasks with single self.target_obj. Override when using different attr names (mouse, phone, etc)."""
-        return {self.target_obj.get_name()}
 
     def _init_task_env_(self, table_xy_bias=[0, 0], table_height_bias=0, **kwags):
         """
@@ -533,7 +525,7 @@ class Office_base_task(Bench_base_task):
                 continue
             task_objects_list.append(actor_name)
 
-        cluttered_item_info, obj_names_short, obj_names_tall = get_cluttered_objects_subset_2(
+        cluttered_item_info, obj_names_short, obj_names_tall = get_obstacle_objects_subset(
             "office", self.sample_d, task_objects_list
         )
 
@@ -543,61 +535,6 @@ class Office_base_task(Bench_base_task):
         ylim = [self.office_info["shelf_lims"][1], self.office_info["shelf_lims"][3]]
         self.clutter_surface(xlim, ylim, [self.office_info["shelf_heights"][0]], self.prohibited_area["shelf0"], 5, cluttered_item_info, obj_names_short)
         self.clutter_surface(xlim, ylim, [self.office_info["shelf_heights"][1]], self.prohibited_area["shelf1"], 5, cluttered_item_info, obj_names_short)
-    
-    def load_table_obstacles_in_line(self, spacing=0.10, ground_y=-5.0, ground_z=0.02):
-        """Used for debugging. Load all table_obstacles that are available into the scene in a line on the ground at y=ground_y, spacing (m) apart."""
-        task_objects_list = []
-        for entity in self.scene.get_all_actors():
-            actor_name = entity.get_name()
-            if actor_name == "":
-                continue
-            if actor_name in ["table", "wall", "ground"]:
-                continue
-            task_objects_list.append(actor_name)
-        cluttered_item_info, obj_names = get_cluttered_objects_subset("office", task_objects_list)
-        if not obj_names:
-            return
-        n = len(obj_names)
-        # Center the line along x: first object at x = -(n-1)*spacing/2, then x += spacing
-        x_start = -(n - 1) * spacing / 2.0
-        identity_quat = [1, 0, 0, 0]
-        for i, obj_name in enumerate(obj_names):
-            if obj_name in self.unstable_objects:
-                continue
-            ids = cluttered_item_info[obj_name]["ids"]
-            if not ids:
-                continue
-            obj_idx = ids[0]
-            info = cluttered_item_info[obj_name]
-            model_type = info["type"]
-            x_i = x_start + i * spacing
-            pose = sapien.Pose(
-                [
-                    x_i, ground_y, 
-                    ground_z + cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
-                ], 
-                identity_quat)
-            if model_type == "urdf":
-                obj = create_cluttered_urdf_obj(
-                    scene=self.scene,
-                    pose=pose,
-                    modelname=f"objects/objaverse/{obj_name}/{obj_idx}",
-                    fix_root_link=True,
-                    scale=1,
-                )
-            else:
-                obj = create_actor(
-                    scene=self.scene,
-                    pose=pose,
-                    modelname=obj_name,
-                    model_id=obj_idx,
-                    convex=True,
-                    is_static=True,
-                    scale = [1,1,1]
-                )
-            if obj is None:
-                continue
-            obj.set_name(obj_name)
     
     def add_extra_cameras(self):
         self.cameras.add_extra_cameras(f"{os.environ['BENCH_ROOT']}/bench_assets/embodiments/office_config.yml")

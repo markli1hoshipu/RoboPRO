@@ -4,13 +4,10 @@ objects:
     targets:
       077_phone: [0,1,2,4]
       043_book: [0]
-      077_phone: [0,1,2,4]
-      043_book: [0]
       046_alarm-clock: [0,1,2,3]
       048_stapler: [0,1,2,3,4]
       101_milk-tea: [0,1,2]
       048_stapler: [0,1,2,3,4]
-      101_milk-tea: [0,1,2,4]
       047_mouse: [0,1,2]
       061_battery: [0,1,2,3]
       112_tea-box: [0,1,2,3,4,5]
@@ -18,7 +15,6 @@ objects:
       059_pencup: [0, 1, 2, 3, 5]
       112_tea-box: [0,1,2,3,4,5]
       073_rubikscube: [0,2]
-      059_pencup: [0, 1, 2, 3, 5]
     obstacles:
       short:
         017_calculator: [0,1,2,3,4]
@@ -29,14 +25,11 @@ objects:
       tall:
         001_bottle: [1,11,14,16,21]
         012_plant-pot: [0,2,3]
-        001_bottle: [1,11,14,16,21]
         089_globe: [2,3]
-        090_trophy: [0,1,2]
         090_trophy: [0,1,2]
         099_fan: [0,4]
         108_block: [1,2,3]
         120_plant: [0]
-        119_mini-chalkboard: [0]
         119_mini-chalkboard: [0]
   study:
     targets:
