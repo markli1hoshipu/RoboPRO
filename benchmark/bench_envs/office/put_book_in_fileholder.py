@@ -10,7 +10,7 @@ import glob
 from transforms3d.euler import euler2quat
 
 
-class book_to_fileholder(Office_base_task):
+class put_book_in_fileholder(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}

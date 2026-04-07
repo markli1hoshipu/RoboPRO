@@ -8,7 +8,7 @@ from copy import deepcopy
 import glob
 
 
-class mouse_to_pad(Office_base_task):
+class put_mouse_on_pad(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
