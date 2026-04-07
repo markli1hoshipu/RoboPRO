@@ -25,7 +25,7 @@ class put_glue_in_box(Study_base_task):
             task_objs = yaml.safe_load(f)
         
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-         boundary_thr=0.15, side="left")
+         boundary_thr=0.15, side="left" if self.scene_id == 0 else "right")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         
@@ -45,9 +45,7 @@ class put_glue_in_box(Study_base_task):
 
 
         self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
-        self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
-
-     
+        # self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
       
     def play_once(self, z = 0.1, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
@@ -81,12 +79,8 @@ class put_glue_in_box(Study_base_task):
         return self.info
 
     def check_success(self):
-        target_pose = self.target_obj.get_pose().p
-        target_qpose = np.abs(self.target_obj.get_pose().q)
-        target_des_pos = self.target_obj.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
-
-        return (np.all(abs(target_pose[:2] - target_des_pos[:2]) < np.array([eps1, eps2]))
-                 and self.robot.is_left_gripper_open()
+        box_bb = get_actor_boundingbox(self.box.actor)
+        return (np.all((box_bb[0][:2] <= self.target_obj.get_pose().p[:2])  & 
+                       (self.target_obj.get_pose().p[:2] <= box_bb[1][:2]))
+                and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

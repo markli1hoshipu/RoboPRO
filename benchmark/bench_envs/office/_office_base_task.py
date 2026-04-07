@@ -38,11 +38,19 @@ parent_directory = os.path.dirname(current_file_path)
 
 
 class Office_base_task(Bench_base_task):
-
-    FURNITURE_NAMES = {"table", "wall", "shelf", "ground"}
+    # Office scene furniture: table, wall, ground, floor parts, shelf, cabinet, file holder (wooden_box)
+    FURNITURE_NAMES = {
+        "table", "wall", "ground",
+        # "floor_0", "floor_1", "floor_2", "floor_3",
+        "121_wall-shelf", "036_cabinet", "042_wooden_box",
+    }
 
     def __init__(self):
         pass
+
+    def _get_target_object_names(self) -> set[str]:
+        """Default for tasks with single self.target_obj. Override when using different attr names (mouse, phone, etc)."""
+        return {self.target_obj.get_name()}
 
     def _init_task_env_(self, table_xy_bias=[0, 0], table_height_bias=0, **kwags):
         """
@@ -116,7 +124,6 @@ class Office_base_task(Bench_base_task):
         self.size_dict = list()
         self.cluttered_objs = list()
         self.prohibited_area = {"table": [], "shelf0": [], "shelf1": []} # shelf 0 for lower shelf, shelf 1 for upper shelf
-        self.unstable_objects = ["050_bell"] # objects that are not stable and should be avoided
         # self.short_obstacles = [
         #     # "010_pen",
         #     # "015_laptop",
@@ -153,13 +160,20 @@ class Office_base_task(Bench_base_task):
         self.cluttered_objects_info = get_cluttered_objects_info()
 
         self.eval_success = False
-        self.table_z_bias = (np.random.uniform(low=-self.random_table_height, high=0) + table_height_bias)  # TODO
+        # self.table_z_bias = (np.random.uniform(low=-self.random_table_height, high=0) + table_height_bias)  # TODO
+        self.table_z_bias = 0
         self.office_info = {
             "table_height": 0.74,
             "table_area":[1.2, 0.7], # x,y area 
+            "table_lims": [],
             "shelf_heights":[0.9, 1.127], # heights of the shelf levels
             "shelf_area":[0.62, 0.26], # x,y area 
+            "shelf_lims": [],
+            "shelf_padding": 0.09, # required distance from edge of shelf for gripper to fit
             "file_holder_area":[0.22, 0.16], # x,y area 
+            "file_holder_lims": [],
+            "file_holder_heights": [0.82,0.942],
+            "drawer_height": 0.76,
             "furn_x_v": { # x position of furniture for each arrangement version
                 "shelf": [-0.24,0,0.24],
                 "cabinet": [0.23,0.48,-0.48],
@@ -194,6 +208,7 @@ class Office_base_task(Bench_base_task):
 
         self.robot.set_origin_endpose()
         self.load_actors()
+        self.add_gripper_operating_area()
 
         if self.cluttered_table:
             self.load_basic_office_items()
@@ -316,7 +331,10 @@ class Office_base_task(Bench_base_task):
             is_static=True,
             mass=2
         )
-        self.collision_list.append((self.shelf, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/121_wall-shelf/cc0_wall_shelf_4.glb", shelf_scale))
+        self.collision_list.append({
+            "actor": self.shelf,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/121_wall-shelf/cc0_wall_shelf_4.glb",
+        })
         xmin = pose[0] - self.office_info["shelf_area"][0]/2
         xmax = pose[0] + self.office_info["shelf_area"][0]/2
         ymin = pose[1] - self.office_info["shelf_area"][1]/2
@@ -337,6 +355,24 @@ class Office_base_task(Bench_base_task):
         )
         self.add_prohibit_area(self.cabinet, padding=0.01)
         self.cabinet.set_mass(0.5)
+        self.collision_list.append({
+            "actor": self.cabinet,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
+            "link": "link_0",
+            "files": ["original-4.obj","original-7.obj"], # these are only the side panels of the cabinet. Drawer is added separately when needed
+        })
+        self.collision_list.append({
+            "actor": self.cabinet,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
+            "link": "link_3",
+            "files": ["original-57.obj","original-62.obj"], # these are the top panel and handle. needed for collision checking
+        })
+        self.collision_list.append({
+            "actor": self.cabinet,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
+            "link": "link_2",
+            "files": ["original-34.obj", "original-41.obj"], # middle panel
+        })
         # ------------------------------------------------------------
         self.wooden_box = create_actor(
             scene=self,
@@ -372,7 +408,10 @@ class Office_base_task(Bench_base_task):
         ymax = pose[1] + self.office_info["file_holder_area"][1]/2
         self.office_info["file_holder_lims"] = [xmin, ymin, xmax, ymax]
         self.prohibited_area["table"].append([xmin-0.01, ymin, xmax+0.01, ymax])
-        self.collision_list.append((self.file_holder, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/122_file-holder/base.glb", [1,1,1]))
+        self.collision_list.append({
+            "actor": self.file_holder,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/122_file-holder/base.glb",
+        })
         
     def load_basic_office_items(self):
         # load office items: items that are always placed as obstacles ie key obstacles
@@ -384,21 +423,21 @@ class Office_base_task(Bench_base_task):
 
         size_dict = list()
         if "015_laptop" not in full_names:
-            laptop_id = np.random.choice([9748,9912,9960,9968,9992,9996,10040,10098,10101,10125,10211])
+            # laptop_id = np.random.choice([9748,9912,9960,9968,9992,9996,10040,10098,10101,10125,10211])
             laptop_id = 9912
-            laptop_file = {
-                9748: "original-97",
-                9912: "new-4",
-                9960: "new-0",
-                9968: "new-8",
-                9992: "new-1",
-                9996: "new-4",
-                10040: "new-5",
-                10098: "new-4",
-                10101: "new-1",
-                10125: "new-7",
-                10211: "new-1",
-            }
+            # laptop_file = {
+            #     9748: "original-97",
+            #     9912: "new-4",
+            #     9960: "new-0",
+            #     9968: "new-8",
+            #     9992: "new-1",
+            #     9996: "new-4",
+            #     10040: "new-5",
+            #     10098: "new-4",
+            #     10101: "new-1",
+            #     10125: "new-7",
+            #     10211: "new-1",
+            # }
             success, self.laptop = rand_create_cluttered_actor(
                 scene=self.scene,
                 xlim=[-0.4, 0.4],
@@ -408,7 +447,7 @@ class Office_base_task(Bench_base_task):
                 modelid=laptop_id,
                 modeltype="sapien_urdf",
                 rotate_rand=True,
-                rotate_lim=[0, 0, np.pi / 6],
+                rotate_lim=[0, 0, np.pi / 10],
                 qpos=[0.7, 0, 0, 0.7],
                 size_dict=size_dict,
                 obj_radius=0.06,
@@ -419,16 +458,25 @@ class Office_base_task(Bench_base_task):
                 is_static=False,
             )
             if not success:
-                raise RuntimeError("Failed to load laptop")
-            self.laptop.set_mass(0.1)
-            limit = self.laptop.get_qlimits()[0]
-            self.laptop.set_qpos([limit[0] + (limit[1] - limit[0]) * 0.9])
-            self.add_prohibit_area(self.laptop, padding=0.01)
-            # custom collision because laptop has too many meshes
-            cuboid_pose = self.laptop.get_pose().p.tolist() + [1, 0, 0, 0]
-            cuboid_pose[1] += 0.04
-            cuboid_pose[2] = self.office_info["table_height"] + 0.07
-            self.cuboid_collision_list.append(("015_laptop", [0.2, 0.07, 0.14], cuboid_pose))
+                # print("Failed to load laptop")
+                pass
+            else:
+                self.laptop.set_mass(0.1)
+                limit = self.laptop.get_qlimits()[0]
+                self.laptop.set_qpos([limit[0] + (limit[1] - limit[0]) * 0.9])
+                self.add_prohibit_area(self.laptop, padding=0.01)
+                self.collision_list.append({
+                    "actor": self.laptop,
+                    "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/015_laptop/9912/textured_objs/",
+                    "link": ["link_0", "link_1"],
+                    "files": ["original-5.obj"],
+                })
+
+            # # custom collision because laptop has too many meshes
+            # cuboid_pose = self.laptop.get_pose().p.tolist() + [1, 0, 0, 0]
+            # cuboid_pose[1] += 0.04
+            # cuboid_pose[2] = self.office_info["table_height"] + 0.07
+            # self.cuboid_collision_list.append({"name": "015_laptop", "dims": [0.2, 0.07, 0.14], "pose": cuboid_pose})
         # ------------------------------------------------------------
         if "plant" not in full_names:
             plant_id = 0
@@ -444,7 +492,7 @@ class Office_base_task(Bench_base_task):
                 rotate_rand=True,
                 rotate_lim=[0, 1, 0],
                 size_dict=size_dict,
-                obj_radius=0.03,
+                obj_radius=0.05,
                 z_offset=self.cluttered_objects_info["120_plant"]["params"][f"{plant_id}"]["z_offset"],
                 z_max=self.cluttered_objects_info["120_plant"]["params"][f"{plant_id}"]["z_max"],
                 prohibited_area=self.prohibited_area["table"],
@@ -452,11 +500,16 @@ class Office_base_task(Bench_base_task):
                 is_static=False,
             )
             if not success:
-                raise RuntimeError("Failed to load plant")
-            self.plant.set_mass(1)
-            pose = self.plant.get_pose().p
-            self.prohibited_area["table"].append([pose[0]-0.03, pose[1]-0.03, pose[0]+0.03, pose[1]+0.03]) # manual because plant extents are incorrect
-            self.collision_list.append((self.plant, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/120_plant/collision/base{plant_id}.glb", [1,1,1]))
+                # print("Failed to load plant")
+                pass
+            else:
+                self.plant.set_mass(1)
+                pose = self.plant.get_pose().p
+                self.prohibited_area["table"].append([pose[0]-0.03, pose[1]-0.03, pose[0]+0.03, pose[1]+0.03]) # manual because plant extents are incorrect
+                self.collision_list.append({
+                    "actor": self.plant,
+                    "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/120_plant/collision/base{plant_id}.glb",
+                })
     
     def get_cluttered_surfaces(self):
         # clutter surfaces with additional random obstacles
@@ -480,7 +533,7 @@ class Office_base_task(Bench_base_task):
                 continue
             task_objects_list.append(actor_name)
 
-        cluttered_item_info, obj_names_short, obj_names_tall = get_cluttered_objects_subset(
+        cluttered_item_info, obj_names_short, obj_names_tall = get_cluttered_objects_subset_2(
             "office", self.sample_d, task_objects_list
         )
 
@@ -548,3 +601,46 @@ class Office_base_task(Bench_base_task):
     
     def add_extra_cameras(self):
         self.cameras.add_extra_cameras(f"{os.environ['BENCH_ROOT']}/bench_assets/embodiments/office_config.yml")
+    
+    def enable_drawer(self, enable: bool):
+        files = ["original-23.obj", "original-24.obj", "original-18.obj", "original-34.obj", "original-41.obj", "original-57.obj", "original-62.obj"]
+        names = [f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/{file}_{self.seed}" for file in files]
+        self.enable_obstacle(enable, names)
+    
+    def disable_panel(self):
+        files = ["original-34.obj", "original-41.obj"]
+        names = [f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/{file}_{self.seed}" for file in files]
+        self.enable_obstacle(False, names)
+    
+    def add_cabinet_collision(self):
+        # adds cabinet drawer to curobo collision world. Adds it with the drawer state being open. 
+        limit = self.cabinet.get_qlimits()[0]
+        self.cabinet.set_qpos([limit[1],0,0]) # open drawer for extracting open pose
+        self.collision_list.append({
+            "actor": self.cabinet,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
+            "pose": self.cabinet.get_link_pose("link_1"),
+            "files": ["original-23.obj", "original-24.obj", "original-18.obj"],
+        })
+        self.cabinet.set_qpos([limit[0],0,0]) # reset drawer to closed state for task rollout
+
+        # prohibit area around opening space
+        cabinet_pose = self.cabinet.get_pose().p
+        cabinet_pose[1]-= 0.19  
+        self.prohibited_area["table"].append([cabinet_pose[0]-0.11, cabinet_pose[1]-0.1, cabinet_pose[0]+0.11, cabinet_pose[1]+0.1])
+        self.add_operating_area(cabinet_pose, width = 0.12, length = 0.4)
+    
+    def add_operating_area(self, pose, width = 0.07, length = 0.28):
+        xmin = pose[0] - width/2
+        xmax = pose[0] + width/2
+        ymin = pose[1] - length
+        ymax = pose[1]
+        self.prohibited_area["table"].append([xmin, ymin, xmax, ymax])
+    
+    def add_gripper_operating_area(self):
+        # prohibit the area under the gripper start state so there are no initial collisions with obstacles
+        x_half_width = 0.075
+        ymax = -0.18
+        ymin = -0.26
+        self.prohibited_area["table"].append([-0.3-x_half_width, ymin, -0.3+x_half_width, ymax])
+        self.prohibited_area["table"].append([0.3-x_half_width, ymin, 0.3+x_half_width, ymax])
