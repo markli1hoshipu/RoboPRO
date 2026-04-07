@@ -175,7 +175,7 @@ class move_seal_onto_book(Study_base_task):
                 self.seal_obj,
                 arm_tag=seal_arm_tag,
                 target_pose=seal_des_pose,
-                constrain="target",
+                constrain="free",
                 pre_dis=0,
                 dis=dis,
             ))
