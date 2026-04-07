@@ -1,4 +1,6 @@
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
+from bench_envs.utils.scene_gen_utils import get_random_place_pose, get_actor_boundingbox
+
 from envs.utils import *
 import math
 import numpy as np
@@ -135,7 +137,10 @@ class pick_milk_box_from_fridge(Kitchen_base_large):
                 self.milk_box.config["scale"] = [final_scale] * 3
             self._ensure_milk_box_grasp_metadata()
             self.add_prohibit_area(self.milk_box, padding=0.04, area="table")
-
+        self.des_pose = get_random_place_pose(xlim = [-0.1, 0.45], ylim=[-0.2,0.1],
+                                        col_thr=0.15,zlim=[0.78],
+                                        object_bounds={})
+        self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
     def _is_milk_box_inside_fridge(self) -> bool:
         milk_local = self._milk_box_local_in_fridge()
         if milk_local is None:
@@ -173,6 +178,15 @@ class pick_milk_box_from_fridge(Kitchen_base_large):
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.LIFT_DELTA))
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
         self.move(self.back_to_origin(arm_tag=arm_tag))
+        self.move(
+            self.place_actor(
+                self.milk_box,
+                arm_tag=arm_tag,
+                target_pose= self.des_pose,
+                constrain="auto",
+                pre_dis=0.07,
+                dis=0.005,
+            ))
 
         self.info["info"] = {
             "{A}": f"{self.milk_box_modelname}/base{self.milk_box_model_id}",
@@ -181,4 +195,13 @@ class pick_milk_box_from_fridge(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        return self._is_milk_box_retrieved()
+        eps = 0.01
+        b_pose = self.milk_box.get_pose().p
+        table_bb = get_actor_boundingbox(self.table)
+        milk_box_on_table = np.all((table_bb[0][:2] <= b_pose[:2])  &  (b_pose[:2] <= table_bb[1][:2]))
+        milk_box_on_table &= (b_pose[-1] - table_bb[1][-1]) < eps  
+    
+        return not self._is_milk_box_inside_fridge() and milk_box_on_table \
+               and self.robot.is_right_gripper_open() \
+               and self.robot.is_left_gripper_open()
+

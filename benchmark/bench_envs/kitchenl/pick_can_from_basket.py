@@ -1,4 +1,5 @@
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
+from bench_envs.utils.scene_gen_utils import get_actor_boundingbox, get_random_place_pose,print_c
 from envs.utils import *
 import math
 import numpy as np
@@ -13,10 +14,6 @@ class pick_can_from_basket(Kitchen_base_large):
 
     CAN_SPAWN_Z_OFFSET = 0.02
     BASKET_CAN_LOCAL = np.array([0.0, 0.035, 0.03], dtype=float)
-
-    BASKET_X_BOUNDS = (-0.20, 0.20)
-    BASKET_Y_BOUNDS = (-0.20, 0.20)
-    BASKET_Z_BOUNDS = (-0.10, 0.25)
 
     PLACE_WORLD_X_OFFSET = 0.08
     PLACE_WORLD_Y_OFFSET = -0.08
@@ -83,10 +80,6 @@ class pick_can_from_basket(Kitchen_base_large):
         qx, qy, qz, qw = t3d.euler.euler2quat(ax, ay, az)
         return [qw, qx, qy, qz]
 
-    def _table_spawn_pose(self, table_center: np.ndarray) -> sapien.Pose:
-        z = float(table_center[2] + self.CAN_SPAWN_Z_OFFSET)
-        return sapien.Pose([float(table_center[0]), float(table_center[1]), z], self._can_quat_from_cfg())
-
     def _basket_spawn_pose(self) -> sapien.Pose:
         basket_pose = self.basket_right.get_pose()
         basket_tf = basket_pose.to_transformation_matrix()
@@ -101,100 +94,14 @@ class pick_can_from_basket(Kitchen_base_large):
         return self._world_point_in_entity_local(self.basket_right, np.array(self.can.get_pose().p, dtype=float))
 
     def _is_can_inside_basket(self) -> bool:
-        loc = self._can_local_in_basket()
-        if loc is None:
-            return False
-        x_l, y_l, z_l = loc
-        return bool(
-            self.BASKET_X_BOUNDS[0] <= x_l <= self.BASKET_X_BOUNDS[1]
-            and self.BASKET_Y_BOUNDS[0] <= y_l <= self.BASKET_Y_BOUNDS[1]
-            and self.BASKET_Z_BOUNDS[0] <= z_l <= self.BASKET_Z_BOUNDS[1]
-        )
-
-    def _can_local_in_table(self) -> np.ndarray | None:
-        if self.can is None or self.table is None:
-            return None
-        return self._world_point_in_entity_local(self.table, np.array(self.can.get_pose().p, dtype=float))
-
+        box_bb = get_actor_boundingbox(self.basket_right.actor)
+        return np.all((box_bb[0][:2] <= self.can.get_pose().p[:2])  & 
+                       (self.can.get_pose().p[:2] <= box_bb[1][:2]))
+                
     def _place_target_world_xy(self) -> np.ndarray:
         p = np.array(self.table.get_pose().p, dtype=float)
         return np.array([p[0] + self._place_world_x_off, p[1] + self._place_world_y_off], dtype=float)
 
-    def _place_anchor_table_local(self) -> np.ndarray | None:
-        if self.table is None:
-            return None
-        xy_w = self._place_target_world_xy()
-        p = np.array(self.table.get_pose().p, dtype=float)
-        return self._world_point_in_entity_local(self.table, np.array([xy_w[0], xy_w[1], p[2]], dtype=float))
-
-    def _is_can_near_place_xy(self) -> bool:
-        can_local = self._can_local_in_table()
-        anchor = self._place_anchor_table_local()
-        if can_local is None or anchor is None:
-            return False
-        return bool(
-            abs(can_local[0] - anchor[0]) <= float(self.PLACE_SUCCESS_X_TOL)
-            and abs(can_local[1] - anchor[1]) <= float(self.PLACE_SUCCESS_Y_TOL)
-        )
-
-    def _is_can_on_table_surface(self) -> bool:
-        can_local = self._can_local_in_table()
-        if can_local is None:
-            return False
-        z_l = can_local[2]
-        return bool(self.TABLE_SURFACE_Z_BOUNDS[0] <= z_l <= self.TABLE_SURFACE_Z_BOUNDS[1])
-
-    def _left_tcp_to_can_dist_m(self) -> float | None:
-        if self.can is None:
-            return None
-        tcp = np.array(self.get_arm_pose(ArmTag("left")), dtype=float)
-        can_p = np.array(self.can.get_pose().p, dtype=float)
-        return float(np.linalg.norm(can_p - tcp[:3]))
-
-    def _is_can_in_left_hand(self) -> bool:
-        d = self._left_tcp_to_can_dist_m()
-        if d is None:
-            return False
-        return bool(d < float(self.IN_HAND_TCP_DIST_THRESHOLD) and self.is_left_gripper_close())
-
-    def _success_debug(self) -> dict:
-        can_local = self._can_local_in_table()
-        anchor = self._place_anchor_table_local()
-        dx = dy = None
-        if can_local is not None and anchor is not None:
-            dx = float(abs(can_local[0] - anchor[0]))
-            dy = float(abs(can_local[1] - anchor[1]))
-        z_l = float(can_local[2]) if can_local is not None else None
-        on_table = self._is_can_on_table_surface()
-        not_in_basket = not self._is_can_inside_basket()
-        not_in_left = not self._is_can_in_left_hand()
-        near_xy = self._is_can_near_place_xy()
-        ok = bool(on_table and not_in_basket and not_in_left and near_xy)
-        return {
-            "on_table": on_table,
-            "not_in_basket": not_in_basket,
-            "not_in_left_hand": not_in_left,
-            "near_place_xy": near_xy,
-            "table_local_xy_abs_err": [dx, dy],
-            "place_xy_tol": [float(self.PLACE_SUCCESS_X_TOL), float(self.PLACE_SUCCESS_Y_TOL)],
-            "table_local_z": z_l,
-            "table_surface_z_bounds": [self.TABLE_SURFACE_Z_BOUNDS[0], self.TABLE_SURFACE_Z_BOUNDS[1]],
-            "tcp_dist_m": self._left_tcp_to_can_dist_m(),
-            "in_hand_tcp_threshold_m": float(self.IN_HAND_TCP_DIST_THRESHOLD),
-            "left_gripper_close": bool(self.is_left_gripper_close()),
-            "plan_success": getattr(self, "plan_success", None),
-            "all_ok": ok,
-        }
-
-    def _ee_pose_above_place_target(self, arm_tag: ArmTag) -> np.ndarray:
-        ee_pose = np.array(self.get_arm_pose(arm_tag), dtype=float)
-        table_p = np.array(self.table.get_pose().p, dtype=float)
-        xy_w = self._place_target_world_xy()
-        target = ee_pose.copy()
-        target[0] = float(xy_w[0])
-        target[1] = float(xy_w[1])
-        target[2] = float(table_p[2] + self.PLACE_HEIGHT_ABOVE_TABLE)
-        return target
 
     def load_actors(self):
         self._place_world_x_off = float(self.PLACE_WORLD_X_OFFSET)
@@ -222,6 +129,12 @@ class pick_can_from_basket(Kitchen_base_large):
                 self.can.config["scale"] = [final_scale] * 3
             self._ensure_can_grasp_metadata()
             self.add_prohibit_area(self.can, padding=0.04, area="table")
+        self.des_pose = get_random_place_pose(xlim = [-0.25, -0.15], ylim=[-0.15,-0.1],
+                                        col_thr=0.15,zlim=[0.82], qpos=(0,0,0),
+                                        object_bounds={})
+                                        
+        self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
+        print_c(f"Place destination {self.des_pose}", "RED")
 
     def play_once(self):
         arm_tag = ArmTag("left")
@@ -236,22 +149,25 @@ class pick_can_from_basket(Kitchen_base_large):
             )
         )
         self.move(self.back_to_origin(arm_tag=arm_tag))
-        self.move(self.move_to_pose(arm_tag=arm_tag, target_pose=self._ee_pose_above_place_target(arm_tag)))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=-self.DESCEND_BEFORE_RELEASE))
-        self.move(self.open_gripper(arm_tag=arm_tag, pos=1.0))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_AFTER_RELEASE))
-        self.move(self.back_to_origin(arm_tag=arm_tag))
+        self.move(self.move_to_pose(arm_tag=arm_tag, target_pose=self.des_pose))
+        self.move(self.open_gripper(arm_tag=arm_tag))
+
 
         self.info["info"] = {
             "{A}": f"{self.can_modelname}/base{self.can_model_id}",
             "{a}": str(arm_tag),
         }
-        chk = self.check_success()
-        self.info["episode_check_success"] = chk
-        self.info["success_debug"] = dict(self._last_success_debug)
         return self.info
 
     def check_success(self):
-        d = self._success_debug()
-        self._last_success_debug = d
-        return bool(d["all_ok"])
+        eps = 0.01
+        b_pose = self.can.get_pose().p
+        table_bb = get_actor_boundingbox(self.table)
+        can_on_table = np.all((table_bb[0][:2] <= b_pose[:2])  &  (b_pose[:2] <= table_bb[1][:2]))
+        can_on_table &= (b_pose[-1] - table_bb[1][-1]) < eps  
+        
+        return not self._is_can_inside_basket() and can_on_table \
+               and self.robot.is_right_gripper_open() \
+               and self.robot.is_left_gripper_open()
+
+

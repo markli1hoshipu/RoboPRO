@@ -164,6 +164,7 @@ class Bench_base_task(Base_Task):
         # record cluttered objects
         self.record_cluttered_objects = []
         self.size_dict = []
+
         if np.random.rand() < self.clean_background_rate:
             return
 
@@ -188,6 +189,7 @@ class Bench_base_task(Base_Task):
         # If one group is empty, fall back to the other
         if not obj_names_short and not obj_names_tall:
             return
+
         while success_count < obstacle_count and trys < max_try:
             # Decide which group to sample from for this attempt
             if not obj_names_short:
@@ -255,7 +257,7 @@ class Bench_base_task(Base_Task):
             if not success or self.cluttered_obj is None:
                 trys += 1
                 continue
-            
+
             self.cluttered_obj.set_name(f"{obj_name}")
 
             # manage stability as distractors
@@ -287,6 +289,19 @@ class Bench_base_task(Base_Task):
                 "collision_path": path,
             })
 
+            # # for viewing radius estimation
+            # half_size = [obj_radius, obj_radius, 0.0005]
+            # pose = self.cluttered_obj.get_pose()
+            # pose.q = [1,0,0,0]
+            # target = create_box(
+            #     scene=self,
+            #     pose=pose,
+            #     half_size=half_size,
+            #     color=(1, 0, 0),
+            #     name=f"{obj_name}_collision",
+            #     is_static=True,
+            # )
+        
         if success_count < obstacle_count:
             print(f"Warning: Only {success_count} cluttered objects are placed on the surface.")
 
@@ -405,7 +420,6 @@ class Bench_base_task(Base_Task):
         self.cluttered_objs = []
     
     def stabilize_object(self, object):
-        # object.set_mass(1)
         # object.set_mass(1)
         rb = object.actor.components[1]
         try:
@@ -625,15 +639,12 @@ class Bench_base_task(Base_Task):
             actor_pose = transforms._toPose(actor)
             actor_data = {}
             scale = 1
-            scale = 1
         else:
             actor_pose = actor.get_pose()
             if isinstance(actor, Actor):
                 actor_data = actor.config
             else:
                 actor_data = {}
-            scale = actor.scale
-            
             scale = actor.scale
             
         origin_bounding_size = (np.array(actor_data.get("extents", [0.1, 0.1, 0.1])) * scale / 2)
@@ -817,7 +828,7 @@ class Bench_base_task(Base_Task):
         actor: Actor,
         arm_tag: ArmTag,
         target_pose: list | np.ndarray,
-        constrain: Literal["free", "align", "auto", "target"] = "auto",
+        constrain: Literal["free", "align", "auto"] = "auto",
         align_axis: list[np.ndarray] | np.ndarray | list = None,
         actor_axis: np.ndarray | list = [1, 0, 0],
         actor_axis_type: Literal["actor", "world"] = "actor",
@@ -839,7 +850,7 @@ class Bench_base_task(Base_Task):
             z_transform = True
 
         end_effector_pose = (self.robot.get_left_ee_pose() if arm_tag == "left" else self.robot.get_right_ee_pose())
-        # print(f"[bench base task] constraint in get_place_pose {constrain}")
+
         if constrain == "auto":
             grasp_direct_vec = place_start_pose.p - end_effector_pose[:3]
             if np.abs(np.dot(grasp_direct_vec, [0, 0, 1])) <= 0.1:
@@ -876,10 +887,6 @@ class Bench_base_task(Base_Task):
                 z_transform=z_transform,
                 local_up_axis=local_up_axis,
             )
-        
-        # print(f"[base_task] place_pose target pose {target_pose}, place_start_pose {place_start_pose}")
-        # print(f"[base_task] place_pose after get_place_pose {place_pose}")
-        
         start2target = (transforms._toPose(place_pose).to_transformation_matrix()[:3, :3]
                         @ place_start_pose.to_transformation_matrix()[:3, :3].T)
         target_point = (start2target @ (actor_matrix[:3, 3] - place_start_pose.p).reshape(3, 1)).reshape(3) + np.array(
@@ -1112,7 +1119,12 @@ class Bench_base_task(Base_Task):
                     if os.path.isdir(collision_path): # if actor is made from multiple obj files
                         name_prefix = actor.get_name()
                         if "link" in info:
-                            pose = actor.get_link_pose(info["link"])
+                            if isinstance(info["link"], list):
+                                pose = sapien.Pose()
+                                pose.p = actor.get_link_pose(info["link"][0]).p
+                                pose.q = actor.get_link_pose(info["link"][1]).q
+                            else:
+                                pose = actor.get_link_pose(info["link"])
                         elif "pose" in info:
                             pose = info["pose"]
                         else:
@@ -1139,8 +1151,10 @@ class Bench_base_task(Base_Task):
 
         if self.cuboid_collision_list:
             for info in self.cuboid_collision_list:
-                name, dims, pose = info
-                collision_dict["cuboid"][name] = {
+                name = info["name"]
+                dims = info["dims"]
+                pose = info["pose"]
+                collision_dict["cuboid"][f"{name}_{pose}_{self.seed}"] = {
                     "dims": dims,
                     "pose": pose,
                 }
@@ -1209,7 +1223,6 @@ class Bench_base_task(Base_Task):
                 continue
 
             part_name = f"{p}_{self.seed}"
-            part_name = f"{p}_{self.seed}"
             collision_dict["mesh"][part_name] = {
                 "file_path": str(p),
                 "pose": list(pose),
@@ -1242,9 +1255,6 @@ class Bench_base_task(Base_Task):
         Detach the attached objects from the robot in Curobo Planning.
         """
         self.robot.detach_object(arms_tag=arms_tag)
-    
-    def enable_obstacle(self, enable: bool, names: list[str]):
-        self.robot.enable_obstacle(enable, names)
     
     def enable_obstacle(self, enable: bool, names: list[str]):
         self.robot.enable_obstacle(enable, names)
