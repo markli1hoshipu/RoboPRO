@@ -67,7 +67,7 @@ class move_seal_onto_table(Study_base_task):
                 self.target_obj,
                 arm_tag=arm_tag,
                 target_pose= self.target_des_pose,
-                constrain= "auto",
+                constrain= "free",
                 pre_dis=pre_dis,
                 dis=dis
             ))

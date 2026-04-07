@@ -107,7 +107,7 @@ class move_seal_cup_next_to_box(Study_base_task):
                 target_obj,
                 arm_tag=arm_tag,
                 target_pose= des_obj_pose,
-                constrain= "auto",
+                constrain= "free",
                 pre_dis=pre_dis,
                 dis=dis,
             ))
