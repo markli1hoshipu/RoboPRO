@@ -1,3 +1,5 @@
+import os
+
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
 from bench_envs.utils.scene_gen_utils import get_random_place_pose, get_actor_boundingbox, print_c
 from envs.utils import *
@@ -118,8 +120,6 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
         self._sample_place_world_offsets()
 
         self.boxdrink_model_id = int(np.random.choice(self.boxdrink_model_ids))
-
-
         intrinsic_scale = self._get_asset_model_scale_create_actor(self.boxdrink_modelname, self.boxdrink_model_id)
         final_scale = float(intrinsic_scale) * float(self.boxdrink_scale)
 
@@ -159,6 +159,8 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
                 gripper_pos=self.GRASP_CLOSE_POS,
             )
         )
+        self.attach_object(self.boxdrink, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.boxdrink_modelname}/collision/base{self.boxdrink_model_id}.glb", str(arm_tag))
+
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
         self.move(self.back_to_origin(arm_tag=arm_tag))
 

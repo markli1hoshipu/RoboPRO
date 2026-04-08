@@ -1,4 +1,9 @@
+import os
+
+import yaml
+
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
+from bench_envs.utils.scene_gen_utils import get_actor_boundingbox, point_to_box_distance, print_c
 from envs.utils import *
 import math
 import numpy as np
@@ -49,7 +54,8 @@ class put_milk_box_next_to_basket(Kitchen_base_large):
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.milk_box_modelname = "038_milk-box"
-        self.milk_box_model_ids = [0, 1, 2]
+        self.milk_box_model_ids = [0]
+
         self.milk_box_spawn_rot_deg = [-45.0, 0.0, 90.0]
 
         rot_cfg = kwargs.pop("milk_box_spawn_rot_deg", None)
@@ -62,6 +68,7 @@ class put_milk_box_next_to_basket(Kitchen_base_large):
             self.milk_box_scale = float(ms)
 
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
+        kwargs["include_collision"] = True
         super()._init_task_env_(**kwargs)
 
     def _milk_box_quat_from_cfg(self) -> list[float]:
@@ -104,6 +111,15 @@ class put_milk_box_next_to_basket(Kitchen_base_large):
             self._ensure_milk_box_grasp_metadata()
             self.add_prohibit_area(self.milk_box, padding=0.04, area="table")
 
+        self.move_thr = 0.05
+        bb_box = get_actor_boundingbox(self.basket_right.actor)        
+        self.des_obj_pose = [ np.random.uniform(low=bb_box[0][0]+0.02, high=bb_box[1][0]),
+             np.random.uniform(low=bb_box[0][1]-0.05, high=bb_box[0][1]-0.08),
+             0.8] + [1,0,0,0]
+        self.add_prohibit_area(self.des_obj_pose, padding=0.0, area="table")
+
+        print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
+        
     def _milk_box_local_in_basket(self) -> np.ndarray | None:
         if self.milk_box is None or self.basket_right is None:
             return None
@@ -113,16 +129,6 @@ class put_milk_box_next_to_basket(Kitchen_base_large):
         milk_local_h = inv_tf @ np.array([milk_world[0], milk_world[1], milk_world[2], 1.0], dtype=float)
         return np.array(milk_local_h[:3], dtype=float)
 
-    def _is_milk_box_next_to_basket(self) -> bool:
-        milk_local = self._milk_box_local_in_basket()
-        if milk_local is None:
-            return False
-        x_l, y_l, z_l = milk_local
-        ratio = float(self.BASKET_EXPANSION_RATIO)
-        x_ok = (self.BASKET_X_BOUNDS[0] * ratio <= x_l <= self.BASKET_X_BOUNDS[1] * ratio)
-        y_ok = (self.BASKET_Y_BOUNDS[0] * ratio <= y_l <= self.BASKET_Y_BOUNDS[1] * ratio)
-        z_ok = (self.BASKET_Z_BOUNDS[0] * ratio <= z_l <= self.BASKET_Z_BOUNDS[1] * ratio)
-        return bool(x_ok and y_ok and z_ok)
 
     def play_once(self):
         arm_tag = ArmTag("left")
@@ -135,12 +141,17 @@ class put_milk_box_next_to_basket(Kitchen_base_large):
                 gripper_pos=self.GRASP_CLOSE_POS,
             )
         )
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
-        self.move(self.back_to_origin(arm_tag=arm_tag))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, **self.APPROACH_DELTA_1))
-        self.move(self.open_gripper(arm_tag=arm_tag, pos=1.0))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
-        self.move(self.back_to_origin(arm_tag=arm_tag))
+        self.attach_object(self.milk_box, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.milk_box_modelname}/collision/base{self.milk_box_model_id}.glb", str(arm_tag))
+
+        self.move(
+            self.place_actor(
+                self.milk_box,
+                arm_tag=arm_tag,
+                target_pose= self.des_obj_pose,
+                constrain= "auto",
+                pre_dis=0.07,
+                dis=0.002,
+            ))
 
         self.info["info"] = {
             "{A}": f"{self.milk_box_modelname}/base{self.milk_box_model_id}",
@@ -149,4 +160,11 @@ class put_milk_box_next_to_basket(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        return self._is_milk_box_next_to_basket()
+        dist_thr = 0.15
+        box_bb = get_actor_boundingbox(self.basket_right.actor)
+        dist_to_box = point_to_box_distance(self.milk_box.get_pose().p, box_bb[0], box_bb[1])
+
+        return (dist_to_box < dist_thr
+                and self.robot.is_left_gripper_open()
+                and self.robot.is_right_gripper_open())
+

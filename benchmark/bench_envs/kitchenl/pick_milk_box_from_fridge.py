@@ -1,3 +1,7 @@
+import os
+
+import yaml
+
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
 from bench_envs.utils.scene_gen_utils import get_random_place_pose, get_actor_boundingbox
 
@@ -63,7 +67,10 @@ class pick_milk_box_from_fridge(Kitchen_base_large):
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.milk_box_modelname = "038_milk-box"
-        self.milk_box_model_ids = [0, 1, 2]
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+            task_objs = yaml.safe_load(f)
+
+        self.milk_box_model_ids = task_objs['objects']['kitchenl']['targets'][self.milk_box_modelname]
         self.milk_box_spawn_rot_deg = [0.0, 0.0, 90.0]
 
         rot_cfg = kwargs.pop("milk_box_spawn_rot_deg", None)
@@ -138,8 +145,8 @@ class pick_milk_box_from_fridge(Kitchen_base_large):
             self._ensure_milk_box_grasp_metadata()
             self.add_prohibit_area(self.milk_box, padding=0.04, area="table")
         self.des_pose = get_random_place_pose(xlim = [-0.1, 0.45], ylim=[-0.2,0.1],
-                                        col_thr=0.15,zlim=[0.78],
-                                        object_bounds={})
+                                                    col_thr=0.15,zlim=[0.78],
+                                                    object_bounds={})
         self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
     def _is_milk_box_inside_fridge(self) -> bool:
         milk_local = self._milk_box_local_in_fridge()
@@ -150,18 +157,6 @@ class pick_milk_box_from_fridge(Kitchen_base_large):
         y_ok = (self.FRIDGE_Y_BOUNDS[0] <= y_l <= self.FRIDGE_Y_BOUNDS[1])
         z_ok = (self.FRIDGE_Z_BOUNDS[0] <= z_l <= self.FRIDGE_Z_BOUNDS[1])
         return bool(x_ok and y_ok and z_ok)
-
-    def _is_milk_box_in_right_hand(self) -> bool:
-        if self.milk_box is None:
-            return False
-        tcp_pose = np.array(self.get_arm_pose(ArmTag("right")), dtype=float)
-        milk_p = np.array(self.milk_box.get_pose().p, dtype=float)
-        dist_ok = float(np.linalg.norm(milk_p - tcp_pose[:3])) < self.IN_HAND_TCP_DIST_THRESHOLD
-        return bool(dist_ok and self.is_right_gripper_close())
-
-    def _is_milk_box_retrieved(self) -> bool:
-        # Success: object is outside fridge volume and still in right gripper.
-        return (not self._is_milk_box_inside_fridge()) and self._is_milk_box_in_right_hand()
 
     def play_once(self):
         arm_tag = ArmTag("right")
@@ -175,6 +170,8 @@ class pick_milk_box_from_fridge(Kitchen_base_large):
                 gripper_pos=self.GRASP_CLOSE_POS,
             )
         )
+        self.attach_object(self.milk_box, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.milk_box_modelname}/collision/base{self.milk_box_model_id}.glb", str(arm_tag))
+
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.LIFT_DELTA))
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
         self.move(self.back_to_origin(arm_tag=arm_tag))
