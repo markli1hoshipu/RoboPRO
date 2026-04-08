@@ -65,7 +65,7 @@ class empty_box(Study_base_task):
         # seal_xlim = [xlim[0] + np.mean(xlim), xlim[1]]
         seal_xlim = [xlim[0] + np.mean(xlim), xlim[1]] if self.side_to_place == "right" else [xlim[0], xlim[1]+ np.mean(xlim)]
         seal_ylim = [ylim[0], ylim[1]-0.15]
-        print_c(f"seal_xlim: {seal_xlim}, seal_ylim: {seal_ylim}", "BLUE")
+        # print_c(f"seal_xlim: {seal_xlim}, seal_ylim: {seal_ylim}", "BLUE")
         self.seal_des_pose = get_random_place_pose(xlim=seal_xlim, ylim=seal_ylim,
                                              col_thr=0.05, object_bounds=object_bounds)
         self.add_prohibit_area(self.seal_des_pose, padding=0.1, area="table")
@@ -92,7 +92,7 @@ class empty_box(Study_base_task):
         self.seal_des_pose = self.seal_des_pose.p.tolist() + [1,0,0,0]
         cup_xlim = [xlim[0] + np.mean(xlim), xlim[1]] if self.side_to_place == "right" else [xlim[0], xlim[1]+ np.mean(xlim)]
         cup_ylim = [ylim[0], ylim[1]-0.15]
-        print_c(f"cup_xlim: {cup_xlim}, cup_ylim: {cup_ylim}", "BLUE")
+        # print_c(f"cup_xlim: {cup_xlim}, cup_ylim: {cup_ylim}", "BLUE")
         self.cup_des_pose = get_random_place_pose(xlim=cup_xlim, ylim=cup_ylim,
                                              col_thr=0.05, object_bounds=object_bounds)
        
@@ -100,8 +100,8 @@ class empty_box(Study_base_task):
 
         self.cup_des_pose = self.cup_des_pose.p.tolist() + [1,0,0,0]
 
-        print_c(f"Placement destination poses: Seal {self.seal_des_pose}; \
-                Cup {self.cup_des_pose}", "RED")
+        # print_c(f"Placement destination poses: Seal {self.seal_des_pose}; \
+        #         Cup {self.cup_des_pose}", "RED")
 
     def _get_target_object_names(self) -> set[str]:
         """Default for tasks with single self.target_obj. Override for multi-target tasks."""
@@ -124,9 +124,9 @@ class empty_box(Study_base_task):
                 pre_dis=pre_dis,
                 dis=dis
             ))
-        print(" successfully place seal, lift arm...")
+        # print(" successfully place seal, lift arm...")
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
-        print(" successfully lift arm")
+        # print(" successfully lift arm")
 
         return self.seal_obj.get_pose()
         
