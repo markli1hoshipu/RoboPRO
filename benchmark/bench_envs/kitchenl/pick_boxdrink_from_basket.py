@@ -1,3 +1,5 @@
+import os
+
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
 from bench_envs.utils.scene_gen_utils import get_random_place_pose, get_actor_boundingbox, print_c
 from envs.utils import *
@@ -84,6 +86,7 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
         box_bb = get_actor_boundingbox(self.basket_right.actor)
         return np.all((box_bb[0][:2] <= self.boxdrink.get_pose().p[:2])  & 
                        (self.boxdrink.get_pose().p[:2] <= box_bb[1][:2]))
+       
         
     def _sample_place_world_offsets(self) -> None:
         self._place_world_x_off = float(self.PLACE_WORLD_X_OFFSET) + float(
@@ -118,13 +121,12 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
         self._sample_place_world_offsets()
 
         self.boxdrink_model_id = int(np.random.choice(self.boxdrink_model_ids))
-
-
         intrinsic_scale = self._get_asset_model_scale_create_actor(self.boxdrink_modelname, self.boxdrink_model_id)
         final_scale = float(intrinsic_scale) * float(self.boxdrink_scale)
 
         spawn_pose = self.basket_right.get_pose()
         spawn_pose.p[1] -= 0.02
+
         self.boxdrink = create_actor(
             scene=self.scene,
             pose=spawn_pose,
@@ -134,6 +136,7 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
             convex=True,
             scale=final_scale,
         )
+        
         
         if self.boxdrink is not None:
             self.boxdrink.set_mass(self.BOXDRINK_MASS)
@@ -159,6 +162,8 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
                 gripper_pos=self.GRASP_CLOSE_POS,
             )
         )
+        self.attach_object(self.boxdrink, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.boxdrink_modelname}/collision/base{self.boxdrink_model_id}.glb", str(arm_tag))
+
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
         self.move(self.back_to_origin(arm_tag=arm_tag))
 
@@ -171,7 +176,7 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
                 pre_dis=0.07,
                 dis=0.005,
             ))
-        
+     
         self.info["info"] = {
             "{A}": f"{self.boxdrink_modelname}/base{self.boxdrink_model_id}",
             "{a}": str(arm_tag),

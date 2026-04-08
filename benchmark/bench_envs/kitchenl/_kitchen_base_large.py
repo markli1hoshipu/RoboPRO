@@ -625,7 +625,7 @@ class Kitchen_base_large(Bench_base_task):
             self.basket_right.set_name("basket_right")
             self.add_prohibit_area(self.basket_right, padding=0.01, area="table")
             if self.incl_collision:
-                print_c("collision added")
+                print_c("collision added","YELLOW")
                 self.collision_list.append({
                     "actor": self.basket_right,
                     "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/063_tabletrashbin/collision/base6.glb",

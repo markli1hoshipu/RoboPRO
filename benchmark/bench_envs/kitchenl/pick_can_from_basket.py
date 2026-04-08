@@ -1,3 +1,5 @@
+import os
+
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
 from bench_envs.utils.scene_gen_utils import get_actor_boundingbox, get_random_place_pose,print_c
 from envs.utils import *
@@ -148,6 +150,8 @@ class pick_can_from_basket(Kitchen_base_large):
                 contact_point_id=self.GRASP_CONTACT_POINT_ID,
             )
         )
+        self.attach_object(self.can, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.can_modelname}/collision/base{self.can_model_id}.glb", str(arm_tag))
+
         self.move(self.back_to_origin(arm_tag=arm_tag))
         self.move(self.move_to_pose(arm_tag=arm_tag, target_pose=self.des_pose))
         self.move(self.open_gripper(arm_tag=arm_tag))
