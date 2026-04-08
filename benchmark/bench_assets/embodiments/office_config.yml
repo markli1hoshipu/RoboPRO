@@ -46,14 +46,29 @@ static_camera_list:
 - name: demo_camera  # elevated right-front view, full table visible
   type: D435
   position:
-    - 1.4
-    - -0.6
-    - 1.5
+    - 1.65
+    - -0.78
+    - 1.62
   forward:
-    - -0.65
-    - 0.45
-    - -0.5
+    - -0.98
+    - 0.40
+    - -0.36
   left:
     - -0.55
     - -0.75
+    - 0
+
+- name: demo_camera_2  # elevated left-front mirrored view
+  type: D435
+  position:
+    - -1.65
+    - -0.78
+    - 1.62
+  forward:
+    - 0.98
+    - 0.40
+    - -0.36
+  left:
+    - -0.55
+    - 0.75
     - 0

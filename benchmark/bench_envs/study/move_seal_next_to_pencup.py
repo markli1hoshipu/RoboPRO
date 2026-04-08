@@ -10,10 +10,10 @@ from copy import deepcopy
 from bench_envs.study._study_base_task import Study_base_task
 from envs.utils import *
 from bench_envs.utils.scene_gen_utils import get_position_limits, get_actor_boundingbox, get_collison_with_objs
-from bench_envs.utils.scene_gen_utils import print_c, place_actor
+from bench_envs.utils.scene_gen_utils import print_c, place_actor, point_to_box_distance
 from transforms3d.euler import euler2quat
 
-class move_glue_next_to_pencup(Study_base_task):
+class move_seal_next_to_pencup(Study_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
@@ -22,51 +22,60 @@ class move_glue_next_to_pencup(Study_base_task):
     def load_actors(self):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
-        move_thr = 0.08
+        self.move_thr = 0.05
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-                                      boundary_thr=0.20, side="right")
+                                      boundary_thr=0.20, side="right" if self.scene_id ==0 else "left")
         
-        object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
-        self.target_name = "095_glue"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
 
-        xlim_m = [xlim[0], (xlim[0] + xlim[1])/2 - move_thr- 0.05] 
+        place_gap = self.move_thr + 0.15
+        if self.side_to_place  == "right":
+            xlim_p = [xlim[0], np.mean(xlim) - place_gap] 
+            xlim_s = [np.mean(xlim), xlim[1]]
+        else:
+            xlim_s = [xlim[0], np.mean(xlim) - place_gap] 
+            xlim_p = [np.mean(xlim), xlim[1]] 
+
+        object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
+        self.target_name = "100_seal"
         self.target_obj, self.target_id, self.target_pose = \
-        place_actor(self.target_name, self, col_thr=0.10, xlim=xlim_m, ylim=ylim, 
-                    qpos=(90,0,90), object_bounds=object_bounds, task_objs=task_objs,
-                     mass = 0.1, rotation=False, obj_id=1)
+        place_actor(self.target_name, self, col_thr=0.15, xlim=xlim_s, ylim=ylim, 
+                    qpos=(90,0,0), object_bounds=object_bounds, task_objs=task_objs,
+                     mass = 0.1, rotation=False, obj_id=0)
         
         tar_bb = get_actor_boundingbox(self.target_obj.actor)
         object_bounds.append(tar_bb)
-        xlim_b = [(xlim[0] + xlim[1])/2 + 0.1, xlim[1]] 
-
         self.des_obj, self.des_obj_id, self.des_obj_pose = \
-            place_actor("059_pencup", self, col_thr=0.15, xlim=xlim_b,
+            place_actor("059_pencup", self, col_thr=0.15, xlim=xlim_p,
                         ylim= ylim, qpos=(90,0,0),
                         object_bounds=object_bounds, task_objs=task_objs,
                         obj_id = None, mass = 0.2, rotation=False)
+
+        pc_box = get_actor_boundingbox(self.des_obj.actor)
+        self.des_obj_pose = [pc_box[0][0] - self.move_thr if self.side_to_place == "left" else pc_box[1][0] + self.move_thr,
+             np.random.uniform(low=pc_box[0][1], high=pc_box[1][1]),
+             pc_box[1][-1]-0.03] + [1,0,0,0]
         
-     
-        p = self.des_obj.get_pose().p.tolist() 
-        p[0] -= move_thr
-        self.des_obj_pose = p + [1,0,0,0] #self.target_obj.get_pose().q.tolist() 
 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
-        self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
+        self.add_prohibit_area(self.des_obj_pose, padding=0.05, area="table")
+        self.add_prohibit_area(self.target_obj, padding=0.05, area="table")
 
 
-    def play_once(self, z = 0.05, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
+    def play_once(self, z = 0.14, pre_dis= 0.02, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
-        arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
+        arm_tag = ArmTag(self.side_to_place ) 
 
         # Grasp the mouse with the selected arm
-        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
+        x = -z if self.side_to_place == "right" else z
+        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag,
+                                    pre_grasp_dis=pre_grasp_dist))
 
         # Lift the mouse upward by 0.1 meters in z-direction
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=x, z=z))
 
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
-        # Place the mouse at the target location with alignment constraint
+
         self.move(
             self.place_actor(
                 self.target_obj,
@@ -75,8 +84,8 @@ class move_glue_next_to_pencup(Study_base_task):
                 constrain= "auto",
                 pre_dis=pre_dis,
                 dis=dis,
+                actor_axis_type="world"
             ))
-
         # Record information about the objects and arm used in the task
         self.info["info"] = {
             "{A}": f"{self.target_name}/base{self.target_id}",
@@ -86,12 +95,11 @@ class move_glue_next_to_pencup(Study_base_task):
         return self.info
 
     def check_success(self):
-        target_pose = self.target_obj.get_pose().p
-        target_des_pos = self.target_obj.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
+        dist_thr = abs(self.move_thr) + 0.02
+        cup_bb = get_actor_boundingbox(self.des_obj.actor)
+        dist_to_cup = point_to_box_distance(self.target_obj.get_pose().p, cup_bb[0], cup_bb[1])
 
-        return (np.all(abs(target_pose[:2] - target_des_pos[:2]) < np.array([eps1, eps2]))
+        return (dist_to_cup < dist_thr
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
 

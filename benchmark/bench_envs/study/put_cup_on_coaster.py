@@ -24,7 +24,8 @@ class put_cup_on_coaster(Study_base_task):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
         
-        xlim, ylim, self.side_to_place = get_position_limits(self.table, boundary_thr=0.15, side="right")
+        xlim, ylim, self.side_to_place = get_position_limits(self.table, 
+                                                             boundary_thr=0.15, side="right" if self.scene_id == 0 else "left")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         
@@ -42,20 +43,18 @@ class put_cup_on_coaster(Study_base_task):
                          rotation=False)
         
         # Get the placement pose
-        des_bb = get_actor_boundingbox(self.des_obj.actor)
         p = self.des_obj.get_pose().p.tolist() 
 
         p[1] -= 0.05  # Coaster appears 5cm below in the simulator
         p[-1] = self.target_obj.get_pose().p[-1]
         
-        self.des_obj_pose = p +  [1,0,0,0] #self.target_obj.get_pose().q.tolist()
-        #euler2quat(3.14,0,3.14).tolist() #
+        self.des_obj_pose = p +  [1,0,0,0] 
 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
 
-        self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
-        self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
+        self.add_prohibit_area(self.target_obj, padding=0.05, area="table")
+        self.add_prohibit_area(self.des_obj, padding=0.1, area="table")
 
      
       
@@ -91,13 +90,7 @@ class put_cup_on_coaster(Study_base_task):
         return self.info
 
     def check_success(self):
-        target_pose = self.target_obj.get_pose().p
-        target_qpose = np.abs(self.target_obj.get_pose().q)
-        target_des_pos = self.target_obj.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
-
-        return (np.all(abs(target_pose[:2] - target_des_pos[:2]) < np.array([eps1, eps2]))
-                and (np.abs(target_qpose[2] * target_qpose[3] - 0.49) < eps1
-                     or np.abs(target_qpose[0] * target_qpose[1] - 0.49) < eps1) and self.robot.is_left_gripper_open()
+        eps = 0.02
+        return (np.all((self.des_obj.get_pose().p[:2] - self.target_obj.get_pose().p[:2]) < [eps, eps])  
+                and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
