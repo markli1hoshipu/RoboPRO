@@ -41,8 +41,15 @@ parent_directory = os.path.dirname(current_file_path)
 
 
 class Study_base_task(Bench_base_task):
+    # Study scene furniture: table, wall, floor, ground, bookcase, wooden_box
+    FURNITURE_NAMES = {"table", "wall", "floor", "ground", "014_bookcase", "042_wooden_box"}
+
     def __init__(self):
         pass
+
+    def _get_target_object_names(self) -> set[str]:
+        """Default for tasks with single self.target_obj. Override for multi-target tasks."""
+        return {self.target_obj.get_name()}
 
     def _init_task_env_(self, table_xy_bias=[0, 0], table_height_bias=0, **kwags):
         """
@@ -74,7 +81,12 @@ class Study_base_task(Bench_base_task):
         self.save_data = kwags.get("save_data", False)
         self.dual_arm = kwags.get("dual_arm", True)
         self.eval_mode = kwags.get("eval_mode", False)
+        self.sample_d = kwags.get("sample_d", "objects")
+
+        self.enable_collision_metrics = kwags.get("enable_collision_metrics", False)
         self.scene_objs = []
+        self.scene_obj_info = []
+
         self.need_topp = True  # TODO
 
         # Random
@@ -88,7 +100,9 @@ class Study_base_task(Bench_base_task):
         self.crazy_random_light_rate = random_setting.get("crazy_random_light_rate", 0)
         self.crazy_random_light = (0 if not self.random_light else np.random.rand() < self.crazy_random_light_rate)
         self.random_embodiment = random_setting.get("random_embodiment", False)  # TODO
-
+        self.obstacle_height = random_setting.get("obstacle_height", "short")
+        self.obstacle_density = random_setting.get("obstacle_density", 3)
+        self.col_temp = os.environ['ROBOTWIN_ROOT'] + "/assets/objects/{object}/collision/base{object_id}.glb"
         self.file_path = []
         self.plan_success = True
         self.step_lim = None
@@ -111,7 +125,9 @@ class Study_base_task(Bench_base_task):
         self.size_dict = list()
         self.cluttered_objs = list()
         self.prohibited_area = {"table": [], "shelf0": [], "shelf1": []} # shelf 0 for lower shelf, shelf 1 for upper shelf
+        self.unstable_objects = []
         self.record_cluttered_objects = list()  # record cluttered objects info
+        self.cluttered_objects_info = get_cluttered_objects_info()
 
         self.eval_success = False
         self.table_z_bias = (np.random.uniform(low=-self.random_table_height, high=0) + table_height_bias)  # TODO
@@ -121,11 +137,13 @@ class Study_base_task(Bench_base_task):
         self.right_joint_path = kwags.get("right_joint_path", [])
         self.left_cnt = 0
         self.right_cnt = 0
-        self.scene_id = kwags.get("scene_id", 0)
-
+        self.scene_id = kwags.get("scene_id") or np.random.randint(0,3)  # for furniture arrangement
+        self.incl_collision = kwags.get("include_collison", True)
         self.instruction = None  # for Eval
 
         self.collision_list = [] # list of collision objects for curobo planner
+        self.cuboid_collision_list = [] # list of cuboid collision objects for curobo planner
+        self._init_collision_metrics()
 
         self.load_robot(**kwags)
         self.create_static_elements(table_xy_bias=table_xy_bias, table_height=0.74)
@@ -136,12 +154,15 @@ class Study_base_task(Bench_base_task):
         self.render_freq = 0
         self.together_open_gripper(save_freq=None)
         self.render_freq = render_freq
-
+        self.cuboid_collision_list = []
         self.robot.set_origin_endpose()
         self.load_actors()
-
+        
         if self.cluttered_table:
             self.get_cluttered_surfaces()
+
+        if self.enable_collision_metrics:
+            self._build_collision_name_sets()
 
         is_stable, unstable_list = self.check_stable()
         if not is_stable:
@@ -172,12 +193,18 @@ class Study_base_task(Bench_base_task):
 
         self.stage_success_tag = False
 
-
+    def add_collision(self):
+        for obj in self.scene_obj_info:
+                print_c(f"Adding collision for {obj[0]} with id {obj[2]}", "GREEN")
+                self.collision_list.append({
+                    "actor":obj[1],
+                    "collision_path": self.col_temp.format(object=obj[0], object_id=obj[2])
+            })
     def create_static_elements(self, table_xy_bias=[0, 0], table_height=0.74):
         self.table_xy_bias = table_xy_bias
         wall_texture, table_texture, floor_texture = None, None, None
         table_height += self.table_z_bias
-
+        print_c(f"Scene {self.scene_id} is selected", "YELLOW")
         # Setup textures 
         if self.random_background:
             texture_type = "seen" if not self.eval_mode else "unseen"
@@ -258,7 +285,8 @@ class Study_base_task(Bench_base_task):
                     is_static=param.get('is_static', True)
                 )
                 self.scene_objs.append(value)
-                self.add_prohibit_area(value, padding=0.12, area="table")
+                self.scene_obj_info.append((obj,value, param.get('model_id', 0)))
+                self.add_prohibit_area(value, padding=0.05, area="table")
 
             elif param.get("obj_type", "actor") == "table":
                 value= create_table(
@@ -272,6 +300,13 @@ class Study_base_task(Bench_base_task):
                         texture_id=param.get('texture_id', self.table_texture),
                     )
             setattr(self, obj.split("_")[-1], value)
+        if self.incl_collision:
+            self.add_collision()
+            
+        box_bb = get_actor_boundingbox(self.box.actor)
+        case_bb = get_actor_boundingbox(self.bookcase.actor)
+        self.prohibited_area["table"].append([box_bb[0][0], case_bb[0][1],
+                                                box_bb[1][0], case_bb[1][1]])
 
     def create_static_elementsv2(self, table_xy_bias=[0, 0], table_height=0.74):
         self.table_xy_bias = table_xy_bias
@@ -358,11 +393,8 @@ class Study_base_task(Bench_base_task):
 
             pose = sapien.Pose(
                     p = [(-max_num* 0.2)+(i*0.2), 0, table_height],
-                    # q = [0.7171,0,0,0.7171] #[1,0,0,0]
                     q = [1,0,0,0]
-
             )
-            # try:
             value = create_actor(
                     scene=self,
                     pose=pose,
@@ -373,38 +405,27 @@ class Study_base_task(Bench_base_task):
                     is_static= True
             )
             bbox = get_actor_boundingbox(value.actor)
-            # print(dir(value.actor))
-            print(pose.p)
-            print(bbox)
             if bbox[0][1] < pose.p[1]:
                 value.actor.set_pose(
                     sapien.Pose(
                         p = [pose.p[0], pose.p[1]+ pose.p[1]- bbox[0][1], pose.p[2]], 
                         q = pose.q)
                 )
-            print([pose.p[0], pose.p[1]+ pose.p[1]- bbox[0][1], pose.p[2]])
-            # except:
-            #     print("didn't work")
-            #     continue
-            # setattr(self, f"{obj_name.split('_')[-1]}_{obj_ins}", value)
-        
-   
-  
     
     def get_cluttered_surfaces(self):
-        self.get_cluttered_table()
-
-    def get_cluttered_table(self, cluttered_numbers=10, xlim=[-0.59, 0.59], ylim=[-0.34, 0.34], zlim=[0.741]):
-        self.record_cluttered_objects = []  # record cluttered objects
-
+        # clutter surfaces with additional random obstacles
+        # table ------------------------------------------------------
+        table_bb = get_actor_boundingbox(self.table)
+        xlim = [table_bb[0][0], table_bb[1][0]]
+        ylim = [table_bb[0][1], table_bb[1][1]]
+        zlim = [table_bb[1][2]]
         xlim[0] += self.table_xy_bias[0]
         xlim[1] += self.table_xy_bias[0]
         ylim[0] += self.table_xy_bias[1]
         ylim[1] += self.table_xy_bias[1]
-
-        if np.random.rand() < self.clean_background_rate:
-            return
-
+        zlim = np.array(zlim) + self.table_z_bias
+        
+        # collect objects already on the scene
         task_objects_list = []
         for entity in self.scene.get_all_actors():
             actor_name = entity.get_name()
@@ -413,147 +434,11 @@ class Study_base_task(Bench_base_task):
             if actor_name in ["table", "wall", "ground"]:
                 continue
             task_objects_list.append(actor_name)
-        self.obj_names, self.cluttered_item_info = get_available_cluttered_objects(task_objects_list)
 
-        success_count = 0
-        max_try = 50
-        trys = 0
+        cluttered_item_info, obj_names_short, obj_names_tall = get_obstacle_objects_subset(
+            "study", self.sample_d, task_objects_list
+        )
+        self.clutter_surface_split(xlim, ylim, zlim, self.prohibited_area["table"], self.obstacle_density, cluttered_item_info, obj_names_short, obj_names_tall)
 
-        while success_count < cluttered_numbers and trys < max_try:
-            obj = np.random.randint(len(self.obj_names))
-            obj_name = self.obj_names[obj]
-            # if obj_name in self.unstable_objects:
-            #     continue
-            obj_idx = np.random.randint(len(self.cluttered_item_info[obj_name]["ids"]))
-            obj_idx = self.cluttered_item_info[obj_name]["ids"][obj_idx]
-            obj_radius = self.cluttered_item_info[obj_name]["params"][obj_idx]["radius"]
-            obj_offset = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
-            obj_maxz = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_max"]
-
-            success, self.cluttered_obj = rand_create_cluttered_actor(
-                self.scene,
-                xlim=xlim,
-                ylim=ylim,
-                zlim=np.array(zlim) + self.table_z_bias,
-                modelname=obj_name,
-                modelid=obj_idx,
-                modeltype=self.cluttered_item_info[obj_name]["type"],
-                rotate_rand=True,
-                rotate_lim=[0, 0, math.pi],
-                size_dict=self.size_dict,
-                obj_radius=obj_radius,
-                z_offset=obj_offset,
-                z_max=obj_maxz,
-                prohibited_area=self.prohibited_area["table"],
-            )
-            if not success or self.cluttered_obj is None:
-                trys += 1
-                continue
-            self.cluttered_obj.set_name(f"{obj_name}")
-
-            # manage stability as distractors
-            self.stabilize_object(self.cluttered_obj)
-
-            self.cluttered_objs.append(self.cluttered_obj)
-            pose = self.cluttered_obj.get_pose().p.tolist()
-            pose.append(obj_radius)
-            self.size_dict.append(pose)
-            success_count += 1
-            self.record_cluttered_objects.append({"object_type": obj_name, "object_index": obj_idx})
-
-            # add to collision list--------------------------------------------------------------------------------
-            if self.cluttered_item_info[obj_name]["type"] == "urdf":
-                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
-            else:
-                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
-            self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale))
-
-        if success_count < cluttered_numbers:
-            print(f"Warning: Only {success_count} cluttered objects are placed on the table.")
-
-        self.size_dict = None
-        self.cluttered_objs = []
-
-    # def get_cluttered_shelf(self, cluttered_numbers=6, xlim=[0.95], ylim=[-0.65], zlim=[0.97], shelf_level=0):
-    #     self.record_cluttered_objects = []  # record cluttered objects
-    #     self.size_dict = list()
-
-    #     xlim = [self.shelf.get_pose().p[0]-0.1, self.shelf.get_pose().p[0]+0.1]
-    #     ylim = [self.shelf.get_pose().p[1]-0.3, self.shelf.get_pose().p[1]+0.3]
-    #     zlim = [self.shelf_heights[shelf_level]]
-
-    #     if np.random.rand() < self.clean_background_rate:
-    #         return
-
-    #     task_objects_list = []
-    #     for entity in self.scene.get_all_actors():
-    #         actor_name = entity.get_name()
-    #         if actor_name == "":
-    #             continue
-    #         if actor_name in ["table", "wall", "ground"]:
-    #             continue
-    #         task_objects_list.append(actor_name)
-    #     self.obj_names, self.cluttered_item_info = get_available_cluttered_objects(task_objects_list)
-
-    #     success_count = 0
-    #     max_try = 50
-    #     trys = 0
-
-    #     while success_count < cluttered_numbers and trys < max_try:
-    #         obj = np.random.randint(len(self.obj_names))
-    #         obj_name = self.obj_names[obj]
-    #         # if obj_name in self.unstable_objects:
-    #         #     continue
-    #         obj_idx = np.random.randint(len(self.cluttered_item_info[obj_name]["ids"]))
-    #         obj_idx = self.cluttered_item_info[obj_name]["ids"][obj_idx]
-    #         obj_radius = self.cluttered_item_info[obj_name]["params"][obj_idx]["radius"]
-    #         obj_offset = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_offset"]
-    #         obj_maxz = self.cluttered_item_info[obj_name]["params"][obj_idx]["z_max"]
-
-    #         success, self.cluttered_obj = rand_create_cluttered_actor(
-    #             self.scene,
-    #             xlim=xlim,
-    #             ylim=ylim,
-    #             zlim=zlim,
-    #             modelname=obj_name,
-    #             modelid=obj_idx,
-    #             modeltype=self.cluttered_item_info[obj_name]["type"],
-    #             rotate_rand=True,
-    #             rotate_lim=[0, 0, math.pi],
-    #             size_dict=self.size_dict,
-    #             obj_radius=obj_radius,
-    #             z_offset=obj_offset,
-    #             z_max=obj_maxz,
-    #             prohibited_area=self.prohibited_area[f"shelf{shelf_level}"],
-    #             shelf=True,
-    #         )
-    #         if not success or self.cluttered_obj is None:
-    #             trys += 1
-    #             continue
-    #         self.cluttered_obj.set_name(f"{obj_name}")
-
-    #         # manage stability as distractors
-    #         self.stabilize_object(self.cluttered_obj)
-
-    #         self.cluttered_objs.append(self.cluttered_obj)
-    #         pose = self.cluttered_obj.get_pose().p.tolist()
-    #         pose.append(obj_radius)
-    #         self.size_dict.append(pose)
-    #         success_count += 1
-    #         self.record_cluttered_objects.append({"object_type": obj_name, "object_index": obj_idx})
-
-    #         # add to collision list--------------------------------------------------------------------------------
-    #         if self.cluttered_item_info[obj_name]["type"] == "urdf":
-    #             path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
-    #         else:
-    #             path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
-    #         self.collision_list.append((self.cluttered_obj, path, self.cluttered_obj.scale))
-
-    #     # if success_count < cluttered_numbers:
-    #         # print(f"Warning: Only {success_count} cluttered objects are placed on the shelf.")
-
-    #     self.size_dict = None
-    #     self.cluttered_objs = []
-    
     def add_extra_cameras(self):
         self.cameras.add_extra_cameras(f"{os.environ['BENCH_ROOT']}/bench_assets/embodiments/office_config.yml")

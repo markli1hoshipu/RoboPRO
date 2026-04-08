@@ -25,31 +25,33 @@ class put_pen_in_box(Study_base_task):
             task_objs = yaml.safe_load(f)
         
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-         boundary_thr=0.15, side="left")
+         boundary_thr=0.15, side="left" if self.scene_id == 0 else "right")
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         
         self.target_name = "058_markpen"
+        xlim = [xlim[0], (xlim[0] + xlim[1])/2 + 0.2] 
         self.target_obj, self.target_id, self.target_pose = \
-        place_actor(self.target_name, self, col_thr=0.10, xlim=xlim, ylim=ylim, 
+        place_actor(self.target_name, self, col_thr=0.20, xlim=xlim, ylim=ylim, 
                     qpos=(90,0,90), object_bounds=object_bounds, task_objs=task_objs,
-                     mass = 0.1,  rotation=True, rotate_lim = [0, 0, 3.14])
+                     mass = 0.1,  rotation=None)
         
         self.des_obj = self.box
         des_bb = get_actor_boundingbox(self.des_obj.actor)
 
         p = self.des_obj.get_pose().p.tolist() 
         p[-1] = des_bb[1][-1]
+        p[0] += 0.05 if self.side_to_place == "left" else -0.05
         self.des_obj_pose = p + self.target_obj.get_pose().q.tolist()
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
 
-        self.add_prohibit_area(self.target_obj, padding=0.12, area="table")
-        self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
+        self.add_prohibit_area(self.target_obj, padding=0.10, area="table")
+        # self.add_prohibit_area(self.des_obj, padding=0.12, area="table")
 
      
       
-    def play_once(self, z = 0.08, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
+    def play_once(self, z = 0.1, pre_dis= 0.07, dis=0.005, pre_grasp_dist=0.1):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side_to_place ) #("right" if self.target_obj.get_pose().p[0] > 0 else "left")
 
@@ -57,11 +59,11 @@ class put_pen_in_box(Study_base_task):
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
 
         # Lift the mouse upward by 0.1 meters in z-direction
-        # self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
+           
+        self.move(self.move_by_displacement(arm_tag=arm_tag,  z=z))
 
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.target_name}/collision/base{self.target_id}.glb", str(arm_tag))
-
-        # Place the mouse at the target location with alignment constraint
+        
         self.move(
             self.place_actor(
                 self.target_obj,
@@ -70,8 +72,8 @@ class put_pen_in_box(Study_base_task):
                 constrain= "auto",
                 pre_dis=pre_dis,
                 dis=dis,
+                actor_axis_type="world"
             ))
-
         # Record information about the objects and arm used in the task
         self.info["info"] = {
             "{A}": f"{self.target_name}/base{self.target_id}",
@@ -81,12 +83,8 @@ class put_pen_in_box(Study_base_task):
         return self.info
 
     def check_success(self):
-        target_pose = self.target_obj.get_pose().p
-        target_qpose = np.abs(self.target_obj.get_pose().q)
-        target_des_pos = self.target_obj.get_pose().p
-        eps1 = 0.015
-        eps2 = 0.012
-
-        return (np.all(abs(target_pose[:2] - target_des_pos[:2]) < np.array([eps1, eps2]))
-            and self.robot.is_left_gripper_open()
+        box_bb = get_actor_boundingbox(self.box.actor)
+        return (np.all((box_bb[0][:2] <= self.target_obj.get_pose().p[:2])  & 
+                       (self.target_obj.get_pose().p[:2] <= box_bb[1][:2]))
+                and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
