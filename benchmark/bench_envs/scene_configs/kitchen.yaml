@@ -1,0 +1,74 @@
+# Kitchen-S scene configurations
+# scene_0: MW left, Dishrack center, Sink right
+# scene_1: MW left, Sink center, Dishrack right
+# scene_2: MW left, Dishrack front-center rotated, Sink right
+
+scene_0:
+  044_microwave:
+    obj_type: urdf
+    p: [-0.32, 0.18]
+    z_offset: 0.06
+    yaw: 90
+    model_id: 0
+  135_dish-rack:
+    obj_type: actor
+    p: [0.10, 0.25]
+    q: [90, 0, 0]
+    model_id: 0
+  sink:
+    obj_type: sink
+    p: [0.42, 0.08]
+    hole_hx: 0.13
+    hole_hy: 0.20
+    depth: 0.09
+    inner_hx: 0.12
+    inner_hy: 0.19
+
+scene_1:
+  044_microwave:
+    obj_type: urdf
+    p: [-0.32, 0.18]
+    z_offset: 0.06
+    yaw: 90
+    model_id: 0
+  135_dish-rack:
+    obj_type: actor
+    p: [0.42, 0.25]
+    q: [90, 0, 0]
+    model_id: 0
+  sink:
+    obj_type: sink
+    p: [0.10, 0.08]
+    hole_hx: 0.13
+    hole_hy: 0.20
+    depth: 0.09
+    inner_hx: 0.12
+    inner_hy: 0.19
+
+scene_2:
+  044_microwave:
+    obj_type: urdf
+    p: [-0.32, 0.18]
+    z_offset: 0.06
+    yaw: 90
+    model_id: 0
+  135_dish-rack:
+    obj_type: actor
+    p: [0.10, 0.05]
+    q: [90, 0, 45]
+    model_id: 0
+  sink:
+    obj_type: sink
+    p: [0.42, 0.08]
+    hole_hx: 0.13
+    hole_hy: 0.20
+    depth: 0.09
+    inner_hx: 0.12
+    inner_hy: 0.19
+
+# Counter dimensions (shared across all layouts)
+counter:
+  length: 1.2
+  width: 0.7
+  height: 0.74
+  thickness: 0.04
