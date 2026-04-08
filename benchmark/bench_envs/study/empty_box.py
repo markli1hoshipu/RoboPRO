@@ -26,7 +26,7 @@ class empty_box(Study_base_task):
             task_objs = yaml.safe_load(f)
             
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-                                         boundary_thr=[0.10, 0.20],
+                                         boundary_thr=[0.10, 0.10],
                                         side="left" if self.scene_id == 0 else "right")
 
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
@@ -57,17 +57,21 @@ class empty_box(Study_base_task):
         # Object 1
         self.seal_name ="100_seal" 
         box_pose = self.box.get_pose().p
-        place_pose =  [[box_pose[0], box_pose[1]-0.05, des_bb[0][-1] + 0.03],(90,0,180)]
+        place_pose =  [[box_pose[0]+np.random.uniform(-0.02, 0.02), box_pose[1]-0.06, des_bb[0][-1] + 0.03],(90,0,180)]
         self.seal_obj, self.seal_obj_id, self.seal_obj_pose = \
             place_actor(self.seal_name, self, task_objs = task_objs,
                     obj_pose=place_pose, mass = 0.1)
 
-        self.seal_des_pose = get_random_place_pose(xlim =[xlim[0]+ np.mean(xlim), xlim[1]], ylim=ylim,
-                                             col_thr=0.1, object_bounds=object_bounds)
+        # seal_xlim = [xlim[0] + np.mean(xlim), xlim[1]]
+        seal_xlim = [xlim[0] + np.mean(xlim), xlim[1]] if self.side_to_place == "right" else [xlim[0], xlim[1]+ np.mean(xlim)]
+        seal_ylim = [ylim[0], ylim[1]-0.15]
+        # print_c(f"seal_xlim: {seal_xlim}, seal_ylim: {seal_ylim}", "BLUE")
+        self.seal_des_pose = get_random_place_pose(xlim=seal_xlim, ylim=seal_ylim,
+                                             col_thr=0.05, object_bounds=object_bounds)
         self.add_prohibit_area(self.seal_des_pose, padding=0.1, area="table")
 
         # Object 2
-        place_pose =  [[box_pose[0], box_pose[1] + 0.05, des_bb[0][-1] + 0.03],(90,0,90)]
+        place_pose =  [[box_pose[0]+np.random.uniform(-0.02, 0.02), box_pose[1] + 0.04, des_bb[0][-1] + 0.03],(90,0,90)]
      
         self.cup_name = "021_cup" 
         self.cup_obj, self.cup_obj_id, self.cup_obj_pose = \
@@ -86,54 +90,61 @@ class empty_box(Study_base_task):
 
         # Get the placement pose
         self.seal_des_pose = self.seal_des_pose.p.tolist() + [1,0,0,0]
-        self.cup_des_pose = get_random_place_pose(xlim = [xlim[0]+ np.mean(xlim), xlim[1]], ylim=ylim,
-                                             col_thr=0.1, object_bounds=object_bounds)
+        cup_xlim = [xlim[0] + np.mean(xlim), xlim[1]] if self.side_to_place == "right" else [xlim[0], xlim[1]+ np.mean(xlim)]
+        cup_ylim = [ylim[0], ylim[1]-0.15]
+        # print_c(f"cup_xlim: {cup_xlim}, cup_ylim: {cup_ylim}", "BLUE")
+        self.cup_des_pose = get_random_place_pose(xlim=cup_xlim, ylim=cup_ylim,
+                                             col_thr=0.05, object_bounds=object_bounds)
        
         self.add_prohibit_area(self.cup_des_pose, padding=0.1, area="table")
 
         self.cup_des_pose = self.cup_des_pose.p.tolist() + [1,0,0,0]
 
-        print_c(f"Placement destination poses: Seal {self.seal_des_pose}; \
-                Cup {self.cup_des_pose}", "RED")
-
+        # print_c(f"Placement destination poses: Seal {self.seal_des_pose}; \
+        #         Cup {self.cup_des_pose}", "RED")
 
     def _get_target_object_names(self) -> set[str]:
         """Default for tasks with single self.target_obj. Override for multi-target tasks."""
         return {self.cup_obj.get_name(), self.seal_obj.get_name()}
     
-    
     def pick_place_seal(self, arm_tag, pre_grasp_dist=0.1,
-                        z = 0.10, pre_dis= 0.05, dis=0.005):
+                        z = 0.08, pre_dis= 0.05, dis=0.005):
         self.move(self.grasp_actor(self.seal_obj, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dist))
-        self.move(self.move_by_displacement(arm_tag=arm_tag,x=z if self.side_to_place == "left" else -z, z=z,
-                                            constraint_pose=None))
+        # self.move(self.move_by_displacement(arm_tag=arm_tag,x=z if self.side_to_place == "left" else -z, z=z,
+        #                                     constraint_pose=None))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=z+pre_dis))
         self.attach_object(self.seal_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.seal_name}/collision/base{self.seal_obj_id}.glb", str(arm_tag))
         self.move(
             self.place_actor(
                 self.seal_obj,
                 arm_tag=arm_tag,
                 target_pose= self.seal_des_pose,
-                constrain= "auto",
+                constrain= "free",
+                actor_axis_type="world",
                 pre_dis=pre_dis,
                 dis=dis
             ))
+        # print(" successfully place seal, lift arm...")
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
+        # print(" successfully lift arm")
 
         return self.seal_obj.get_pose()
         
     def pick_place_cup(self, arm_tag, pre_grasp_dist=0.1,
-                        z = 0.10, pre_dis= 0.05, dis=0.005):
+                        z = 0.08, pre_dis= 0.05, dis=0.005):
         self.move(self.grasp_actor(self.cup_obj, arm_tag=arm_tag,
                                     pre_grasp_dis=pre_grasp_dist))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, x=z if self.side_to_place == "left" else -z, z=z,
-                                            constraint_pose=None))
+        # self.move(self.move_by_displacement(arm_tag=arm_tag, x=z if self.side_to_place == "left" else -z, z=z,
+        #                                     constraint_pose=None))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=z+pre_dis))
         self.attach_object(self.cup_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.cup_name}/collision/base{self.cup_obj_id}.glb", str(arm_tag))
         self.move(
             self.place_actor(
                 self.cup_obj,
                 arm_tag=arm_tag,
                 target_pose= self.cup_des_pose,
-                constrain= "auto",
+                constrain= "free",
+                actor_axis_type="world",
                 pre_dis=pre_dis,
                 dis=dis
             ))
@@ -148,7 +159,6 @@ class empty_box(Study_base_task):
         self.pick_place_cup(arm_tag)
 
         # Record information about the objects and arm used in the task
-
     
         self.info["info"] = {
             "{A}": f"{self.cup_name}/base{self.cup_obj_id}",

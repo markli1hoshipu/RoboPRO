@@ -1141,7 +1141,10 @@ class Bench_base_task(Base_Task):
                             collision_dict["mesh"] | convex_collision_dict["mesh"]
                         )
                     else:
-                        pose = actor.get_pose()
+                        if "pose" in info:
+                            pose = info["pose"]
+                        else:
+                            pose = actor.get_pose()
                         np_pose = np.concatenate([pose.p, pose.q]).tolist()
                         collision_dict["mesh"][f"{actor.get_name()}_{np_pose}_{self.seed}"] = {
                                 "file_path": collision_path,
@@ -1256,5 +1259,5 @@ class Bench_base_task(Base_Task):
         """
         self.robot.detach_object(arms_tag=arms_tag)
     
-    def enable_obstacle(self, enable: bool, names: list[str]):
-        self.robot.enable_obstacle(enable, names)
+    def enable_obstacle(self, enable: bool, mesh_names: list[str] = [], obb_names: list[str] = []):
+        self.robot.enable_obstacle(enable, mesh_names=mesh_names, obb_names=obb_names)

@@ -10,7 +10,7 @@ import glob
 from transforms3d.euler import euler2quat
 
 
-class put_away_stapler(Office_base_task):
+class store_stapler_in_drawer(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}

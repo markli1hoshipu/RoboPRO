@@ -86,6 +86,7 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
         box_bb = get_actor_boundingbox(self.basket_right.actor)
         return np.all((box_bb[0][:2] <= self.boxdrink.get_pose().p[:2])  & 
                        (self.boxdrink.get_pose().p[:2] <= box_bb[1][:2]))
+       
         
     def _sample_place_world_offsets(self) -> None:
         self._place_world_x_off = float(self.PLACE_WORLD_X_OFFSET) + float(
@@ -125,6 +126,7 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
 
         spawn_pose = self.basket_right.get_pose()
         spawn_pose.p[1] -= 0.02
+
         self.boxdrink = create_actor(
             scene=self.scene,
             pose=spawn_pose,
@@ -134,6 +136,7 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
             convex=True,
             scale=final_scale,
         )
+        
         
         if self.boxdrink is not None:
             self.boxdrink.set_mass(self.BOXDRINK_MASS)
@@ -173,7 +176,7 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
                 pre_dis=0.07,
                 dis=0.005,
             ))
-        
+     
         self.info["info"] = {
             "{A}": f"{self.boxdrink_modelname}/base{self.boxdrink_model_id}",
             "{a}": str(arm_tag),

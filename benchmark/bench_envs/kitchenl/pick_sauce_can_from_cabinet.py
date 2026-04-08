@@ -190,4 +190,3 @@ class pick_sauce_can_from_cabinet(Kitchen_base_large):
         return not self._is_sauce_can_inside_cabinet() and sauce_can_on_table \
                and self.robot.is_right_gripper_open() \
                and self.robot.is_left_gripper_open()
-

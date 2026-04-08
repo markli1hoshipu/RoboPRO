@@ -8,7 +8,7 @@ from copy import deepcopy
 import glob
 
 
-class phone_to_cube(Office_base_task):
+class put_phone_next_to_cube(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}

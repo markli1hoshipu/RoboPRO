@@ -48,7 +48,11 @@ Run commands in the same way you would run them for the original Robotwin. Refer
 Run the following script to make sure everything is set up properly:
 ```bash
 python script/bench_script/visualize_task_scene.py mouse_on_pad bench_demo_clean --rollout --seed 0
+
+# Show debug information
+export ROBOTWIN_LOG_MOVE="1"
 ```
+
 
 ## Data collection example
 ```bash

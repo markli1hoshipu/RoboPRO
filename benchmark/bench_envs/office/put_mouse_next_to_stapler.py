@@ -10,7 +10,7 @@ import glob
 from transforms3d.euler import euler2quat
 
 
-class mouse_to_stapler(Office_base_task):
+class put_mouse_next_to_stapler(Office_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
