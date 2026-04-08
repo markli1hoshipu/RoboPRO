@@ -18,10 +18,8 @@ class put_milktea_on_shelf(Office_base_task):
         return {self.target_obj.get_name()}
 
     def load_actors(self):
-        self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
-
         target_rand_pose = rand_pose(
-            xlim=[self.office_info["shelf_lims"][0]+0.04, self.office_info["shelf_lims"][2]-0.04],
+            xlim=[self.office_info["shelf_lims"][0]+self.office_info["shelf_padding"], self.office_info["shelf_lims"][2]-self.office_info["shelf_padding"]],
             ylim=[self.office_info["shelf_lims"][1] + 0.03],
             zlim = [self.office_info["shelf_heights"][0]],
             qpos=[1, 0, 0, 0],
@@ -44,9 +42,9 @@ class put_milktea_on_shelf(Office_base_task):
         self.milktea_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["101_milk-tea"])
         self.side = "right" if self.des_obj.get_pose().p[0] > 0 else "left"
         if self.side == "left":
-            xlim1 = [self.office_info["table_lims"][0]+self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"], 0.1]
+            xlim1 = [self.office_info["table_lims"][0]+self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"], 0.08]
         else:
-            xlim1 = [-0.1, self.office_info["table_lims"][2]-self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"]]
+            xlim1 = [-0.08, self.office_info["table_lims"][2]-self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"]]
         ylim1 = [self.office_info["table_lims"][1] + 0.3, self.office_info["shelf_lims"][1]-0.05]
 
         self.target_obj = rand_create_actor(

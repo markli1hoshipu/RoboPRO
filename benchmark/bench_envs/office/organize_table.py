@@ -22,7 +22,7 @@ class organize_table(Office_base_task):
     def load_actors(self):
         # des_obj_pose_3 ------------------------------------------------------------
         target_rand_pose = rand_pose(
-            xlim=[self.office_info["shelf_lims"][0]+0.04, self.office_info["shelf_lims"][2]-0.04],
+            xlim=[self.office_info["shelf_lims"][0]+self.office_info["shelf_padding"], self.office_info["shelf_lims"][2]-self.office_info["shelf_padding"]],
             ylim=[self.office_info["shelf_lims"][1] + 0.03],
             zlim = [self.office_info["shelf_heights"][0]],
             qpos=[1, 0, 0, 0],
@@ -64,12 +64,12 @@ class organize_table(Office_base_task):
             scale=self.item_info['scales']['047_mouse'].get(f'{self.mouse_id}',None),
         )
         self.target_obj_1.set_mass(0.05)
-        self.add_prohibit_area(self.target_obj_1, padding=0.01, area="table")
+        self.add_prohibit_area(self.target_obj_1, padding=0.03, area="table")
 
         # des_obj_pose_1 ------------------------------------------------------------
         target_rand_pose = rand_pose(
             xlim=[0],
-            ylim=[-0.23, self.office_info["shelf_lims"][1]-0.1],
+            ylim=[-0.23, self.office_info["shelf_lims"][1]-0.14],
             qpos=[1, 0, 0, 0],
             rotate_rand=False,
         )
@@ -195,6 +195,14 @@ class organize_table(Office_base_task):
         self.target_obj_3.set_mass(0.06)
         self.add_prohibit_area(self.target_obj_3, padding=0.01)
         self.add_operating_area(self.target_obj_3.get_pose().p)
+        self.collision_list.append({
+            "actor": self.target_obj_3,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/101_milk-tea/collision/base{self.milktea_id}.glb",
+            "pose": self.target_obj_3.get_pose(),
+        })
+        self.target_obj_3_pose = self.target_obj_3.get_pose()
+        self.target_obj_3_pose = np.concatenate([self.target_obj_3_pose.p, self.target_obj_3_pose.q]).tolist()
+
         self.des_obj_pose_3 += self.target_obj_3.get_pose().q.tolist()
 
 
@@ -209,13 +217,15 @@ class organize_table(Office_base_task):
         ]
 
         # target_obj_1 --------------------------------------------------
-        self.move(self.grasp_actor(self.target_obj_1, arm_tag=arms[0], pre_grasp_dis=0.1))
+        self.enable_table(enable=False)
+        self.move(self.grasp_actor(self.target_obj_1, arm_tag=arms[0], pre_grasp_dis=0.1, grasp_dis = 0.01))
 
         # Lift the target_obj_1 upward by 0.1 meters in z-direction
         self.move(self.move_by_displacement(arm_tag=arms[0], z=0.1))
 
         self.attach_object(self.target_obj_1, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/047_mouse/collision/base{self.mouse_id}.glb", str(arms[0]))
-
+        # self.move(self.move_by_displacement(arm_tag=arms[0], x=-0.1, y=-0.1))
+        
         # Place the target_obj_1 at the target location with alignment constraint
         self.move(
             self.place_actor(
@@ -223,21 +233,27 @@ class organize_table(Office_base_task):
                 arm_tag=arms[0],
                 target_pose=self.des_obj_pose_1,
                 constrain="align",
-                pre_dis=0.07,
-                dis=0.005,
+                pre_dis=0.03,
+                dis=0.02,
             ))
         self.detach_object(arms_tag=str(arms[0]))
+        self.enable_table(enable=True)
 
         if arms[0] != arms[1]:
             self.move(self.back_to_origin(arms[0]))
 
         # target_obj_2 --------------------------------------------------
-        self.move(self.grasp_actor(self.target_obj_2, arm_tag=arms[1], pre_grasp_dis=0.08))
+        _, actions = self.grasp_actor(self.target_obj_2, arm_tag=arms[1], pre_grasp_dis=0.08, grasp_dis=0.01)
+        self.move((arms[1], [actions[0]]))
+        self.enable_table(enable=False)
+        self.move((arms[1], actions[1:]))
+        self.move(self.move_by_displacement(arm_tag=arms[1], z=0.03))
+        
+        self.attach_object(self.target_obj_2, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/077_phone/collision/base{self.phone_id}.glb", str(arms[1]))
+        self.enable_table(enable=True)
 
         # Get des_obj_2's functional point as target for placement
         stand_func_pose = self.des_obj_2.get_functional_point(0)
-        
-        self.attach_object(self.target_obj_2, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/077_phone/collision/base{self.phone_id}.glb", str(arms[1]))
 
         # Place the target_obj_2 onto the des_obj_2's functional point with alignment constraint
         self.move(
@@ -251,16 +267,26 @@ class organize_table(Office_base_task):
                 pre_dis=0.05,
             ))
         self.detach_object(arms_tag=str(arms[1]))
-        self.move(self.move_by_displacement(arm_tag=arms[1], y=-0.04))
+        self.move(self.move_by_displacement(arm_tag=arms[1], y=-0.03))
+        self.collision_list.append({
+            "actor": self.target_obj_2,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/077_phone/collision/base{self.phone_id}.glb",
+        })
+        self.update_world()
 
         if arms[1] != arms[2]:
             self.move(self.back_to_origin(arms[1]))
     
         # target_obj_3 --------------------------------------------------
-        action = self.grasp_actor(self.target_obj_3, arm_tag=arms[2], pre_grasp_dis=0.1, grasp_dis=0.02, contact_point_id=2)
-        action[1][0].target_pose[2] += 0.04
-        action[1][1].target_pose[2] += 0.04
-        self.move(action)
+        _, actions = self.grasp_actor(self.target_obj_3, arm_tag=arms[2], pre_grasp_dis=0.05, grasp_dis=0.02, contact_point_id=2)
+        actions[0].target_pose[2] += 0.04
+        actions[1].target_pose[2] += 0.04
+        self.move((arms[2], [actions[0]]))
+
+        # Disable obstacle collision for the target_obj_3
+        self.enable_obstacle(False, [f"101_milk-tea_{self.target_obj_3_pose}_{self.seed}"])
+
+        self.move((arms[2], actions[1:]))
 
         # Lift the target_obj_1 upward by 0.1 meters in z-direction
         self.move(self.move_by_displacement(arm_tag=arms[2], z=0.01))

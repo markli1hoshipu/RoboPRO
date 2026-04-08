@@ -91,9 +91,10 @@ class put_stapler_next_to_mouse(Office_base_task):
         # Determine which arm to use based on target_obj position (right if on right side, left otherwise)
         arm_tag = ArmTag("right" if self.mouse.get_pose().p[0] > 0 else "left")
 
-        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.05, contact_point_id=[0,1]))
+        self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.05, contact_point_id=[0,1])
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.03))
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/048_stapler/collision/base{self.stapler_id}.glb", str(arm_tag))
+        self.enable_table(enable=True)
 
         self.move(self.place_actor(
             self.target_obj,

@@ -21,7 +21,6 @@ class store_stapler_in_drawer(Office_base_task):
 
     def load_actors(self):
         self.side =  "left" if self.arr_v == 2 else "right"
-        # self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
 
         # set up cabinet
         self.add_cabinet_collision()
@@ -75,18 +74,20 @@ class store_stapler_in_drawer(Office_base_task):
 
         self.enable_drawer(enable=True)
 
-        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.07, contact_point_id=[0,1]))
+        self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.07, contact_point_id=[0,1])
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.03))
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/048_stapler/collision/base{self.stapler_id}.glb", str(arm_tag))
+        self.enable_table(enable=True)
 
         des_obj_pose = self.cabinet.get_functional_point(0)
+        des_obj_pose[1] -= 0.005
         # des_obj_pose[3:] = euler2quat(np.pi/2,0, np.pi, axes='sxyz')
         self.move(self.place_actor(
             self.target_obj,
             arm_tag=arm_tag,
             target_pose=des_obj_pose,
-            pre_dis=0.06,
-            dis=0.05,
+            pre_dis=0.03,
+            dis=0.02,
             constrain="align",
         ))
 

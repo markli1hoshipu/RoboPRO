@@ -20,8 +20,6 @@ class put_book_in_fileholder(Office_base_task):
         return set()
 
     def load_actors(self):
-        self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
-
         holder_pose = self.file_holder.get_pose().p
         holder_pose[1]-= 0.19  
         self.prohibited_area["table"].append([holder_pose[0]-0.11, holder_pose[1]-0.1, holder_pose[0]+0.11, holder_pose[1]+0.1])
@@ -31,17 +29,17 @@ class put_book_in_fileholder(Office_base_task):
         # target_obj ------------------------------------------------------------
         ylim = [self.shelf.get_pose().p[1]-0.07]
         if self.arr_v == 0:
-            xlims = [-0.15, self.office_info["shelf_lims"][2]-0.09]
+            xlims = [-0.15, self.office_info["shelf_lims"][2]-self.office_info["shelf_padding"]]
             level = 0
         elif self.arr_v == 2:
-            xlims = [self.office_info["shelf_lims"][0]+0.09, 0.15]
+            xlims = [self.office_info["shelf_lims"][0]+self.office_info["shelf_padding"], 0.15]
             level = 0
         else:        
             level = np.random.choice([0,1])
             if level == 0:
-                xlims = [self.office_info["shelf_lims"][0]+0.09, 0.15]
+                xlims = [self.office_info["shelf_lims"][0]+self.office_info["shelf_padding"], 0.15]
             else:
-                xlims = [self.office_info["shelf_lims"][0]+0.09, 0.02]
+                xlims = [self.office_info["shelf_lims"][0]+self.office_info["shelf_padding"], 0.02]
         zlim = [self.office_info["shelf_heights"][level]+0.1]
 
         self.target_obj = rand_create_actor(
@@ -102,7 +100,7 @@ class put_book_in_fileholder(Office_base_task):
         end_pose_desired[1] -= 0.07
         end_pose_desired[2] += 0.05
         eps1 = 0.02
-        eps2 = 0.08
+        eps2 = 0.05
         eps3 = 0.04
 
         return (np.all(abs(end_pose_actual[:3] - end_pose_desired[:3]) < np.array([eps1, eps2, eps3]))

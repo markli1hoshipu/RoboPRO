@@ -310,6 +310,7 @@ class Office_base_task(Bench_base_task):
             texture_id=self.table_texture,
         )
         self.office_info["table_lims"] = [-self.office_info["table_area"][0]/2, -self.office_info["table_area"][1]/2, self.office_info["table_area"][0]/2, self.office_info["table_area"][1]/2]
+        self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
         # ------------------------------------------------------------
         depth = 0.28
         shelf_scale = [1.7,0.86,1.8] # length, height, depth
@@ -414,61 +415,61 @@ class Office_base_task(Bench_base_task):
         full_names = np.concatenate([names, art_names])
 
         size_dict = list()
-        if "015_laptop" not in full_names:
-            # laptop_id = np.random.choice([9748,9912,9960,9968,9992,9996,10040,10098,10101,10125,10211])
-            laptop_id = 9912
-            # laptop_file = {
-            #     9748: "original-97",
-            #     9912: "new-4",
-            #     9960: "new-0",
-            #     9968: "new-8",
-            #     9992: "new-1",
-            #     9996: "new-4",
-            #     10040: "new-5",
-            #     10098: "new-4",
-            #     10101: "new-1",
-            #     10125: "new-7",
-            #     10211: "new-1",
-            # }
-            success, self.laptop = rand_create_cluttered_actor(
-                scene=self.scene,
-                xlim=[-0.4, 0.4],
-                ylim=[0.06],
-                zlim=[self.office_info["table_height"]],
-                modelname="015_laptop",
-                modelid=laptop_id,
-                modeltype="sapien_urdf",
-                rotate_rand=True,
-                rotate_lim=[0, 0, np.pi / 10],
-                qpos=[0.7, 0, 0, 0.7],
-                size_dict=size_dict,
-                obj_radius=0.06,
-                z_offset=0,
-                z_max=0.1,
-                prohibited_area=self.prohibited_area["table"],
-                constrained=False,
-                is_static=False,
-            )
-            if not success:
-                # print("Failed to load laptop")
-                pass
-            else:
-                self.laptop.set_mass(0.1)
-                limit = self.laptop.get_qlimits()[0]
-                self.laptop.set_qpos([limit[0] + (limit[1] - limit[0]) * 0.9])
-                self.add_prohibit_area(self.laptop, padding=0.01)
-                self.collision_list.append({
-                    "actor": self.laptop,
-                    "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/015_laptop/9912/textured_objs/",
-                    "link": ["link_0", "link_1"],
-                    "files": ["original-5.obj"],
-                })
+        # if "015_laptop" not in full_names:
+        #     # laptop_id = np.random.choice([9748,9912,9960,9968,9992,9996,10040,10098,10101,10125,10211])
+        #     laptop_id = 9912
+        #     # laptop_file = {
+        #     #     9748: "original-97",
+        #     #     9912: "new-4",
+        #     #     9960: "new-0",
+        #     #     9968: "new-8",
+        #     #     9992: "new-1",
+        #     #     9996: "new-4",
+        #     #     10040: "new-5",
+        #     #     10098: "new-4",
+        #     #     10101: "new-1",
+        #     #     10125: "new-7",
+        #     #     10211: "new-1",
+        #     # }
+        #     success, self.laptop = rand_create_cluttered_actor(
+        #         scene=self.scene,
+        #         xlim=[-0.4, 0.4],
+        #         ylim=[0.06],
+        #         zlim=[self.office_info["table_height"]],
+        #         modelname="015_laptop",
+        #         modelid=laptop_id,
+        #         modeltype="sapien_urdf",
+        #         rotate_rand=True,
+        #         rotate_lim=[0, 0, np.pi / 10],
+        #         qpos=[0.7, 0, 0, 0.7],
+        #         size_dict=size_dict,
+        #         obj_radius=0.06,
+        #         z_offset=0,
+        #         z_max=0.1,
+        #         prohibited_area=self.prohibited_area["table"],
+        #         constrained=False,
+        #         is_static=False,
+        #     )
+        #     if not success:
+        #         # print("Failed to load laptop")
+        #         pass
+        #     else:
+        #         self.laptop.set_mass(0.1)
+        #         limit = self.laptop.get_qlimits()[0]
+        #         self.laptop.set_qpos([limit[0] + (limit[1] - limit[0]) * 0.9])
+        #         self.add_prohibit_area(self.laptop, padding=0.01)
+        #         self.collision_list.append({
+        #             "actor": self.laptop,
+        #             "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/015_laptop/9912/textured_objs/",
+        #             "link": ["link_0", "link_1"],
+        #             "files": ["original-5.obj"],
+        #         })
 
-            # # custom collision because laptop has too many meshes
-            # cuboid_pose = self.laptop.get_pose().p.tolist() + [1, 0, 0, 0]
-            # cuboid_pose[1] += 0.04
-            # cuboid_pose[2] = self.office_info["table_height"] + 0.07
-            # self.cuboid_collision_list.append({"name": "015_laptop", "dims": [0.2, 0.07, 0.14], "pose": cuboid_pose})
+        #     # # custom collision because laptop has too many meshes
+        #     # cuboid_pose = self.laptop.get_pose().p.tolist() + [1, 0, 0, 0]
+        #     # cuboid_pose[1] += 0.04
+        #     # cuboid_pose[2] = self.office_info["table_height"] + 0.07
+        #     # self.cuboid_collision_list.append({"name": "015_laptop", "dims": [0.2, 0.07, 0.14], "pose": cuboid_pose})
         # ------------------------------------------------------------
         if "plant" not in full_names:
             plant_id = 0
@@ -545,10 +546,15 @@ class Office_base_task(Bench_base_task):
         self.enable_obstacle(enable, names)
     
     def disable_panel(self):
+        # disable middle panel so that closing and opening dont throw a curobo error
         files = ["original-34.obj", "original-41.obj"]
         names = [f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/{file}_{self.seed}" for file in files]
         self.enable_obstacle(False, names)
     
+    def enable_table(self, enable: bool):
+        names = [f"table_[0, 0, 0.74, 1, 0, 0, 0]_{self.seed}"]
+        self.enable_obstacle(enable, obb_names=names)
+
     def add_cabinet_collision(self):
         # adds cabinet drawer to curobo collision world. Adds it with the drawer state being open. 
         limit = self.cabinet.get_qlimits()[0]
@@ -581,3 +587,18 @@ class Office_base_task(Bench_base_task):
         ymin = -0.26
         self.prohibited_area["table"].append([-0.3-x_half_width, ymin, -0.3+x_half_width, ymax])
         self.prohibited_area["table"].append([0.3-x_half_width, ymin, 0.3+x_half_width, ymax])
+    
+    def grasp_actor_from_table(
+        self,
+        actor: Actor,
+        arm_tag: ArmTag,
+        pre_grasp_dis=0.1,
+        grasp_dis=0,
+        gripper_pos=0.0,
+        contact_point_id: list | float = None,
+    ):
+        # adds an intermediate step to disable table collision during the grasp for grasps that are close to the table
+        _, actions = self.grasp_actor(actor = actor, arm_tag=arm_tag, pre_grasp_dis=pre_grasp_dis, grasp_dis=grasp_dis, gripper_pos=gripper_pos, contact_point_id=contact_point_id)
+        self.move((arm_tag, [actions[0]]))
+        self.enable_table(enable=False)
+        self.move((arm_tag, actions[1:]))
