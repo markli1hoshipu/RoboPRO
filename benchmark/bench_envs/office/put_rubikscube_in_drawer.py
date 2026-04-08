@@ -33,7 +33,7 @@ class put_rubikscube_in_drawer(Office_base_task):
         if level == 0:
             bias = 0.1
         else:
-            bias = 0
+            bias = 0.025
 
         self.cube_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["073_rubikscube"])
         if self.arr_v == 2:

@@ -71,10 +71,8 @@ class put_book_on_book(Office_base_task):
         self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.04, grasp_dis=0.01))
         self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.01, z=0.01))
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/043_book/collision/base0.glb", str(arm_tag))
-
-        # self.des_obj_pose = self.target_obj.get_pose().p.tolist()
-        # self.des_obj_pose.extend(euler2quat(np.pi, 0, np.pi/2, axes='sxyz').tolist())
-        # self.des_obj_pose[1]-=0.2
+        self.enable_table(enable=False)
+        
 
         self.move(
             self.place_actor(

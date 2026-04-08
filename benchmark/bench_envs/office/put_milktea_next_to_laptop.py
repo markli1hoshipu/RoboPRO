@@ -19,7 +19,6 @@ class put_milktea_next_to_laptop(Office_base_task):
 
     def load_actors(self):
         # add table as collision
-        self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
         self.side = np.random.choice(["left", "right"])
         # laptop_id = np.random.choice([9748,9912,9960,9968,9992,9996,10040,10098,10101,10125,10211])
         laptop_id = 9912

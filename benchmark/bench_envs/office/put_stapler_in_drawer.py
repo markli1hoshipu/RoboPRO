@@ -61,18 +61,21 @@ class put_stapler_in_drawer(Office_base_task):
         # Determine which arm to use based on mouse position (right if on right side, left otherwise)
         arm_tag = ArmTag(self.side)
 
-        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.05, contact_point_id=[0,1]))
+        self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.05, contact_point_id=[0,1])
+
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.03))
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/048_stapler/collision/base{self.stapler_id}.glb", str(arm_tag))
+        self.enable_table(enable=True)
 
         target_pose = self.cabinet.get_functional_point(0)
+        target_pose[1] -= 0.005
         # target_pose[3:] = euler2quat(np.pi/2,0, np.pi, axes='sxyz')
         self.move(self.place_actor(
             self.target_obj,
             arm_tag=arm_tag,
             target_pose=target_pose,
-            pre_dis=0.05,
-            dis=0.05,
+            pre_dis=0.03,
+            dis=0.02,
             constrain="align",
         ))
         

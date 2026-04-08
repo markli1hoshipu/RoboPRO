@@ -99,15 +99,12 @@ class put_phone_next_to_cube(Office_base_task):
         arm_tag = ArmTag(self.side)
 
         # Grasp the target_obj with the selected arm
-        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.05, grasp_dis=0.01))
+        self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.05, grasp_dis=0.01)
 
         # Lift the target_obj upward by 0.1 meters in z-direction
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.02))
-
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/077_phone/collision/base{self.phone_id}.glb", str(arm_tag))
-
-        self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
-        self.update_world()
+        self.enable_table(enable=True)
 
         # Place the target_obj at the des_obj location with alignment constraint
         self.move(
