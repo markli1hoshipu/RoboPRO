@@ -33,12 +33,6 @@ class pick_can_from_basket(Kitchen_base_large):
     RETREAT_AFTER_RELEASE = dict(z=0.12, y=-0.12)
 
     @staticmethod
-    def _world_point_in_entity_local(entity, world_xyz: np.ndarray) -> np.ndarray:
-        inv_tf = np.linalg.inv(entity.get_pose().to_transformation_matrix())
-        h = inv_tf @ np.array([world_xyz[0], world_xyz[1], world_xyz[2], 1.0], dtype=float)
-        return np.array(h[:3], dtype=float)
-
-    @staticmethod
     def _behind_side_can_contact_points(y_center: float) -> list:
         return [
             [[6.123233995736766e-17, -1.0, 0.0, 0.0], [1.0, 6.123233995736766e-17, 0.0, y_center], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]],
@@ -90,20 +84,10 @@ class pick_can_from_basket(Kitchen_base_large):
         world_pos = basket_p + basket_R @ np.array(self.BASKET_CAN_LOCAL, dtype=float)
         return sapien.Pose(world_pos.tolist(), self._can_quat_from_cfg())
 
-    def _can_local_in_basket(self) -> np.ndarray | None:
-        if self.can is None or self.basket_right is None:
-            return None
-        return self._world_point_in_entity_local(self.basket_right, np.array(self.can.get_pose().p, dtype=float))
-
     def _is_can_inside_basket(self) -> bool:
         box_bb = get_actor_boundingbox(self.basket_right.actor)
         return np.all((box_bb[0][:2] <= self.can.get_pose().p[:2])  & 
                        (self.can.get_pose().p[:2] <= box_bb[1][:2]))
-                
-    def _place_target_world_xy(self) -> np.ndarray:
-        p = np.array(self.table.get_pose().p, dtype=float)
-        return np.array([p[0] + self._place_world_x_off, p[1] + self._place_world_y_off], dtype=float)
-
 
     def load_actors(self):
         self._place_world_x_off = float(self.PLACE_WORLD_X_OFFSET)
