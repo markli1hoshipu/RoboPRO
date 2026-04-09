@@ -278,7 +278,7 @@ class Kitchen_base_large(Bench_base_task):
         self.now_obs = {}
         self.take_action_cnt = 0
         self.eval_video_path = kwags.get("eval_video_save_dir", None)
-        self.incl_collision = kwags.get("include_collison", False)
+        self.incl_collision = kwags.get("include_collision", False)
 
         self.save_freq = kwags.get("save_freq")
         self.world_pcd = None

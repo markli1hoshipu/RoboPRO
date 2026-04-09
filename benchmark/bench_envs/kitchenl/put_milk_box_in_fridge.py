@@ -179,4 +179,5 @@ class put_milk_box_in_fridge(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        return self._is_milk_box_inside_fridge()
+        return self._is_milk_box_inside_fridge() and self.robot.is_left_gripper_open() \
+                and self.robot.is_right_gripper_open()

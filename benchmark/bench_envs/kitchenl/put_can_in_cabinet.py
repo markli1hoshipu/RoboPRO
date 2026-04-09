@@ -24,12 +24,6 @@ class put_can_in_cabinet(Kitchen_base_large):
     RETREAT_DELTA = dict(y=-0.15)
     GRASP_CONTACT_POINT_ID = 0
 
-    @staticmethod
-    def _right_side_can_contact_points(y_center: float) -> list:
-        # Force right-side grasp for the put task.
-        return [
-            [[6.123233995736766e-17, -6.123233995736766e-17, 1.0, 0.0], [1.0, 3.749399456654644e-33, -6.123233995736766e-17, y_center], [0.0, 1.0, 6.123233995736766e-17, 0.0], [0.0, 0.0, 0.0, 1.0]],
-        ]
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.can_modelname = "071_can"
@@ -132,4 +126,5 @@ class put_can_in_cabinet(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        return self._is_can_inside_cabinet()
+        return self._is_can_inside_cabinet() and self.robot.is_left_gripper_open() \
+                and self.robot.is_right_gripper_open()

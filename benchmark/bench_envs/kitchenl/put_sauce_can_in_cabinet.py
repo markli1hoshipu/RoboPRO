@@ -169,5 +169,6 @@ class put_sauce_can_in_cabinet(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        return self._is_sauce_can_inside_cabinet()
+        return self._is_sauce_can_inside_cabinet() and self.robot.is_left_gripper_open() \
+                and self.robot.is_right_gripper_open()
         

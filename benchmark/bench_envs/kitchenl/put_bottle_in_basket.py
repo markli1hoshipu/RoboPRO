@@ -132,4 +132,5 @@ class put_bottle_in_basket(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        return self._is_can_inside_basket()
+        return self._is_can_inside_basket() and self.robot.is_left_gripper_open() \
+                and self.robot.is_right_gripper_open()
