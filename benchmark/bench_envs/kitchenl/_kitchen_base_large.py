@@ -328,6 +328,7 @@ class Kitchen_base_large(Bench_base_task):
         self.instruction = None  # for Eval
 
         self.collision_list = [] # list of collision objects for curobo planner
+        self._init_collision_metrics()
 
         # Map semantic appliance roles to underlying assets
         self.kitchen_appliance_assets = {
