@@ -1,10 +1,12 @@
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
+from bench_envs.utils.scene_gen_utils import get_random_place_pose, get_actor_boundingbox, print_c
 from envs.utils import *
 import math
 import numpy as np
 import sapien
 import transforms3d as t3d
-
+import os
+import yaml
 
 class pick_bottle_from_fridge(Kitchen_base_large):
     BOTTLE_MASS = 0.1
@@ -19,7 +21,6 @@ class pick_bottle_from_fridge(Kitchen_base_large):
     FRIDGE_Y_BOUNDS = (-0.22, 0.22)
     FRIDGE_Z_BOUNDS = (-0.34, 0.24)
     IN_HAND_TCP_DIST_THRESHOLD = 0.18
-
     # Retrieval trajectory tuning
     APPROACH_DELTA = dict(x=0.1, y=0.10, z=-0.05)
     LIFT_DELTA = dict(z=0.05)
@@ -42,7 +43,7 @@ class pick_bottle_from_fridge(Kitchen_base_large):
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.bottle_modelname = "001_bottle"
-        self.bottle_model_ids = [1, 11, 14, 16]
+        # self.bottle_model_ids = [1, 11, 14, 16]
         # Keep the same upright convention used in put_bottle_in_fridge.
         self.bottle_spawn_rot_deg = [0.0, 0.0, 90.0]
 
@@ -96,16 +97,22 @@ class pick_bottle_from_fridge(Kitchen_base_large):
         return np.array(bottle_local_h[:3], dtype=float)
 
     def load_actors(self):
+
         if getattr(self, "fridge_closed_qpos", None) is None:
             self._init_fridge_states()
         self.set_fridge_open()
+  
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+            task_objs = yaml.safe_load(f)
 
-        self.bottle_model_id = int(np.random.choice(self.bottle_model_ids))
+        self.bottle_model_id = np.random.choice(task_objs['objects']['kitchenl']['targets'][self.bottle_modelname])
+
         spawn_pose = self._fridge_inside_spawn_pose()
 
         intrinsic_scale = self._get_asset_model_scale_create_actor(
             self.bottle_modelname, self.bottle_model_id
         )
+
         final_scale = float(intrinsic_scale) * float(self.bottle_scale)
 
         self.bottle = create_actor(
@@ -123,6 +130,11 @@ class pick_bottle_from_fridge(Kitchen_base_large):
             if isinstance(self.bottle.config, dict):
                 self.bottle.config["scale"] = [final_scale] * 3
             self.add_prohibit_area(self.bottle, padding=0.04, area="table")
+            
+        self.des_pose = get_random_place_pose(xlim = [-0.1, 0.45], ylim=[-0.2,0.1],
+                                        col_thr=0.15,zlim=[0.78],
+                                        object_bounds={})
+        self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
 
     def _is_bottle_inside_fridge(self) -> bool:
         bottle_local = self._bottle_local_in_fridge()
@@ -161,15 +173,38 @@ class pick_bottle_from_fridge(Kitchen_base_large):
                 contact_point_id=self.GRASP_CONTACT_POINT_ID,
             )
         )
+        self.attach_object(self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.bottle_modelname}/collision/base{self.bottle_model_id}.glb", str(arm_tag))
+
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.LIFT_DELTA))
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
         self.move(self.back_to_origin(arm_tag=arm_tag))
 
+        self.move(
+            self.place_actor(
+                self.bottle,
+                arm_tag=arm_tag,
+                target_pose= self.des_pose,
+                constrain="auto",
+                pre_dis=0.07,
+                dis=0.005,
+            ))
+        
         self.info["info"] = {
             "{A}": f"{self.bottle_modelname}/base{self.bottle_model_id}",
             "{a}": str(arm_tag),
         }
         return self.info
 
+    # def check_success(self):
+    #     return self._is_bottle_retrieved()
     def check_success(self):
-        return self._is_bottle_retrieved()
+        eps = 0.01
+        b_pose = self.bottle.get_pose().p
+        table_bb = get_actor_boundingbox(self.table)
+        bottle_on_table = np.all((table_bb[0][:2] <= b_pose[:2])  &  (b_pose[:2] <= table_bb[1][:2]))
+        bottle_on_table &= (b_pose[-1] - table_bb[1][-1]) < eps  
+    
+        return not self._is_bottle_inside_fridge() and bottle_on_table \
+               and self.robot.is_right_gripper_open() \
+               and self.robot.is_left_gripper_open()
+

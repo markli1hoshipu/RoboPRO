@@ -237,6 +237,7 @@ class Kitchen_base_large(Bench_base_task):
         torch.manual_seed(kwags.get("seed", 0))
         # random.seed(kwags.get('seed', 0))
         self.seed = kwags.get("seed", 0)
+        print_c(f"#### Seed value {self.seed} ####", "YELLOW")
 
         self.FRAME_IDX = 0
         self.task_name = kwags.get("task_name")
@@ -277,6 +278,7 @@ class Kitchen_base_large(Bench_base_task):
         self.now_obs = {}
         self.take_action_cnt = 0
         self.eval_video_path = kwags.get("eval_video_save_dir", None)
+        self.incl_collision = kwags.get("include_collison", False)
 
         self.save_freq = kwags.get("save_freq")
         self.world_pcd = None
@@ -533,7 +535,13 @@ class Kitchen_base_large(Bench_base_task):
         if self.fridge_left is not None:
             self.fridge_left.set_name("fridge_left")
             self.add_prohibit_area(self.fridge_left, padding=0.02, area="fridge")
-
+        if self.incl_collision:
+            self.collision_list.append({
+                "actor": self.fridge_left,
+                "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/124_fridge_hivvdf/blender_public/links/",
+                "pose": self.fridge_left.get_link_pose("link_0"),
+                "files": ["base_link_collision.glb", "link_0_collision.glb"],
+            })
     def _load_microwave_on_table(self, table_height: float, table_xy_bias):
         """Place the static microwave in the middle of the front edge of the table."""
         y_front = table_xy_bias[1] + 0.30
@@ -573,7 +581,10 @@ class Kitchen_base_large(Bench_base_task):
                 self.microwave_left.config["scale"] = float(final_scale)
             self.microwave_left.set_name("microwave_center")
             self.add_prohibit_area(self.microwave_left, padding=0.01, area="table")
-
+            self.collision_list.append({
+                "actor": self.microwave_left,
+                "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/044_microwave/visual/base0.glb",
+            })
     def _load_basket_on_table(self, table_height: float, table_xy_bias):
         """Place the static table-side container (`063_tabletrashbin`) on the left front edge of the table."""
         jx = float(np.random.uniform(self.basket_right_position_jitter_x[0], self.basket_right_position_jitter_x[1]))
@@ -613,7 +624,13 @@ class Kitchen_base_large(Bench_base_task):
                 self.basket_right.config["scale"] = [float(final_scale)] * 3
             self.basket_right.set_name("basket_right")
             self.add_prohibit_area(self.basket_right, padding=0.01, area="table")
-
+            if self.incl_collision:
+                print_c("collision added","YELLOW")
+                self.collision_list.append({
+                    "actor": self.basket_right,
+                    "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/063_tabletrashbin/collision/base6.glb",
+                })
+   
     def _load_cabinet_on_table(self, table_height: float, table_xy_bias):
         """Place the chosen articulated cabinet asset on the opposite end of the table from the drawer."""
         # Mirror the drawer position across the table center in x.

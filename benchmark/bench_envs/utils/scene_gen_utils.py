@@ -51,6 +51,24 @@ def get_actor_boundingbox(entity):
     points_cloud = np.vstack(all_points)
     return points_cloud.min(axis=0), points_cloud.max(axis=0)
 
+def get_actor_boundingbox_urdf(entity):
+    all_vertices = []
+    for link in entity.actor.get_links():
+        for shape in link.get_collision_shapes():
+            # Get geometry and its local transformation
+            world_pose = link.get_pose() * shape.get_local_pose()
+            mat = world_pose.to_transformation_matrix()
+            # 1. For Convex Meshes (the error you hit)
+            v = shape.get_vertices()  # Access vertices directly
+            v = v * shape.get_scale()
+            v_world = (mat[:3, :3] @ v.T).T + mat[:3, 3]
+            all_vertices.append(v_world)
+
+    # Note: For Spheres/Capsules, you may need to approximate 
+    # using their radius/half_length properties.
+    merged = np.vstack(all_vertices)
+    return np.min(merged, axis=0), np.max(merged, axis=0)
+
 def get_position_limits(surface_obj, boundary_thr = 0.15, 
                        robot_reach_thr = 0.6,
                        arm_x_pose = 0.15, side=None):

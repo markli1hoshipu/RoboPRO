@@ -1,4 +1,9 @@
+import os
+
+import yaml
+
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
+from bench_envs.utils.scene_gen_utils import get_actor_boundingbox_urdf, print_c
 from envs.utils import *
 import math
 import numpy as np
@@ -10,17 +15,15 @@ class put_bottle_in_fridge(Kitchen_base_large):
     BOTTLE_MASS = 0.1
     BOTTLE_SPAWN_Z_OFFSET = 0.02
 
-    # Success region bounds in fridge base-link local frame
-    FRIDGE_SUCCESS_X_BOUNDS = (-0.33, 0.16)
-    FRIDGE_SUCCESS_Y_BOUNDS = (-0.22, 0.22)
-    FRIDGE_SUCCESS_Z_BOUNDS = (-0.34, 0.24)
-
     # Placement target in fridge base-link local frame
     FRIDGE_PLACE_LOCAL = np.array([-0.10, 0.00, 0.05], dtype=float)
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.bottle_modelname = "001_bottle"
-        self.bottle_model_ids = [1, 11, 14, 16]
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+            task_objs = yaml.safe_load(f)
+
+        self.bottle_model_ids =  task_objs['objects']['kitchenl']['targets'][self.bottle_modelname]
         self.bottle_spawn_local_x_range = (-0.22, 0.12)
         self.bottle_spawn_local_y_range = (-0.32, -0.06)
         # Same convention as `basket_right_rot` in `_kitchen_base_large`: degrees (roll, pitch, yaw).
@@ -65,7 +68,8 @@ class put_bottle_in_fridge(Kitchen_base_large):
     def load_actors(self):
         if getattr(self, "fridge_closed_qpos", None) is None:
             self._init_fridge_states()
-        self.set_fridge_open()
+
+        self.set_fridge_open()            
 
         table_center = np.array(self.table.get_pose().p, dtype=float)
         self.bottle_model_id = int(np.random.choice(self.bottle_model_ids))
@@ -129,16 +133,14 @@ class put_bottle_in_fridge(Kitchen_base_large):
                 gripper_pos=0.0,
             )
         )
-        # Smaller lift to reduce any residual separation impulse from the grasp moment.
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
-        # Return to the stored initial/home arm state (TCP + planned joint target) before placing.
+        self.attach_object(self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.bottle_modelname}/collision/base{self.bottle_model_id}.glb", str(arm_tag))
+
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=0.1, z=0.05))
         self.move(self.back_to_origin(arm_tag=arm_tag))
 
-        self.move(self.move_by_displacement(arm_tag=arm_tag, x=0.1, y=0.30, z=-0.05))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.1, z=-0.05))
-        self.move(self.close_gripper(arm_tag=arm_tag, pos=1.0))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.2))
-        self.move(self.back_to_origin(arm_tag=arm_tag))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=0.1, y=0.30, z=-0.03))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.1))
+        self.move(self.open_gripper(arm_tag=arm_tag, pos=1.0))
 
 
         self.info["info"] = {

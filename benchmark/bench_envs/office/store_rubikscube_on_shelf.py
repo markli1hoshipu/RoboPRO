@@ -20,7 +20,6 @@ class store_rubikscube_on_shelf(Office_base_task):
         return set()
 
     def load_actors(self):
-        self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
         
         # prepare drawer --------------------------------------------
         self.add_cabinet_collision()
@@ -46,8 +45,9 @@ class store_rubikscube_on_shelf(Office_base_task):
         self.target_obj.set_mass(0.1)
         # des_obj_pose ------------------------------------------------------
         self.side = "left" if self.arr_v == 2 else "right"
-        self.level = np.random.choice([0,1])
-        xlim = [self.office_info["shelf_lims"][0] + self.office_info["shelf_padding"], 0.05] if self.side == "left" else [-0.05, self.office_info["shelf_lims"][2] -self.office_info["shelf_padding"]]
+        self.level = 0
+        bias = 0.08
+        xlim = [self.office_info["shelf_lims"][0] + self.office_info["shelf_padding"], bias] if self.side == "left" else [-bias, self.office_info["shelf_lims"][2] -self.office_info["shelf_padding"]]
         target_rand_pose = rand_pose(
             xlim=xlim,
             ylim=[self.office_info["shelf_lims"][1] + 0.055],
@@ -67,6 +67,7 @@ class store_rubikscube_on_shelf(Office_base_task):
         )
         self.des_obj_pose = self.des_obj.get_pose().p.tolist() + euler2quat(np.pi/2,np.pi, 0, axes='sxyz').tolist()
         self.des_obj_pose[2] += 0.06 # raise des_obj_pose 0.02 meters
+        # self.des_obj_pose[0] -= 0.02
         self.add_prohibit_area(self.des_obj, padding=0.05, area=f"shelf{self.level}")
 
 
@@ -94,7 +95,7 @@ class store_rubikscube_on_shelf(Office_base_task):
         self.move(action)
 
         # Lift the box upward by 0.1 meters in z-direction
-        # self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.03))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.03))
 
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/073_rubikscube/collision/base{self.cube_id}.glb", str(arm_tag))
 

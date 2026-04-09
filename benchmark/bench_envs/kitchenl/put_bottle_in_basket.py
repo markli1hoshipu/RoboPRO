@@ -1,5 +1,9 @@
+import yaml
+
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
+from bench_envs.utils.scene_gen_utils import get_actor_boundingbox
 from envs.utils import *
+import os
 import math
 import numpy as np
 import sapien
@@ -28,7 +32,10 @@ class put_bottle_in_basket(Kitchen_base_large):
     def setup_demo(self, is_test: bool = False, **kwargs):
         # Match bottle asset setup used in pick_bottle_from_fridge.
         self.bottle_modelname = "001_bottle"
-        self.bottle_model_ids = [1, 11, 14, 16]
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+            task_objs = yaml.safe_load(f)
+
+        self.bottle_model_ids =  task_objs['objects']['kitchenl']['targets'][self.bottle_modelname]
         self.bottle_spawn_rot_deg = [-45.0, 0.0, 90.0]
 
         rot_cfg = kwargs.pop("bottle_spawn_rot_deg", None)
@@ -41,6 +48,7 @@ class put_bottle_in_basket(Kitchen_base_large):
             self.bottle_scale = float(bs)
 
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
+        kwargs["include_collision"] = True
         super()._init_task_env_(**kwargs)
 
     def _bottle_quat_from_cfg(self) -> list[float]:
@@ -82,24 +90,17 @@ class put_bottle_in_basket(Kitchen_base_large):
                 self.bottle.config["scale"] = [final_scale] * 3
             self.add_prohibit_area(self.bottle, padding=0.04, area="table")
 
-    def _bottle_local_in_basket(self) -> np.ndarray | None:
-        if self.bottle is None or self.basket_right is None:
-            return None
-        bottle_world = np.array(self.bottle.get_pose().p, dtype=float)
-        basket_pose = self.basket_right.get_pose()
-        inv_tf = np.linalg.inv(basket_pose.to_transformation_matrix())
-        bottle_local_h = inv_tf @ np.array([bottle_world[0], bottle_world[1], bottle_world[2], 1.0], dtype=float)
-        return np.array(bottle_local_h[:3], dtype=float)
-
-    def _is_bottle_inside_basket(self) -> bool:
-        bottle_local = self._bottle_local_in_basket()
-        if bottle_local is None:
-            return False
-        x_l, y_l, z_l = bottle_local
-        x_ok = (self.BASKET_X_BOUNDS[0] <= x_l <= self.BASKET_X_BOUNDS[1])
-        y_ok = (self.BASKET_Y_BOUNDS[0] <= y_l <= self.BASKET_Y_BOUNDS[1])
-        z_ok = (self.BASKET_Z_BOUNDS[0] <= z_l <= self.BASKET_Z_BOUNDS[1])
-        return bool(x_ok and y_ok and z_ok)
+        basket_bb = get_actor_boundingbox(self.basket_right.actor)
+        self.des_pose = sapien.Pose(
+            [np.mean([basket_bb[0][0], basket_bb[1][0]]), 
+             np.mean([basket_bb[0][1], basket_bb[1][1]]), 
+             basket_bb[1][2] + 0.05],
+            [1, 0, 0, 0]
+        )
+    def _is_can_inside_basket(self) -> bool:
+        box_bb = get_actor_boundingbox(self.basket_right.actor)
+        return np.all((box_bb[0][:2] <= self.bottle.get_pose().p[:2])  & 
+                       (self.bottle.get_pose().p[:2] <= box_bb[1][:2]))
 
     def play_once(self):
         arm_tag = ArmTag("left")
@@ -113,15 +114,17 @@ class put_bottle_in_basket(Kitchen_base_large):
                 contact_point_id=self.GRASP_CONTACT_POINT_ID,
             )
         )
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
-        self.move(self.back_to_origin(arm_tag=arm_tag))
 
-        self.move(self.move_by_displacement(arm_tag=arm_tag, **self.APPROACH_DELTA_1))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, **self.APPROACH_DELTA_2))
-        self.move(self.open_gripper(arm_tag=arm_tag, pos=1.0))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
-        self.move(self.back_to_origin(arm_tag=arm_tag))
-
+        self.attach_object(self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.bottle_modelname}/collision/base{self.bottle_model_id}.glb", str(arm_tag))
+        self.move(
+            self.place_actor(
+                self.bottle,
+                arm_tag=arm_tag,
+                target_pose= self.des_pose,
+                constrain="auto",
+                pre_dis=0.07,
+                dis=0.005,
+            ))
         self.info["info"] = {
             "{A}": f"{self.bottle_modelname}/base{self.bottle_model_id}",
             "{a}": str(arm_tag),
@@ -129,4 +132,4 @@ class put_bottle_in_basket(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        return self._is_bottle_inside_basket()
+        return self._is_can_inside_basket()

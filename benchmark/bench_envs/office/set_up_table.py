@@ -20,7 +20,6 @@ class set_up_table(Office_base_task):
         return set()
 
     def load_actors(self):
-        self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
 
         # set up cabinet
         self.add_cabinet_collision()
@@ -214,8 +213,8 @@ class set_up_table(Office_base_task):
         eps2 = 0.02
         eps3 = 0.03
         eps4 = 0.02
-        eps5 = 0.1
-        eps6 = 0.06
+        eps5 = 0.05
+        eps6 = 0.04
 
 
         return (np.all(abs(end_pose_actual1[:2] - end_pose_desired1[:2]) < np.array([eps1, eps2]))

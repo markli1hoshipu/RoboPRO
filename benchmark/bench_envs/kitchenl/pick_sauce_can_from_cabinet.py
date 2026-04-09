@@ -1,4 +1,9 @@
+import os
+
+import yaml
+
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
+from bench_envs.utils.scene_gen_utils import get_actor_boundingbox, get_random_place_pose
 from envs.utils import *
 import math
 import numpy as np
@@ -49,7 +54,12 @@ class pick_sauce_can_from_cabinet(Kitchen_base_large):
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.sauce_can_modelname = "105_sauce-can"
-        self.sauce_can_model_ids = [0, 4, 5]
+
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+            task_objs = yaml.safe_load(f)
+
+
+        self.sauce_can_model_ids =  task_objs['objects']['kitchenl']['targets'][self.sauce_can_modelname]
         self.sauce_can_spawn_rot_deg = [90.0, 0.0, 90.0]
 
         rot_cfg = kwargs.pop("sauce_can_spawn_rot_deg", None)
@@ -122,6 +132,11 @@ class pick_sauce_can_from_cabinet(Kitchen_base_large):
             self._ensure_sauce_can_grasp_metadata()
             self.add_prohibit_area(self.sauce_can, padding=0.04, area="table")
 
+        self.des_pose = get_random_place_pose(xlim = [-0.1, 0.45], ylim=[-0.2,0.1],
+                                              col_thr=0.15,zlim=[0.78],
+                                        object_bounds={})
+        self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
+
     def _is_sauce_can_inside_cabinet(self) -> bool:
         sauce_local = self._sauce_can_local_in_cabinet()
         if sauce_local is None:
@@ -131,17 +146,6 @@ class pick_sauce_can_from_cabinet(Kitchen_base_large):
         y_ok = (self.CABINET_Y_BOUNDS[0] <= y_l <= self.CABINET_Y_BOUNDS[1])
         z_ok = (self.CABINET_Z_BOUNDS[0] <= z_l <= self.CABINET_Z_BOUNDS[1])
         return bool(x_ok and y_ok and z_ok)
-
-    def _is_sauce_can_in_right_hand(self) -> bool:
-        if self.sauce_can is None:
-            return False
-        tcp_pose = np.array(self.get_arm_pose(ArmTag("right")), dtype=float)
-        sauce_p = np.array(self.sauce_can.get_pose().p, dtype=float)
-        dist_ok = float(np.linalg.norm(sauce_p - tcp_pose[:3])) < self.IN_HAND_TCP_DIST_THRESHOLD
-        return bool(dist_ok and self.is_right_gripper_close())
-
-    def _is_sauce_can_retrieved(self) -> bool:
-        return (not self._is_sauce_can_inside_cabinet()) and self._is_sauce_can_in_right_hand()
 
     def play_once(self):
         arm_tag = ArmTag("right")
@@ -156,9 +160,20 @@ class pick_sauce_can_from_cabinet(Kitchen_base_large):
                 contact_point_id=self.GRASP_CONTACT_POINT_ID,
             )
         )
+        self.attach_object(self.sauce_can, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.sauce_can_modelname}/collision/base{self.sauce_can_model_id}.glb", str(arm_tag))
+
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
         self.move(self.back_to_origin(arm_tag=arm_tag))
 
+        self.move(
+            self.place_actor(
+                self.sauce_can,
+                arm_tag=arm_tag,
+                target_pose= self.des_pose,
+                constrain="auto",
+                pre_dis=0.07,
+                dis=0.005,
+            ))
         self.info["info"] = {
             "{A}": f"{self.sauce_can_modelname}/base{self.sauce_can_model_id}",
             "{a}": str(arm_tag),
@@ -166,4 +181,12 @@ class pick_sauce_can_from_cabinet(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        return self._is_sauce_can_retrieved()
+        eps = 0.01
+        b_pose = self.sauce_can.get_pose().p
+        table_bb = get_actor_boundingbox(self.table)
+        sauce_can_on_table = np.all((table_bb[0][:2] <= b_pose[:2])  &  (b_pose[:2] <= table_bb[1][:2]))
+        sauce_can_on_table &= (b_pose[-1] - table_bb[1][-1]) < eps  
+    
+        return not self._is_sauce_can_inside_cabinet() and sauce_can_on_table \
+               and self.robot.is_right_gripper_open() \
+               and self.robot.is_left_gripper_open()

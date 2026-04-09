@@ -78,6 +78,7 @@ class put_rubikscube_next_to_milktea(Office_base_task):
         self.add_prohibit_area(self.des_obj, padding=0.04, area="table")
 
         self.des_obj_pose = des_obj_pose.p.tolist() + [0, 0, 0.7071, 0.7071]
+        self.des_obj_pose[2] += 0.02
 
 
     def play_once(self):
@@ -94,8 +95,8 @@ class put_rubikscube_next_to_milktea(Office_base_task):
                 arm_tag=arm_tag,
                 target_pose=self.des_obj_pose,
                 constrain="align",
-                pre_dis=0.04,
-                dis=0.02,
+                pre_dis=0.02,
+                dis=0,
                 local_up_axis=[0,0,1]
             ))
 

@@ -1,4 +1,9 @@
+import os
+
+import yaml
+
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
+from bench_envs.utils.scene_gen_utils import get_random_place_pose, get_actor_boundingbox
 from envs.utils import *
 import math
 import numpy as np
@@ -7,7 +12,7 @@ import transforms3d as t3d
 
 
 class pick_can_from_cabinet(Kitchen_base_large):
-    CAN_MASS = 0.1
+    CAN_MASS = 0.2
     IN_HAND_TCP_DIST_THRESHOLD = 0.18
 
     # Can spawn anchor in cabinet base-link local coordinates.
@@ -49,7 +54,10 @@ class pick_can_from_cabinet(Kitchen_base_large):
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.can_modelname = "071_can"
-        self.can_model_ids = [5]
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+            task_objs = yaml.safe_load(f)
+        self.can_model_ids = task_objs['objects']['kitchenl']['targets'][self.can_modelname]
+        # self.can_model_ids = [5]
         self.can_spawn_rot_deg = [90.0, 0.0, 90.0]
 
         rot_cfg = kwargs.pop("can_spawn_rot_deg", None)
@@ -121,6 +129,11 @@ class pick_can_from_cabinet(Kitchen_base_large):
                 self.can.config["scale"] = [final_scale] * 3
             self._ensure_can_grasp_metadata()
             self.add_prohibit_area(self.can, padding=0.04, area="table")
+       
+        self.des_pose = get_random_place_pose(xlim = [-0.1, 0.45], ylim=[-0.2,0.1],
+                                        col_thr=0.15,zlim=[0.79],
+                                        object_bounds={})
+        self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
 
     def _is_can_inside_cabinet(self) -> bool:
         can_local = self._can_local_in_cabinet()
@@ -157,9 +170,23 @@ class pick_can_from_cabinet(Kitchen_base_large):
                 contact_point_id=self.GRASP_CONTACT_POINT_ID,
             )
         )
+        self.attach_object(self.can, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.can_modelname}/collision/base{self.can_model_id}.glb", str(arm_tag))
+
         # Lift is intentionally skipped because retreat already clears cabinet edge robustly.
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
         self.move(self.back_to_origin(arm_tag=arm_tag))
+
+
+        self.move(
+            self.place_actor(
+                self.can,
+                arm_tag=arm_tag,
+                target_pose= self.des_pose,
+                constrain="auto",
+                pre_dis=0.03,
+                dis=0.005,
+            ))
+        
 
         self.info["info"] = {
             "{A}": f"{self.can_modelname}/base{self.can_model_id}",
@@ -168,4 +195,13 @@ class pick_can_from_cabinet(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        return self._is_can_retrieved()
+        eps = 0.01
+        b_pose = self.can.get_pose().p
+        table_bb = get_actor_boundingbox(self.table)
+        can_on_table = np.all((table_bb[0][:2] <= b_pose[:2])  &  (b_pose[:2] <= table_bb[1][:2]))
+        can_on_table &= (b_pose[-1] - table_bb[1][-1]) < eps  
+    
+        return not self._is_can_inside_cabinet() and can_on_table \
+               and self.robot.is_right_gripper_open() \
+               and self.robot.is_left_gripper_open()
+

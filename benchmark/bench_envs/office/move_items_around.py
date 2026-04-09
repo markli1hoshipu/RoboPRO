@@ -20,7 +20,6 @@ class move_items_around(Office_base_task):
         return set()
 
     def load_actors(self):
-        # self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
         # target_obj_1 ------------------------------------------------------------
         self.milktea_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["101_milk-tea"])
         self.target_obj_1 = rand_create_actor(
@@ -63,7 +62,7 @@ class move_items_around(Office_base_task):
 
         # des_obj_pose_2 ------------------------------------------------------------
         target_rand_pose = rand_pose(
-            xlim=[self.office_info["shelf_lims"][0]+0.05, self.office_info["shelf_lims"][2]-0.05],
+            xlim=[self.office_info["shelf_lims"][0]+self.office_info["shelf_padding"], self.office_info["shelf_lims"][2]-self.office_info["shelf_padding"]],
             ylim=[self.office_info["shelf_lims"][1] + 0.055],
             zlim = [self.office_info["shelf_heights"][1]],
             qpos=[1, 0, 0, 0],
@@ -112,7 +111,7 @@ class move_items_around(Office_base_task):
         if not success:
             raise RuntimeError("Failed to load target_obj_2")
         self.target_obj_2.set_mass(0.1)
-        self.add_prohibit_area(self.target_obj_2, padding=0.01, area="table")
+        self.add_prohibit_area(self.target_obj_2, padding=0.03, area="table")
     
         # target3 ------------------------------------------------------------
         if self.arr_v == 0:
@@ -248,6 +247,7 @@ class move_items_around(Office_base_task):
         self.move(self.grasp_actor(self.target_obj_3, arm_tag=arms[2], pre_grasp_dis=0.04, grasp_dis=0.01))
         self.move(self.move_by_displacement(arm_tag=arms[2], y=-0.01, z=0.01))
         self.attach_object(self.target_obj_3, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/043_book/collision/base0.glb", str(arms[2]))
+        self.enable_table(enable=False)
 
         self.move(
             self.place_actor(

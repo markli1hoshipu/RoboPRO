@@ -1,3 +1,7 @@
+import os
+
+import yaml
+
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
 from envs.utils import *
 import math
@@ -16,7 +20,7 @@ class put_can_in_cabinet(Kitchen_base_large):
     CABINET_SUCCESS_Z_BOUNDS = (-0.30, 0.25)
 
     APPROACH_DELTA_1 = dict(x=-0.05, y=0.15, z=0.35)
-    APPROACH_DELTA_2 = dict(y=0.15, z=0.00)
+    APPROACH_DELTA_2 = dict(y=0.15, z=0.02)
     RETREAT_DELTA = dict(y=-0.15)
     GRASP_CONTACT_POINT_ID = 0
 
@@ -27,18 +31,11 @@ class put_can_in_cabinet(Kitchen_base_large):
             [[6.123233995736766e-17, -6.123233995736766e-17, 1.0, 0.0], [1.0, 3.749399456654644e-33, -6.123233995736766e-17, y_center], [0.0, 1.0, 6.123233995736766e-17, 0.0], [0.0, 0.0, 0.0, 1.0]],
         ]
 
-    def _ensure_can_grasp_metadata(self) -> None:
-        if self.can is None or not isinstance(self.can.config, dict):
-            return
-        cfg = self.can.config
-        y_center = float((cfg.get("center") or [0.0, 0.0, 0.0])[1])
-        cfg["contact_points_pose"] = self._right_side_can_contact_points(y_center)
-        cfg["contact_points_group"] = [[0]]
-        cfg["contact_points_mask"] = [True]
-
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.can_modelname = "071_can"
-        self.can_model_ids = [5]
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+            task_objs = yaml.safe_load(f)
+        self.can_model_ids = task_objs['objects']['kitchenl']['targets'][self.can_modelname]
         self.can_spawn_rot_deg = [90.0, 0.0, 90.0]
 
         rot_cfg = kwargs.pop("can_spawn_rot_deg", None)
@@ -67,10 +64,8 @@ class put_can_in_cabinet(Kitchen_base_large):
 
     def _table_center_spawn_pose(self, table_center: np.ndarray) -> sapien.Pose:
         # Current behavior: sampled tabletop spawn near table center.
-        x = float(table_center[0])
-        y = float(table_center[1])
-        x = float(np.random.uniform(table_center[0] - 0.02, table_center[0] + 0.02))
-        y = float(np.random.uniform(table_center[1] - 0.075, table_center[1] - 0.025))
+        x = float(np.random.uniform(table_center[0], table_center[0] + 0.4))
+        y = float(np.random.uniform(table_center[1] - 0.075, table_center[1]))
         z = float(table_center[2] + self.CAN_SPAWN_Z_OFFSET)
         return sapien.Pose([x, y, z], self._can_quat_from_cfg())
 
@@ -83,9 +78,6 @@ class put_can_in_cabinet(Kitchen_base_large):
         self.can_model_id = int(np.random.choice(self.can_model_ids))
         spawn_pose = self._table_center_spawn_pose(table_center)
 
-        intrinsic_scale = self._get_asset_model_scale_create_actor(self.can_modelname, self.can_model_id)
-        final_scale = float(intrinsic_scale) * float(self.can_scale)
-
         self.can = create_actor(
             scene=self.scene,
             pose=spawn_pose,
@@ -93,15 +85,11 @@ class put_can_in_cabinet(Kitchen_base_large):
             model_id=self.can_model_id,
             is_static=False,
             convex=True,
-            scale=final_scale,
+            scale=None,
         )
-        if self.can is not None:
-            self.can.set_mass(self.CAN_MASS)
-            self.can.set_name("task_can")
-            if isinstance(self.can.config, dict):
-                self.can.config["scale"] = [final_scale] * 3
-            self._ensure_can_grasp_metadata()
-            self.add_prohibit_area(self.can, padding=0.04, area="table")
+        self.can.set_mass(self.CAN_MASS)
+
+        self.add_prohibit_area(self.can, padding=0.04, area="table")
 
     def _is_can_inside_cabinet(self) -> bool:
         if self.can is None or self.cabinet is None:
@@ -128,14 +116,14 @@ class put_can_in_cabinet(Kitchen_base_large):
                 contact_point_id=self.GRASP_CONTACT_POINT_ID,
             )
         )
+        self.attach_object(self.can, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.can_modelname}/collision/base{self.can_model_id}.glb", str(arm_tag))
+
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
         self.move(self.back_to_origin(arm_tag=arm_tag))
 
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.APPROACH_DELTA_1))
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.APPROACH_DELTA_2))
         self.move(self.open_gripper(arm_tag=arm_tag, pos=1.0))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
-        self.move(self.back_to_origin(arm_tag=arm_tag))
 
         self.info["info"] = {
             "{A}": f"{self.can_modelname}/base{self.can_model_id}",

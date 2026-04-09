@@ -33,15 +33,18 @@ class move_seal_cup_next_to_box(Study_base_task):
 
         xlim_s = [xlim[0] + self.move_thr + 0.15, xlim[1]] if self.scene_id == 0 \
         else [xlim[0], xlim[1] - self.move_thr - 0.15]
+        ylim_cons = [ylim[0], ylim[1]-0.05]
+
+        # print(f"Seal initial pose range: x={xlim_s}, y={ylim_cons}")
 
         self.target_obj, self.target_id, self.target_pose = \
-        place_actor(self.target_name, self, col_thr=0.15, xlim=xlim_s, ylim=ylim, 
+        place_actor(self.target_name, self, col_thr=0.15, xlim=xlim_s, ylim=ylim_cons, 
                     qpos=(90,0,0), object_bounds=object_bounds, task_objs=task_objs,
                      mass = 0.2, rotation=False)
         object_bounds.append(get_actor_boundingbox(self.target_obj.actor))
         bb_box = get_actor_boundingbox(self.box.actor)        
         self.des_obj_pose = [bb_box[1][0] + self.move_thr if self.side_to_place == "left" else bb_box[0][0] - self.move_thr,
-             np.random.uniform(low=bb_box[0][1]+0.05, high=bb_box[1][1]-0.05),
+             np.random.uniform(low=bb_box[0][1]+0.05, high=bb_box[1][1]-0.10),
              bb_box[1][-1]-0.02] + [1,0,0,0]
 
         # Place a cup as target
@@ -49,14 +52,13 @@ class move_seal_cup_next_to_box(Study_base_task):
 
         xlim_c = [xlim[0] + 0.1, xlim[1]] if self.scene_id == 0 \
         else [xlim[0], xlim[1] - self.move_thr]
+        # print(f"Cup initial pose range: x={xlim_c}, y={ylim_cons}")
         self.target_obj_2, self.target_id_2, self.target_pose_2 = \
-        place_actor(self.target_name_2, self, col_thr=0.15, xlim=xlim_c, ylim=ylim, 
+        place_actor(self.target_name_2, self, col_thr=0.15, xlim=xlim_c, ylim=ylim_cons, 
                     qpos=(90,0,90), object_bounds=object_bounds, task_objs=task_objs,
                      mass = 0.1, rotation=False)
 
 
-
-        
         self.add_prohibit_area(sapien.Pose(p = self.des_obj_pose[:3], 
                                            q = [1,0,0,0]), 
                                            padding=0.12, area="table")
@@ -120,11 +122,11 @@ class move_seal_cup_next_to_box(Study_base_task):
         self.move_object(arm_tag, self.target_obj, self.target_id, 
                          self.target_name, self.des_obj_pose,
                         z = 0.1, pre_dis= 0.07, 
-                        dis=0.005, pre_grasp_dist=0.1)
+                        dis=0.005, pre_grasp_dist=0.08)
         self.move_object(arm_tag, self.target_obj_2, self.target_id_2, 
                          self.target_name_2, self.des_obj_pose_2,
                         z = 0.1, pre_dis= 0.07, 
-                        dis=0.005, pre_grasp_dist=0.1)
+                        dis=0.005, pre_grasp_dist=0.08)
         # Record information about the objects and arm used in the task
         self.info["info"] = {
             "{A}": f"{self.target_name}/base{self.target_id}",
