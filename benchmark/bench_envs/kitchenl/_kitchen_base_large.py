@@ -38,8 +38,18 @@ parent_directory = os.path.dirname(current_file_path)
 
 
 class Kitchen_base_large(Bench_base_task):
+    FURNITURE_NAMES = {
+        "table", "wall", "ground",
+        "floor_0", "floor_1", "floor_2", "floor_3",
+        "basket_right", "microwave_center",
+    }
+
     def __init__(self):
         pass
+
+    def _get_target_object_names(self) -> set[str]:
+        """Default for furniture-only tasks (open/close cabinet/fridge). Override in tasks with target objects."""
+        return set()
 
     def _extract_intrinsic_scale(self, model_data: dict) -> float:
         """
@@ -265,6 +275,8 @@ class Kitchen_base_large(Bench_base_task):
         self.crazy_random_light = (0 if not self.random_light else np.random.rand() < self.crazy_random_light_rate)
         self.random_embodiment = random_setting.get("random_embodiment", False)  # TODO
 
+        self._init_collision_metrics()
+
         self.file_path = []
         self.plan_success = True
         self.step_lim = None
@@ -282,6 +294,7 @@ class Kitchen_base_large(Bench_base_task):
         self.take_action_cnt = 0
         self.eval_video_path = kwags.get("eval_video_save_dir", None)
         self.incl_collision = kwags.get("include_collision", False)
+        self.enable_collision_metrics = kwags.get("enable_collision_metrics", False)
 
         self.save_freq = kwags.get("save_freq")
         self.world_pcd = None
@@ -381,6 +394,9 @@ class Kitchen_base_large(Bench_base_task):
             )
             self.get_cluttered_surfaces()
             self._settle_scene_after_clutter()
+
+        if self.enable_collision_metrics:
+            self._build_collision_name_sets()
 
         # Even for a minimal scene, ensure that articulated objects like the drawer
         # are placed in a stable configuration.

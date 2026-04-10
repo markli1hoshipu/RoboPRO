@@ -18,6 +18,9 @@ class put_bottle_in_fridge(Kitchen_base_large):
     # Placement target in fridge base-link local frame
     FRIDGE_PLACE_LOCAL = np.array([-0.10, 0.00, 0.05], dtype=float)
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.bottle.get_name()}
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.bottle_modelname = "001_bottle"
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:

@@ -41,6 +41,9 @@ class pick_bottle_from_fridge(Kitchen_base_large):
         except Exception:
             pass
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.bottle.get_name()}
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.bottle_modelname = "001_bottle"
         # self.bottle_model_ids = [1, 11, 14, 16]

@@ -51,6 +51,9 @@ class put_sauce_can_in_cabinet(Kitchen_base_large):
             self._init_cabinet_states()
         self.set_cabinet_open()
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.sauce_can.get_name()}
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.sauce_can_modelname = "105_sauce-can"
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:

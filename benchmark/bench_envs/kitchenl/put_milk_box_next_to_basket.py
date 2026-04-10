@@ -52,6 +52,9 @@ class put_milk_box_next_to_basket(Kitchen_base_large):
         cfg.setdefault("contact_points_group", [list(range(len(cfg["contact_points_pose"])))])
         cfg.setdefault("contact_points_mask", [True])
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.milk_box.get_name()}
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.milk_box_modelname = "038_milk-box"
         self.milk_box_model_ids = [0]

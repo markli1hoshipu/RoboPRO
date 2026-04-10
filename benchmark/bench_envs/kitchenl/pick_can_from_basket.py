@@ -47,6 +47,9 @@ class pick_can_from_basket(Kitchen_base_large):
         cfg["contact_points_group"] = [[0]]
         cfg["contact_points_mask"] = [True]
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.can.get_name()}
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.can_modelname = self.CAN_MODELNAME
         self.can_model_ids = list(self.CAN_MODEL_IDS)

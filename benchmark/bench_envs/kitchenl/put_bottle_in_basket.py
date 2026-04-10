@@ -29,6 +29,9 @@ class put_bottle_in_basket(Kitchen_base_large):
     GRASP_CLOSE_POS = 0.0
     GRASP_CONTACT_POINT_ID = 1
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.bottle.get_name()}
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         # Match bottle asset setup used in pick_bottle_from_fridge.
         self.bottle_modelname = "001_bottle"
