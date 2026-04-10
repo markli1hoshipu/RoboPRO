@@ -24,6 +24,8 @@ class put_can_in_cabinet(Kitchen_base_large):
     RETREAT_DELTA = dict(y=-0.15)
     GRASP_CONTACT_POINT_ID = 0
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.can.get_name()}
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.can_modelname = "071_can"

@@ -61,6 +61,9 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
         cfg.setdefault("contact_points_group", [list(range(len(cfg["contact_points_pose"])))])
         cfg.setdefault("contact_points_mask", [True])
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.boxdrink.get_name()}
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.boxdrink_modelname = self.BOXDRINK_MODELNAME
         self.boxdrink_model_ids = list(self.BOXDRINK_MODEL_IDS)
