@@ -23,6 +23,8 @@ class put_bottle_in_fridge(Kitchen_base_large):
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.bottle_modelname = "001_bottle"
+        kwargs["include_collision"] = True
+
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
 
@@ -57,7 +59,11 @@ class put_bottle_in_fridge(Kitchen_base_large):
     def _sample_bottle_spawn_pose(self, table_center: np.ndarray) -> sapien.Pose:
         # Keep current spawn behavior exactly as implemented.
         x = float(np.random.uniform(table_center[0] - 0.2, table_center[0]))
-        y = float(np.random.uniform(table_center[1] - 0.1, table_center[1] + 0.1))
+        if self.scene_id == 1:
+            ylim = [-0.15, 0]
+        else:
+            ylim = [-0.12, 0.1]
+        y = float(np.random.uniform(ylim[0], ylim[1]))
         z = float(table_center[2] + self.BOTTLE_SPAWN_Z_OFFSET)
 
         roll_deg, pitch_deg, yaw_deg = self.bottle_spawn_rot_deg

@@ -17,7 +17,7 @@ class close_cabinet(Kitchen_base_large):
         # Match collision-cache usage from other benchmark tasks
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
-
+        
         # Capture the closed configuration before opening
         if hasattr(self, "cabinet") and self.cabinet is not None:
             self._init_cabinet_states()

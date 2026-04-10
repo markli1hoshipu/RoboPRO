@@ -85,7 +85,7 @@ class put_sauce_can_in_cabinet(Kitchen_base_large):
     def _table_center_spawn_pose(self, table_center: np.ndarray) -> sapien.Pose:
         # Current behavior: randomized spawn near table center.
         # To disable randomization, set x/y directly to table_center.
-        x = float(np.random.uniform(table_center[0] - 0.02, table_center[0] + 0.22))
+        x = float(np.random.uniform(table_center[0] - 0.02, table_center[0] + 0.2))
         y = float(np.random.uniform(table_center[1] - 0.075, table_center[1]))
         z = float(table_center[2] + self.SAUCE_CAN_SPAWN_Z_OFFSET)
         return sapien.Pose([x, y, z], self._sauce_can_quat_from_cfg())

@@ -170,9 +170,13 @@ def place_actor(obj_name, scene, task_objs, col_thr=0.15, object_bounds=None,
                 qpos=(0,0,0), rotation=False, rotate_lim = (0,0,0),
                 is_static=False, scale = None):
     
+    max_attempts = 100
     if obj_pose is None:
         # Threshold between the objects
         while True:
+            max_attempts -= 1
+            if max_attempts <= 0:
+                raise RuntimeError("Failed to find a valid placement for the object.")
             obj_pose = rand_pose(
                 xlim=xlim,
                 ylim=ylim,

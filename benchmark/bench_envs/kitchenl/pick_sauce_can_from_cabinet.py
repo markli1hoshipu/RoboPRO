@@ -57,7 +57,7 @@ class pick_sauce_can_from_cabinet(Kitchen_base_large):
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.sauce_can_modelname = "105_sauce-can"
-
+        kwargs["include_collision"] = True 
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
 
@@ -134,8 +134,11 @@ class pick_sauce_can_from_cabinet(Kitchen_base_large):
                 self.sauce_can.config["scale"] = [final_scale] * 3
             self._ensure_sauce_can_grasp_metadata()
             self.add_prohibit_area(self.sauce_can, padding=0.04, area="table")
-
-        self.des_pose = get_random_place_pose(xlim = [-0.1, 0.45], ylim=[-0.2,0.1],
+            if self.scene_id == 1:
+                ylim = [-0.15, 0]
+            else:
+                ylim = [-0.12, 0.1]
+        self.des_pose = get_random_place_pose(xlim = [-0.1, 0.25], ylim=ylim,
                                               col_thr=0.15,zlim=[0.78],
                                         object_bounds={})
         self.add_prohibit_area(self.des_pose, padding=0.0, area="table")

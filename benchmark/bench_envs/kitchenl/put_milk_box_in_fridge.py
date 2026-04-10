@@ -62,6 +62,7 @@ class put_milk_box_in_fridge(Kitchen_base_large):
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.milk_box_modelname = "038_milk-box"
+        kwargs["include_collision"] = True
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
         self.milk_box_model_ids = task_objs['objects']['kitchenl']['targets'][self.milk_box_modelname]
@@ -100,7 +101,11 @@ class put_milk_box_in_fridge(Kitchen_base_large):
         # Current behavior: randomized tabletop spawn around table center.
         # For base-condition debugging, set x/y directly to table_center.
         x = float(np.random.uniform(table_center[0] - 0.1, table_center[0] + 0.2))
-        y = float(np.random.uniform(table_center[1] - 0.1, table_center[1] + 0.1))
+        if self.scene_id == 1:
+            ylim = [-0.15, 0.05]
+        else:
+            ylim = [-0.12, 0.1]
+        y = float(np.random.uniform(ylim[0],ylim[1]))
         z = float(table_center[2] + self.MILK_BOX_SPAWN_Z_OFFSET)
 
         return sapien.Pose([x, y, z], self._milk_box_quat_from_cfg())

@@ -69,6 +69,7 @@ class pick_milk_box_from_fridge(Kitchen_base_large):
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.milk_box_modelname = "038_milk-box"
+        kwargs["include_collision"] = True 
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
 
@@ -146,7 +147,11 @@ class pick_milk_box_from_fridge(Kitchen_base_large):
                 self.milk_box.config["scale"] = [final_scale] * 3
             self._ensure_milk_box_grasp_metadata()
             self.add_prohibit_area(self.milk_box, padding=0.04, area="table")
-        self.des_pose = get_random_place_pose(xlim = [-0.1, 0.45], ylim=[-0.2,0.1],
+            if self.scene_id == 1:
+                ylim = [-0.15, 0]
+            else:
+                ylim = [-0.12, 0.1]
+        self.des_pose = get_random_place_pose(xlim = [-0.1, 0.2], ylim=ylim,
                                                     col_thr=0.15,zlim=[0.78],
                                                     object_bounds={})
         self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
