@@ -336,6 +336,9 @@ class Kitchen_base_large(Bench_base_task):
         self.basket_right_modelname = "063_tabletrashbin"
         self.basket_right_model_id = 6
 
+        self.scene_id = kwags.get("scene_id") if kwags.get("scene_id") is not None else np.random.randint(0,3)  # for furniture arrangement
+        print_c(f"Scene {self.scene_id} is selected", "YELLOW")
+
         # Cabinet scale: currently only uniform scaling is supported by SAPIEN's URDF loader.
         # This parameter allows you to uniformly resize the cabinet; to truly scale only height,
         # the underlying meshes/URDF would need to encode per-axis scale.
@@ -559,7 +562,8 @@ class Kitchen_base_large(Bench_base_task):
         self._load_basket_on_table(table_height, table_xy_bias)
         self._load_cabinet_on_table(table_height, table_xy_bias)
         self._add_cabinet_wall_filler()
-
+        if self.incl_collision:
+            self.add_collision()
         # Additional kitchen appliances (wall cabinets, pantry rack, etc.)
         # can be re-enabled later via _load_kitchen_appliances if needed.
 
@@ -654,13 +658,25 @@ class Kitchen_base_large(Bench_base_task):
             self.fridge_left.set_name("fridge_left")
             # Interior / semantic volume (e.g. future in-fridge placement hints).
             self.add_prohibit_area(self.fridge_left, padding=0.02, area="fridge")
-        if self.incl_collision:
-            self.collision_list.append({
-                "actor": self.fridge_left,
-                "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/124_fridge_hivvdf/blender_public/links/",
-                "pose": self.fridge_left.get_link_pose("link_0"),
-                "files": ["base_link_collision.glb", "link_0_collision.glb"],
-            })
+    def _get_scene_obj_locations(self, object_name="microwave"):
+        if self.scene_id == 0: 
+            microwave_location = [0.0, 0.30]
+            basket_location = [-0.37, 0.12, 0]
+        elif self.scene_id == 1:
+            microwave_location = [-0.4, 0.30]
+            basket_location = [0, 0.15, 0]
+        elif self.scene_id == 2:
+            microwave_location = [-0.4, 0.10]
+            # self.microwave_left_rot = [0.0, 180.0, 0.0]
+            basket_location = [-0.4, 0.07, 0.927]
+        else:
+            raise ValueError(f"Invalid scene_id {self.scene_id}")
+        if object_name == "microwave":
+            return microwave_location
+        elif object_name == "basket":
+            return basket_location
+        raise ValueError(f"Object name {object_name} is not supported")
+
             # Tabletop clutter uses ``prohibited_area["table"]`` only (office pattern).
             self.add_prohibit_area(self.fridge_left, padding=0.02, area="table")
             self._add_fridge_front_table_approach_prohibit(table_xy_bias)
@@ -703,8 +719,9 @@ class Kitchen_base_large(Bench_base_task):
 
     def _load_microwave_on_table(self, table_height: float, table_xy_bias):
         """Place the static microwave in the middle of the front edge of the table."""
-        y_front = table_xy_bias[1] + 0.30
-        x_microwave = table_xy_bias[0] + 0.0
+        
+        x_microwave, y_front = self._get_scene_obj_locations()
+        # x_microwave = table_xy_bias[0] + 0.0
         z_microwave = table_height + 0.02
 
         mw_roll_deg, mw_pitch_deg, mw_yaw_deg = self.microwave_left_rot
@@ -748,9 +765,10 @@ class Kitchen_base_large(Bench_base_task):
         """Place the static table-side container (`063_tabletrashbin`) on the left front edge of the table."""
         jx = float(np.random.uniform(self.basket_right_position_jitter_x[0], self.basket_right_position_jitter_x[1]))
         jy = float(np.random.uniform(self.basket_right_position_jitter_y[0], self.basket_right_position_jitter_y[1]))
-        y_front = table_xy_bias[1] + 0.12 + jy
-        x_right = table_xy_bias[0] - 0.37 + jx
-        z_basket = table_height + 0.02
+        x_right, y_front, z_basket = self._get_scene_obj_locations(object_name="basket")
+        y_front += jy
+        x_right += jx
+        z_basket = table_height + 0.02 if z_basket == 0 else z_basket
 
         br_roll_deg, br_pitch_deg, br_yaw_deg = self.basket_right_rot
         br_ax = math.radians(br_roll_deg)
@@ -783,13 +801,24 @@ class Kitchen_base_large(Bench_base_task):
                 self.basket_right.config["scale"] = [float(final_scale)] * 3
             self.basket_right.set_name("basket_right")
             self.add_prohibit_area(self.basket_right, padding=0.01, area="table")
-            if self.incl_collision:
-                print_c("collision added","YELLOW")
-                self.collision_list.append({
-                    "actor": self.basket_right,
-                    "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/063_tabletrashbin/collision/base6.glb",
-                })
-   
+    def add_collision(self):
+        print_c("Furniture collisions added","YELLOW")
+        self.collision_list.append({
+            "actor": self.basket_right,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/063_tabletrashbin/collision/base6.glb",
+        })
+        # self.collision_list.append({
+        #         "actor": self.fridge_left,
+        #         "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/124_fridge_hivvdf/blender_public/links/",
+        #         "pose": self.fridge_left.get_link_pose("base_link"), 
+        #         "files": ["base_link_collision.glb", "link_0_collision.glb"],
+        #     })
+        # self.collision_list.append({
+        #         "actor": self.cabinet,
+        #         "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/125_cabinet_tynnnw/blender_public/links/",
+        #         "pose": self.cabinet.get_link_pose("base_link"),
+        #         "files": ["base_link_collision.glb", "left_door_collision.glb", "right_door_collision.glb"],
+        #     })
     def _load_cabinet_on_table(self, table_height: float, table_xy_bias):
         """Place the chosen articulated cabinet asset on the opposite end of the table from the drawer."""
         # Mirror the drawer position across the table center in x.
@@ -815,7 +844,6 @@ class Kitchen_base_large(Bench_base_task):
             self.cabinet.set_name("cabinet")
             self.add_prohibit_area(self.cabinet, padding=0.02, area="cabinet")
             self._init_cabinet_states()
-
     def _entity_aabb(self, entity):
         # Actor path: reuse existing utility.
         if hasattr(entity, "get_components"):

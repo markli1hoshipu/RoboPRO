@@ -51,6 +51,7 @@ class pick_can_from_basket(Kitchen_base_large):
         return {self.can.get_name()}
 
     def setup_demo(self, is_test: bool = False, **kwargs):
+        kwargs["scene_id"] = 0 # Only use scene 0 for this task, to ensure the cabinet is in the same location and the same door is open across all demos.
         self.can_modelname = self.CAN_MODELNAME
         self.can_model_ids = list(self.CAN_MODEL_IDS)
         self.can_spawn_rot_deg = [90.0, -90.0, 90.0]
@@ -118,8 +119,8 @@ class pick_can_from_basket(Kitchen_base_large):
                 self.can.config["scale"] = [final_scale] * 3
             self._ensure_can_grasp_metadata()
             self.add_prohibit_area(self.can, padding=0.04, area="table")
-        self.des_pose = get_random_place_pose(xlim = [-0.25, -0.15], ylim=[-0.15,-0.1],
-                                        col_thr=0.15,zlim=[0.82], qpos=(0,0,0),
+        self.des_pose = get_random_place_pose(xlim = [-0.25, -0.15], ylim=[-0.05,0],
+                                        col_thr=0.15,zlim=[0.80], qpos=(0,0,0),
                                         object_bounds={})
                                         
         self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
@@ -140,6 +141,8 @@ class pick_can_from_basket(Kitchen_base_large):
         self.attach_object(self.can, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.can_modelname}/collision/base{self.can_model_id}.glb", str(arm_tag))
 
         self.move(self.back_to_origin(arm_tag=arm_tag))
+        self.add_collision()
+        self.update_world()
         self.move(self.move_to_pose(arm_tag=arm_tag, target_pose=self.des_pose))
         self.move(self.open_gripper(arm_tag=arm_tag))
 

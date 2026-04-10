@@ -103,13 +103,6 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
         p = np.array(self.table.get_pose().p, dtype=float)
         return np.array([p[0] + self._place_world_x_off, p[1] + self._place_world_y_off], dtype=float)
 
-    def _place_anchor_table_local(self) -> np.ndarray | None:
-        if self.table is None:
-            return None
-        xy_w = self._place_target_world_xy()
-        p = np.array(self.table.get_pose().p, dtype=float)
-        return self._world_point_in_entity_local(self.table, np.array([xy_w[0], xy_w[1], p[2]], dtype=float))
-
     def _ee_pose_above_place_target(self, arm_tag: ArmTag) -> np.ndarray:
         ee_pose = np.array(self.get_arm_pose(arm_tag), dtype=float)
         table_p = np.array(self.table.get_pose().p, dtype=float)
@@ -149,7 +142,7 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
             self._ensure_boxdrink_grasp_metadata()
             self.add_prohibit_area(self.boxdrink, padding=0.04, area="table")
 
-            self.des_pose = get_random_place_pose(xlim = [-0.45, 0.1], ylim=[-0.25,-.05],
+            self.des_pose = get_random_place_pose(xlim = [-0.45, 0], ylim=[-0.15,-.05],
                                         col_thr=0.15,zlim=[0.78],
                                         object_bounds={})
             self.add_prohibit_area(self.des_pose, padding=0.0, area="table")

@@ -3,7 +3,7 @@ import os
 import yaml
 
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
-from bench_envs.utils.scene_gen_utils import get_random_place_pose, get_actor_boundingbox, print_c
+from bench_envs.utils.scene_gen_utils import get_actor_boundingbox, get_random_place_pose,print_c
 from envs.utils import *
 import math
 import numpy as np
@@ -11,8 +11,8 @@ import sapien
 import transforms3d as t3d
 
 
-class pick_can_from_cabinet(Kitchen_base_large):
-    CAN_MASS = 0.2
+class move_bottle_from_cabinet_to_basket(Kitchen_base_large):
+    CAN_MASS = 0.6
     IN_HAND_TCP_DIST_THRESHOLD = 0.18
 
     # Can spawn anchor in cabinet base-link local coordinates.
@@ -52,14 +52,12 @@ class pick_can_from_cabinet(Kitchen_base_large):
             self._init_cabinet_states()
         self.set_cabinet_open()
 
-    def _get_target_object_names(self) -> set[str]:
-        return {self.can.get_name()}
-
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.can_modelname = "071_can"
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
         self.can_model_ids = task_objs['objects']['kitchenl']['targets'][self.can_modelname]
+        # self.can_model_ids = [5]
         self.can_spawn_rot_deg = [90.0, 0.0, 90.0]
 
         rot_cfg = kwargs.pop("can_spawn_rot_deg", None)
@@ -122,7 +120,7 @@ class pick_can_from_cabinet(Kitchen_base_large):
             model_id=self.can_model_id,
             is_static=False,
             convex=True,
-            scale=final_scale,
+            scale=0.06,
         )
         if self.can is not None:
             self.can.set_mass(self.CAN_MASS)
@@ -131,15 +129,19 @@ class pick_can_from_cabinet(Kitchen_base_large):
                 self.can.config["scale"] = [final_scale] * 3
             self._ensure_can_grasp_metadata()
             self.add_prohibit_area(self.can, padding=0.04, area="table")
-        if self.scene_id == 1:
-            ylim = [-0.15, 0.05]
-        else:
-            ylim = [-0.15, 0.05]
-        self.des_pose = get_random_place_pose(xlim = [0.2, 0.45], ylim=ylim,
-                                        col_thr=0.15,zlim=[0.79],
+       
+        self.des_pose = get_random_place_pose(xlim = [-0.1, 0], ylim=[0] if self.scene_id == 1 else [-0.05,0.1], 
+                                        col_thr=0.15,zlim=[0.75], qpos=(0,0,-90),
                                         object_bounds={})
+        
         self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
-        print_c(f"Placing {self.can_model_id} at {self.des_pose}", "RED")
+
+        basket_bb = get_actor_boundingbox(self.basket_right.actor)
+        self.des_basket_pose = sapien.Pose(
+            [np.mean([basket_bb[0][0], basket_bb[1][0]]), 
+             np.mean([basket_bb[0][1], basket_bb[1][1]]), 
+             basket_bb[1][2] + 0.05], [1,0,0,0]
+        )
     def _is_can_inside_cabinet(self) -> bool:
         can_local = self._can_local_in_cabinet()
         if can_local is None:
@@ -162,7 +164,7 @@ class pick_can_from_cabinet(Kitchen_base_large):
         # Success: can is held in hand and no longer inside cabinet volume.
         return (not self._is_can_inside_cabinet()) and self._is_can_in_right_hand()
 
-    def play_once(self):
+    def take_can(self):
         arm_tag = ArmTag("right")
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.APPROACH_DELTA))
         self.move(
@@ -180,34 +182,128 @@ class pick_can_from_cabinet(Kitchen_base_large):
         # Lift is intentionally skipped because retreat already clears cabinet edge robustly.
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
         self.move(self.back_to_origin(arm_tag=arm_tag))
-        self.add_collision()
-        self.update_world()
+
 
         self.move(
             self.place_actor(
                 self.can,
                 arm_tag=arm_tag,
                 target_pose= self.des_pose,
-                constrain="auto",
+                constrain="free",
                 pre_dis=0.03,
                 dis=0.005,
             ))
-        
+        self.move(self.open_gripper(arm_tag=arm_tag))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.09))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=0.05))
+
+        self.move(self.back_to_origin(arm_tag=arm_tag))
 
         self.info["info"] = {
             "{A}": f"{self.can_modelname}/base{self.can_model_id}",
             "{a}": str(arm_tag),
         }
         return self.info
+  
+    def take_can_and_put(self):
+        arm_tag = ArmTag("right")
+        self.move(self.move_by_displacement(arm_tag=arm_tag, **self.APPROACH_DELTA))
+        self.move(
+            self.grasp_actor(
+                self.can,
+                arm_tag=arm_tag,
+                pre_grasp_dis=self.GRASP_PRE_DIS,
+                grasp_dis=self.GRASP_DIS,
+                gripper_pos=self.GRASP_CLOSE_POS,
+                contact_point_id=self.GRASP_CONTACT_POINT_ID,
+            )
+        )
+        self.attach_object(self.can, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.can_modelname}/collision/base{self.can_model_id}.glb", str(arm_tag))
+
+        # Lift is intentionally skipped because retreat already clears cabinet edge robustly.
+        self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
+        self.move(self.back_to_origin(arm_tag=arm_tag))
+
+
+        self.move(
+            self.place_actor(
+                self.can,
+                arm_tag=arm_tag,
+                target_pose= self.des_basket_pose,
+                constrain="free",
+                pre_dis=0.03,
+                dis=0.005,
+            ))
+        self.move(self.open_gripper(arm_tag=arm_tag))
+        self.move(self.back_to_origin(arm_tag=arm_tag))
+
+        self.info["info"] = {
+            "{A}": f"{self.can_modelname}/base{self.can_model_id}",
+            "{a}": str(arm_tag),
+        }
+        return self.info
+  
+    def close_cabinet(self):
+        # Provide a simple info mapping for downstream use
+        arm_tag = ArmTag("right")
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=0.2, y=0.05))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.35))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=-0.3, y=0.07))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.05))
+        self.move(self.back_to_origin(arm_tag=arm_tag))
+        self.info["info"] = {
+            "{A}": "122_cabinet_nkrgez",
+        }
+        return self.info
+    
+    def put_can_in_basket_left(self):
+        arm_tag = ArmTag("left")
+        self.move(
+            self.grasp_actor(
+                self.can,
+                arm_tag=arm_tag,
+                pre_grasp_dis=self.GRASP_PRE_DIS
+            )
+        )
+
+        self.attach_object(self.can, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.can_modelname}/collision/base{self.can_model_id}.glb", str(arm_tag))
+        if self.scene_id == 2:
+            self.move(self.move_by_displacement(arm_tag=arm_tag, x = -0.2,y=-0.3, z=0.2))
+        if self.scene_id == 1:
+            self.move(self.move_by_displacement(arm_tag=arm_tag, x = -0.1,y=-0.2, z=0.1))
+
+        self.move(
+            self.place_actor(
+                self.can,
+                arm_tag=arm_tag,
+                target_pose= self.des_basket_pose,
+                constrain="auto",
+                pre_dis=0.07,
+                dis=0.005,
+            ))
+        self.info["info"] = {
+            "{A}": f"{self.can_modelname}/base{self.can_model_id}",
+            "{a}": str(arm_tag),
+        }
+    def _is_can_inside_basket(self) -> bool:
+        box_bb = get_actor_boundingbox(self.basket_right.actor)
+        return np.all((box_bb[0][:2] <= self.can.get_pose().p[:2])  & 
+                       (self.can.get_pose().p[:2] <= box_bb[1][:2]))
+
+    def play_once(self):
+        if self.scene_id == 1:
+            self.take_can_and_put()
+            self.close_cabinet()
+        else:
+            self.take_can()
+            self.close_cabinet()
+            self.put_can_in_basket_left()
 
     def check_success(self):
-        eps = 0.01
-        b_pose = self.can.get_pose().p
-        table_bb = get_actor_boundingbox(self.table)
-        can_on_table = np.all((table_bb[0][:2] <= b_pose[:2])  &  (b_pose[:2] <= table_bb[1][:2]))
-        can_on_table &= (b_pose[-1] - table_bb[1][-1]) < eps  
     
-        return not self._is_can_inside_cabinet() and can_on_table \
+        return not self._is_can_inside_cabinet() and self._is_can_inside_basket \
+               and self.is_cabinet_closed(threshold=0.02) \
                and self.robot.is_right_gripper_open() \
                and self.robot.is_left_gripper_open()
+
 
