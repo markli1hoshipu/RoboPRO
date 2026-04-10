@@ -629,18 +629,3 @@ class Office_base_task(Bench_base_task):
         cabinet_pose[1]-= 0.19  
         self.prohibited_area["table"].append([cabinet_pose[0]-0.11, cabinet_pose[1]-0.1, cabinet_pose[0]+0.11, cabinet_pose[1]+0.1])
         self.add_operating_area(cabinet_pose, width = 0.12, length = 0.4)
-    
-    def add_operating_area(self, pose, width = 0.07, length = 0.28):
-        xmin = pose[0] - width/2
-        xmax = pose[0] + width/2
-        ymin = pose[1] - length
-        ymax = pose[1]
-        self.prohibited_area["table"].append([xmin, ymin, xmax, ymax])
-    
-    def add_gripper_operating_area(self):
-        # prohibit the area under the gripper start state so there are no initial collisions with obstacles
-        x_half_width = 0.075
-        ymax = -0.18
-        ymin = -0.26
-        self.prohibited_area["table"].append([-0.3-x_half_width, ymin, -0.3+x_half_width, ymax])
-        self.prohibited_area["table"].append([0.3-x_half_width, ymin, 0.3+x_half_width, ymax])

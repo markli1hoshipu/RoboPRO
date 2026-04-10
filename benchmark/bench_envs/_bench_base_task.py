@@ -160,7 +160,6 @@ class Bench_base_task(Base_Task):
         #         name=f"_collision",
         #         is_static=True,
         #     )
-
         # record cluttered objects
         self.record_cluttered_objects = []
         self.size_dict = []
@@ -620,7 +619,6 @@ class Bench_base_task(Base_Task):
         padding=0.01,
         area="table"
     ):
-
         if (isinstance(actor, sapien.Pose) or isinstance(actor, list) or isinstance(actor, np.ndarray)):
             actor_pose = transforms._toPose(actor)
             actor_data = {}
@@ -1248,3 +1246,34 @@ class Bench_base_task(Base_Task):
     
     def enable_obstacle(self, enable: bool, mesh_names: list[str] = [], obb_names: list[str] = []):
         self.robot.enable_obstacle(enable, mesh_names=mesh_names, obb_names=obb_names)
+
+    def add_gripper_operating_area(self):
+        # prohibit the area under the gripper start state so there are no initial collisions with obstacles
+        if "table" not in self.prohibited_area:
+            return
+        x_half_width = 0.075
+        ymax = -0.18
+        ymin = -0.26
+        self.prohibited_area["table"].append([-0.3-x_half_width, ymin, -0.3+x_half_width, ymax])
+        self.prohibited_area["table"].append([0.3-x_half_width, ymin, 0.3+x_half_width, ymax])
+    
+    def add_operating_area(self, pose, width = 0.07, length = 0.28, direction = "forward"):
+        if "table" not in self.prohibited_area:
+            return
+        # add a prohibited area in the space where the arm approaches a grasp or place. For horizontal movement.
+        if direction == "forward": # from -y to +y
+            xmin = pose[0] - width/2
+            xmax = pose[0] + width/2
+            ymin = pose[1] - length
+            ymax = pose[1]
+        elif direction == "right": # from -x to +x
+            xmin = pose[0] - length
+            xmax = pose[0]
+            ymin = pose[1] - width/2
+            ymax = pose[1] + width/2
+        elif direction == "left": # from +x to -x
+            xmin = pose[0]
+            xmax = pose[0] + length
+            ymin = pose[1] - width/2
+            ymax = pose[1] + width/2
+        self.prohibited_area["table"].append([xmin, ymin, xmax, ymax])
