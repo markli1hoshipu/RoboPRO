@@ -1,4 +1,7 @@
+import os
+
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
+from bench_envs.utils.scene_gen_utils import get_random_place_pose, get_actor_boundingbox, print_c
 from envs.utils import *
 import math
 import numpy as np
@@ -17,10 +20,6 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
 
     # Fixed in basket root frame; basket world pose is jittered in Kitchen_base_large.
     BASKET_BOXDRINK_LOCAL = np.array([0.0, 0.0, 0.03], dtype=float)
-
-    BASKET_X_BOUNDS = (-0.20, 0.20)
-    BASKET_Y_BOUNDS = (-0.20, 0.20)
-    BASKET_Z_BOUNDS = (-0.10, 0.25)
 
     PLACE_WORLD_X_OFFSET = 0.08
     PLACE_WORLD_X_JITTER = (-0.04, 0.04)
@@ -62,6 +61,9 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
         cfg.setdefault("contact_points_group", [list(range(len(cfg["contact_points_pose"])))])
         cfg.setdefault("contact_points_mask", [True])
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.boxdrink.get_name()}
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.boxdrink_modelname = self.BOXDRINK_MODELNAME
         self.boxdrink_model_ids = list(self.BOXDRINK_MODEL_IDS)
@@ -83,50 +85,12 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
 
-    def _boxdrink_quat_from_cfg(self) -> list[float]:
-        roll_deg, pitch_deg, yaw_deg = self.boxdrink_spawn_rot_deg
-        ax = math.radians(roll_deg)
-        ay = math.radians(pitch_deg)
-        az = math.radians(yaw_deg)
-        qx, qy, qz, qw = t3d.euler.euler2quat(ax, ay, az)
-        return [qw, qx, qy, qz]
-
-    def _table_center_spawn_pose(self, table_center: np.ndarray) -> sapien.Pose:
-        j = float(self.TABLE_WORLD_XY_JITTER)
-        x = float(table_center[0] + np.random.uniform(-j, j))
-        y = float(table_center[1] + np.random.uniform(-j, j))
-        z = float(table_center[2] + self.BOXDRINK_SPAWN_Z_OFFSET)
-        return sapien.Pose([x, y, z], self._boxdrink_quat_from_cfg())
-
-    def _basket_spawn_pose(self) -> sapien.Pose:
-        basket_pose = self.basket_right.get_pose()
-        basket_tf = basket_pose.to_transformation_matrix()
-        basket_R = np.array(basket_tf[:3, :3], dtype=float)
-        basket_p = np.array(basket_tf[:3, 3], dtype=float)
-        world_pos = basket_p + basket_R @ np.array(self.BASKET_BOXDRINK_LOCAL, dtype=float)
-        return sapien.Pose(world_pos.tolist(), self._boxdrink_quat_from_cfg())
-
-    def _boxdrink_local_in_basket(self) -> np.ndarray | None:
-        if self.boxdrink is None or self.basket_right is None:
-            return None
-        return self._world_point_in_entity_local(self.basket_right, np.array(self.boxdrink.get_pose().p, dtype=float))
-
     def _is_boxdrink_inside_basket(self) -> bool:
-        loc = self._boxdrink_local_in_basket()
-        if loc is None:
-            return False
-        x_l, y_l, z_l = loc
-        return bool(
-            self.BASKET_X_BOUNDS[0] <= x_l <= self.BASKET_X_BOUNDS[1]
-            and self.BASKET_Y_BOUNDS[0] <= y_l <= self.BASKET_Y_BOUNDS[1]
-            and self.BASKET_Z_BOUNDS[0] <= z_l <= self.BASKET_Z_BOUNDS[1]
-        )
-
-    def _boxdrink_local_in_table(self) -> np.ndarray | None:
-        if self.boxdrink is None or self.table is None:
-            return None
-        return self._world_point_in_entity_local(self.table, np.array(self.boxdrink.get_pose().p, dtype=float))
-
+        box_bb = get_actor_boundingbox(self.basket_right.actor)
+        return np.all((box_bb[0][:2] <= self.boxdrink.get_pose().p[:2])  & 
+                       (self.boxdrink.get_pose().p[:2] <= box_bb[1][:2]))
+       
+        
     def _sample_place_world_offsets(self) -> None:
         self._place_world_x_off = float(self.PLACE_WORLD_X_OFFSET) + float(
             np.random.uniform(self.PLACE_WORLD_X_JITTER[0], self.PLACE_WORLD_X_JITTER[1])
@@ -138,23 +102,6 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
     def _place_target_world_xy(self) -> np.ndarray:
         p = np.array(self.table.get_pose().p, dtype=float)
         return np.array([p[0] + self._place_world_x_off, p[1] + self._place_world_y_off], dtype=float)
-
-    def _place_anchor_table_local(self) -> np.ndarray | None:
-        if self.table is None:
-            return None
-        xy_w = self._place_target_world_xy()
-        p = np.array(self.table.get_pose().p, dtype=float)
-        return self._world_point_in_entity_local(self.table, np.array([xy_w[0], xy_w[1], p[2]], dtype=float))
-
-    def _is_boxdrink_at_place_target(self) -> bool:
-        box_local = self._boxdrink_local_in_table()
-        anchor = self._place_anchor_table_local()
-        if box_local is None or anchor is None:
-            return False
-        tol = float(self.PLACE_SUCCESS_XY_TOL)
-        xy_ok = abs(box_local[0] - anchor[0]) <= tol and abs(box_local[1] - anchor[1]) <= tol
-        z_ok = self.TABLE_PLACE_Z_BOUNDS[0] <= box_local[2] <= self.TABLE_PLACE_Z_BOUNDS[1]
-        return bool(xy_ok and z_ok)
 
     def _ee_pose_above_place_target(self, arm_tag: ArmTag) -> np.ndarray:
         ee_pose = np.array(self.get_arm_pose(arm_tag), dtype=float)
@@ -170,10 +117,11 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
         self._sample_place_world_offsets()
 
         self.boxdrink_model_id = int(np.random.choice(self.boxdrink_model_ids))
-        spawn_pose = self._basket_spawn_pose()
-
         intrinsic_scale = self._get_asset_model_scale_create_actor(self.boxdrink_modelname, self.boxdrink_model_id)
         final_scale = float(intrinsic_scale) * float(self.boxdrink_scale)
+
+        spawn_pose = self.basket_right.get_pose()
+        spawn_pose.p[1] -= 0.02
 
         self.boxdrink = create_actor(
             scene=self.scene,
@@ -184,6 +132,8 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
             convex=True,
             scale=final_scale,
         )
+        
+        
         if self.boxdrink is not None:
             self.boxdrink.set_mass(self.BOXDRINK_MASS)
             self.boxdrink.set_name("task_boxdrink")
@@ -191,6 +141,11 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
                 self.boxdrink.config["scale"] = [final_scale] * 3
             self._ensure_boxdrink_grasp_metadata()
             self.add_prohibit_area(self.boxdrink, padding=0.04, area="table")
+
+            self.des_pose = get_random_place_pose(xlim = [-0.45, 0], ylim=[-0.15,-.05],
+                                        col_thr=0.15,zlim=[0.78],
+                                        object_bounds={})
+            self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
 
     def play_once(self):
         arm_tag = ArmTag("left")
@@ -203,15 +158,21 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
                 gripper_pos=self.GRASP_CLOSE_POS,
             )
         )
+        self.attach_object(self.boxdrink, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.boxdrink_modelname}/collision/base{self.boxdrink_model_id}.glb", str(arm_tag))
+
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
         self.move(self.back_to_origin(arm_tag=arm_tag))
 
-        self.move(self.move_to_pose(arm_tag=arm_tag, target_pose=self._ee_pose_above_place_target(arm_tag)))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=-self.DESCEND_BEFORE_RELEASE))
-        self.move(self.open_gripper(arm_tag=arm_tag, pos=1.0))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_AFTER_RELEASE))
-        self.move(self.back_to_origin(arm_tag=arm_tag))
-
+        self.move(
+            self.place_actor(
+                self.boxdrink,
+                arm_tag=arm_tag,
+                target_pose= self.des_pose,
+                constrain="auto",
+                pre_dis=0.07,
+                dis=0.005,
+            ))
+     
         self.info["info"] = {
             "{A}": f"{self.boxdrink_modelname}/base{self.boxdrink_model_id}",
             "{a}": str(arm_tag),
@@ -219,4 +180,8 @@ class pick_boxdrink_from_basket(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        return self._is_boxdrink_at_place_target() and (not self._is_boxdrink_inside_basket())
+        eps = 0.01
+        table_bb = get_actor_boundingbox(self.table)
+        on_table = np.all((table_bb[0][:2] <= self.boxdrink.get_pose().p[:2])  &  (self.boxdrink.get_pose().p[:2] <= table_bb[1][:2]))
+        on_table &= (self.boxdrink.get_pose().p[-1] - table_bb[1][-1]) < eps  
+        return on_table and (not self._is_boxdrink_inside_basket())

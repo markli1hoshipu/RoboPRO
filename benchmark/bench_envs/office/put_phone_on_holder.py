@@ -105,12 +105,14 @@ class put_phone_on_holder(Office_base_task):
         arm_tag = ArmTag("right")
 
         # Grasp the target_obj with specified arm
-        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.08))
+        self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.08)
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.02))
+        
+        self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/077_phone/collision/base{self.phone_id}.glb", str(arm_tag))
+        self.enable_table(enable=True)
 
         # Get des_obj's functional point as target for placement
         stand_func_pose = self.des_obj.get_functional_point(0)
-        
-        self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/077_phone/collision/base{self.phone_id}.glb", str(arm_tag))
 
         # Place the target_obj onto the des_obj's functional point with alignment constraint
         self.move(

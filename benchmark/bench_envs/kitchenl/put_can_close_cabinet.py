@@ -4,13 +4,19 @@ import yaml
 
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
 from envs.utils import *
-import math
-import numpy as np
 import sapien
+import math
+from envs._GLOBAL_CONFIGS import *
+from copy import deepcopy
+import glob
+import numpy as np
 import transforms3d as t3d
 
 
-class put_can_in_cabinet(Kitchen_base_large):
+class put_can_close_cabinet(Kitchen_base_large):
+    """
+    Task: start with the cabinet doors open and close them.
+    """
     CAN_MASS = 0.1
     CAN_SPAWN_Z_OFFSET = 0.02
 
@@ -24,12 +30,10 @@ class put_can_in_cabinet(Kitchen_base_large):
     RETREAT_DELTA = dict(y=-0.15)
     GRASP_CONTACT_POINT_ID = 0
 
-    def _get_target_object_names(self) -> set[str]:
-        return {self.can.get_name()}
-
     def setup_demo(self, is_test: bool = False, **kwargs):
-        self.can_modelname = "071_can"
         kwargs["include_collision"] = True
+        # Match collision-cache usage from other benchmark tasks
+        self.can_modelname = "071_can"
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
         self.can_model_ids = task_objs['objects']['kitchenl']['targets'][self.can_modelname]
@@ -43,14 +47,16 @@ class put_can_in_cabinet(Kitchen_base_large):
         cs = kwargs.pop("can_scale", None)
         if cs is not None:
             self.can_scale = float(cs)
-
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
 
-        if getattr(self, "cabinet_closed_qpos", None) is None:
+        # Capture the closed configuration before opening
+        if hasattr(self, "cabinet") and self.cabinet is not None:
             self._init_cabinet_states()
-        self.set_cabinet_open()
-
+            # Start close-cabinet task from right-door-open state only.
+            self.set_cabinet_open()
+        else:
+            self.cabinet_closed_qpos = None
     def _can_quat_from_cfg(self) -> list[float]:
         roll_deg, pitch_deg, yaw_deg = self.can_spawn_rot_deg
         ax = math.radians(roll_deg)
@@ -67,9 +73,6 @@ class put_can_in_cabinet(Kitchen_base_large):
         return sapien.Pose([x, y, z], self._can_quat_from_cfg())
 
     def load_actors(self):
-        if getattr(self, "cabinet_closed_qpos", None) is None:
-            self._init_cabinet_states()
-        self.set_cabinet_open()
 
         table_center = np.array(self.table.get_pose().p, dtype=float)
         self.can_model_id = int(np.random.choice(self.can_model_ids))
@@ -87,7 +90,7 @@ class put_can_in_cabinet(Kitchen_base_large):
         self.can.set_mass(self.CAN_MASS)
 
         self.add_prohibit_area(self.can, padding=0.04, area="table")
-
+   
     def _is_can_inside_cabinet(self) -> bool:
         if self.can is None or self.cabinet is None:
             return False
@@ -101,7 +104,7 @@ class put_can_in_cabinet(Kitchen_base_large):
         z_ok = (self.CABINET_SUCCESS_Z_BOUNDS[0] <= z_l <= self.CABINET_SUCCESS_Z_BOUNDS[1])
         return bool(x_ok and y_ok and z_ok)
 
-    def play_once(self):
+    def put_can(self):
         arm_tag = ArmTag("right")
         self.move(
             self.grasp_actor(
@@ -121,13 +124,30 @@ class put_can_in_cabinet(Kitchen_base_large):
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.APPROACH_DELTA_1))
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.APPROACH_DELTA_2))
         self.move(self.open_gripper(arm_tag=arm_tag, pos=1.0))
+        self.move(self.back_to_origin(arm_tag=arm_tag))
 
         self.info["info"] = {
             "{A}": f"{self.can_modelname}/base{self.can_model_id}",
             "{a}": str(arm_tag),
         }
+    def close_cabinet(self):
+        # Provide a simple info mapping for downstream use
+        arm_tag = ArmTag("right")
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=0.2, y=0.05))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.35))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, x=-0.3, y=0.07))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.05))
+    
+        self.info["info"] = {
+            "{A}": "122_cabinet_nkrgez",
+        }
         return self.info
+    def play_once(self):
+        self.put_can()
+        self.close_cabinet()
 
     def check_success(self):
-        return self._is_can_inside_cabinet() and self.robot.is_left_gripper_open() \
+         return self.is_cabinet_closed(threshold=0.02) and self._is_can_inside_cabinet() and \
+                self.robot.is_left_gripper_open() \
                 and self.robot.is_right_gripper_open()
+

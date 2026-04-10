@@ -4,13 +4,10 @@ objects:
     targets:
       077_phone: [0,1,2,4]
       043_book: [0]
-      077_phone: [0,1,2,4]
-      043_book: [0]
       046_alarm-clock: [0,1,2,3]
       048_stapler: [0,1,2,3,4]
       101_milk-tea: [0,1,2]
       048_stapler: [0,1,2,3,4]
-      101_milk-tea: [0,1,2,4]
       047_mouse: [0,1,2]
       061_battery: [0,1,2,3]
       112_tea-box: [0,1,2,3,4,5]
@@ -18,7 +15,6 @@ objects:
       059_pencup: [0, 1, 2, 3, 5]
       112_tea-box: [0,1,2,3,4,5]
       073_rubikscube: [0,2]
-      059_pencup: [0, 1, 2, 3, 5]
     obstacles:
       short:
         017_calculator: [0,1,2,3,4]
@@ -29,14 +25,11 @@ objects:
       tall:
         001_bottle: [1,11,14,16,21]
         012_plant-pot: [0,2,3]
-        001_bottle: [1,11,14,16,21]
         089_globe: [2,3]
-        090_trophy: [0,1,2]
         090_trophy: [0,1,2]
         099_fan: [0,4]
         108_block: [1,2,3]
         120_plant: [0]
-        119_mini-chalkboard: [0]
         119_mini-chalkboard: [0]
   study:
     targets:
@@ -78,11 +71,11 @@ objects:
         091_kettle: [0,1,2,3,4]
   kitchenl:
     targets:
-      001_bottle: [1,11,14,16]
-      038_milk-box: [0,1,2]
+      001_bottle: [14,15,16, 19]
+      038_milk-box: [0, 2]
       068_boxdrink: [0,1,2,3]
       071_can: [0,1,2]
-      105_sauce-can: [0,4,5]
+      105_sauce-can: [4, 5]
       114_bottle: [4]
     obstacles:
       short:
@@ -154,6 +147,7 @@ scales:
   001_bottle:
     "0": 0.08
     "1": 0.08
+    "2": 0.08
     "3": 0.08
     "4": 0.08
     "6": 0.08
@@ -162,6 +156,7 @@ scales:
     "11": 0.08
     "12": 0.08
     "14": 0.08
+    "15": 0.08
     "16": 0.08
     "17": 0.08
     "19": 0.08

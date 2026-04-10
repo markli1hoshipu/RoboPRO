@@ -1,3 +1,7 @@
+import os
+
+import yaml
+
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
 from envs.utils import *
 import math
@@ -47,9 +51,14 @@ class put_sauce_can_in_cabinet(Kitchen_base_large):
             self._init_cabinet_states()
         self.set_cabinet_open()
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.sauce_can.get_name()}
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.sauce_can_modelname = "105_sauce-can"
-        self.sauce_can_model_ids = [0, 4, 5]
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+            task_objs = yaml.safe_load(f)
+        self.sauce_can_model_ids = task_objs['objects']['kitchenl']['targets'][self.sauce_can_modelname]
         self.sauce_can_spawn_rot_deg = [90.0, 0.0, 90.0]
 
         rot_cfg = kwargs.pop("sauce_can_spawn_rot_deg", None)
@@ -76,8 +85,8 @@ class put_sauce_can_in_cabinet(Kitchen_base_large):
     def _table_center_spawn_pose(self, table_center: np.ndarray) -> sapien.Pose:
         # Current behavior: randomized spawn near table center.
         # To disable randomization, set x/y directly to table_center.
-        x = float(np.random.uniform(table_center[0] - 0.02, table_center[0] + 0.02))
-        y = float(np.random.uniform(table_center[1] - 0.075, table_center[1] - 0.025))
+        x = float(np.random.uniform(table_center[0] - 0.02, table_center[0] + 0.2))
+        y = float(np.random.uniform(table_center[1] - 0.075, table_center[1]))
         z = float(table_center[2] + self.SAUCE_CAN_SPAWN_Z_OFFSET)
         return sapien.Pose([x, y, z], self._sauce_can_quat_from_cfg())
 
@@ -98,7 +107,7 @@ class put_sauce_can_in_cabinet(Kitchen_base_large):
             model_id=self.sauce_can_model_id,
             is_static=False,
             convex=True,
-            scale=final_scale,
+            scale=0.05,
         )
         if self.sauce_can is not None:
             self.sauce_can.set_mass(self.SAUCE_CAN_MASS)
@@ -154,8 +163,7 @@ class put_sauce_can_in_cabinet(Kitchen_base_large):
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.APPROACH_DELTA_1))
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.APPROACH_DELTA_2))
         self.move(self.open_gripper(arm_tag=arm_tag, pos=1.0))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
-        self.move(self.back_to_origin(arm_tag=arm_tag))
+
 
         self.info["info"] = {
             "{A}": f"{self.sauce_can_modelname}/base{self.sauce_can_model_id}",
@@ -164,5 +172,6 @@ class put_sauce_can_in_cabinet(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        return self._is_sauce_can_inside_cabinet()
+        return self._is_sauce_can_inside_cabinet() and self.robot.is_left_gripper_open() \
+                and self.robot.is_right_gripper_open()
         

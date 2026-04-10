@@ -82,6 +82,7 @@ class put_mouse_on_pad(Office_base_task):
         self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
         # Construct des_obj pose with position from des_obj object and identity orientation
         self.des_obj_pose = self.des_obj.get_pose().p.tolist() + [0, 0, 0, 1]
+        self.des_obj_pose[2] += 0.02
 
         # ------------------------------------------------------------
         center_x = (self.target_obj.get_pose().p[0] + self.des_obj.get_pose().p[0]) / 2
@@ -112,13 +113,14 @@ class put_mouse_on_pad(Office_base_task):
         arm_tag = ArmTag("right" if self.target_obj.get_pose().p[0] > 0 else "left")
 
         # Grasp the target_obj with the selected arm
-        self.move(self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.1))
+        self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.1)
 
         # Lift the target_obj upward by 0.1 meters in z-direction
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
 
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/047_mouse/collision/base{self.mouse_id}.glb", str(arm_tag))
-
+        self.enable_table(enable=True)
+        
         # Place the target_obj at the des_obj location with alignment constraint
         self.move(
             self.place_actor(
@@ -126,7 +128,7 @@ class put_mouse_on_pad(Office_base_task):
                 arm_tag=arm_tag,
                 target_pose=self.des_obj_pose,
                 constrain="align",
-                pre_dis=0.07,
+                pre_dis=0.05,
                 dis=0.005,
             ))
 
