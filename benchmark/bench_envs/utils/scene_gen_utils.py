@@ -8,6 +8,362 @@ from transforms3d.euler import euler2quat
 from envs.utils.create_actor import create_actor
 from envs.utils.rand_create_actor import rand_pose
 
+_BACKGROUND_TEXTURE_ROOT = Path(__file__).resolve().parents[2] / "bench_assets" / "backgrounds"
+_BACKGROUND_TEXTURE_EXTENSIONS = (".png", ".jpg", ".jpeg")
+
+
+def _resolve_texture_path(texture_id: str | Path | None, object_type: str | None = None) -> Path:
+    """
+    Resolve a texture path for SAPIEN render materials.
+
+    ``texture_id`` is translated to a file stem, e.g. ``0`` resolves to
+    ``0.png``. When ``object_type`` is provided, it is used as the subdirectory
+    name under the background texture root. If ``texture_id`` is ``None``, a
+    random texture is chosen from that subdirectory. Explicit existing file
+    paths are accepted directly.
+    """
+    if texture_id is None:
+        if not object_type:
+            raise ValueError("texture_id cannot be None when object_type is not provided.")
+
+        texture_dir = _BACKGROUND_TEXTURE_ROOT / object_type
+        candidates = []
+        for extension in _BACKGROUND_TEXTURE_EXTENSIONS:
+            candidates.extend(sorted(texture_dir.glob(f"*{extension}")))
+        if not candidates:
+            raise FileNotFoundError(f"No textures found in background directory {texture_dir}.")
+        return Path(np.random.choice(candidates))
+
+    texture_path = Path(texture_id)
+    if texture_path.exists():
+        return texture_path
+
+    texture_stem = texture_path.stem if texture_path.suffix else str(texture_id)
+
+    if object_type:
+        for extension in _BACKGROUND_TEXTURE_EXTENSIONS:
+            background_texture_path = _BACKGROUND_TEXTURE_ROOT / object_type / f"{texture_stem}{extension}"
+            if background_texture_path.exists():
+                return background_texture_path
+
+    for extension in _BACKGROUND_TEXTURE_EXTENSIONS:
+        background_texture_path = _BACKGROUND_TEXTURE_ROOT / f"{texture_stem}{extension}"
+        if background_texture_path.exists():
+            return background_texture_path
+
+    search_root = _BACKGROUND_TEXTURE_ROOT / object_type if object_type else _BACKGROUND_TEXTURE_ROOT
+    raise FileNotFoundError(
+        f"Could not resolve texture_id={texture_id!r} in {search_root} "
+        f"with extensions {', '.join(_BACKGROUND_TEXTURE_EXTENSIONS)}."
+    )
+
+
+def _make_texture_material(
+    texture_id: str | Path | None,
+    object_type: str | None = None,
+    base_color=(1, 1, 1, 1),
+    metallic: float = 0.1,
+    roughness: float = 0.3,
+):
+    material = sapien.render.RenderMaterial()
+    texture2d = sapien.render.RenderTexture2D(str(_resolve_texture_path(texture_id, object_type=object_type)))
+    material.set_base_color_texture(texture2d)
+    try:
+        material.set_diffuse_texture(texture2d)
+    except Exception:
+        pass
+    material.base_color = list(base_color)
+    material.metallic = float(metallic)
+    material.roughness = float(roughness)
+    return material
+
+def _get_scene(scene_or_task):
+    return scene_or_task.scene if hasattr(scene_or_task, "scene") else scene_or_task
+
+def _iter_render_shape_holders(scene_or_task, obj):
+    """Yield entities/components that may own SAPIEN render shapes."""
+    scene = _get_scene(scene_or_task)
+    if isinstance(obj, str):
+        found = None
+        for get_all in ("get_all_actors", "get_all_articulations"):
+            try:
+                candidates = getattr(scene, get_all)()
+            except Exception:
+                continue
+            for candidate in candidates:
+                try:
+                    if candidate.get_name() == obj:
+                        found = candidate
+                        break
+                except Exception:
+                    continue
+            if found is not None:
+                break
+        if found is None:
+            raise ValueError(f"Object named {obj!r} was not found in the SAPIEN scene.")
+        obj = found
+
+    if hasattr(obj, "actor"):
+        obj = obj.actor
+
+    yield obj
+
+    try:
+        links = obj.get_links()
+    except Exception:
+        links = []
+
+    for link in links:
+        yield link
+        for attr_name in ("entity", "owner", "parent", "get_entity"):
+            try:
+                owner = getattr(link, attr_name)
+                owner = owner() if callable(owner) else owner
+            except Exception:
+                continue
+            if owner is not None:
+                yield owner
+
+def _iter_render_shapes(scene_or_task, obj):
+    """Yield render shapes for plain actors and articulation links."""
+    for holder in _iter_render_shape_holders(scene_or_task, obj):
+        components = []
+
+        try:
+            components.extend(holder.get_components())
+        except Exception:
+            pass
+
+        try:
+            holder_components = getattr(holder, "components")
+            holder_components = holder_components() if callable(holder_components) else holder_components
+            if holder_components is not None:
+                components.extend(holder_components)
+        except Exception:
+            pass
+
+        try:
+            render_component = holder.find_component_by_type(sapien.render.RenderBodyComponent)
+            if render_component is not None:
+                components.append(render_component)
+        except Exception:
+            pass
+
+        if isinstance(holder, sapien.render.RenderBodyComponent):
+            components.append(holder)
+
+        for component in components:
+            if any(hasattr(component, attr_name) for attr_name in ("set_material", "material", "set_render_material", "render_material", "set_texture")):
+                yield component
+
+            for attr_name in ("render_shapes", "visual_shapes", "shapes"):
+                try:
+                    shapes = getattr(component, attr_name)
+                    shapes = shapes() if callable(shapes) else shapes
+                except Exception:
+                    continue
+                if shapes is None:
+                    continue
+                for shape in shapes:
+                    yield shape
+
+            for method_name in ("get_render_shapes", "get_visual_shapes", "get_shapes"):
+                try:
+                    shapes = getattr(component, method_name)()
+                except Exception:
+                    continue
+                if shapes is None:
+                    continue
+                for shape in shapes:
+                    yield shape
+
+def _get_render_material_texture(material):
+    try:
+        return material.get_base_color_texture()
+    except Exception:
+        pass
+
+    try:
+        return material.base_color_texture
+    except Exception:
+        pass
+
+    try:
+        return material.get_diffuse_texture()
+    except Exception:
+        pass
+
+    try:
+        return material.diffuse_texture
+    except Exception:
+        return None
+
+def _set_render_item_texture(item, material) -> bool:
+    if not hasattr(item, "set_texture"):
+        return False
+
+    texture2d = _get_render_material_texture(material)
+    if texture2d is None:
+        return False
+
+    updated = False
+    texture_names = (
+        "base_color_texture",
+        "diffuse_texture",
+        "baseColorTexture",
+        "diffuse",
+        "base_color",
+        "BaseColor",
+    )
+    for texture_name in texture_names:
+        try:
+            item.set_texture(texture_name, texture2d)
+            updated = True
+        except Exception:
+            pass
+
+    return updated
+
+def _copy_render_material_properties(target_material, source_material) -> bool:
+    texture2d = _get_render_material_texture(source_material)
+    if texture2d is None:
+        return False
+
+    copied_texture = False
+    for method_name in ("set_base_color_texture", "set_diffuse_texture"):
+        try:
+            getattr(target_material, method_name)(texture2d)
+            copied_texture = True
+        except Exception:
+            pass
+
+    for attr_name in ("base_color_texture", "diffuse_texture"):
+        try:
+            setattr(target_material, attr_name, texture2d)
+            copied_texture = True
+        except Exception:
+            pass
+
+    if not copied_texture:
+        return False
+
+    for attr_name in ("base_color", "metallic", "roughness"):
+        try:
+            setattr(target_material, attr_name, getattr(source_material, attr_name))
+        except Exception:
+            pass
+
+    return True
+
+def _mutate_existing_render_material(item, material) -> bool:
+    for attr_name in ("get_material", "material", "render_material"):
+        try:
+            existing_material = getattr(item, attr_name)
+            existing_material = existing_material() if callable(existing_material) else existing_material
+        except Exception:
+            continue
+        if existing_material is None:
+            continue
+        if _copy_render_material_properties(existing_material, material):
+            return True
+
+    return False
+
+def _set_render_item_material(item, material) -> bool:
+    if _set_render_item_texture(item, material):
+        return True
+
+    for method_name in ("set_material", "set_render_material"):
+        try:
+            getattr(item, method_name)(material)
+            return True
+        except Exception:
+            pass
+
+    for attr_name in ("material", "render_material"):
+        try:
+            setattr(item, attr_name, material)
+            return True
+        except Exception:
+            pass
+
+    if _mutate_existing_render_material(item, material):
+        return True
+
+    return False
+
+def _set_render_shape_material(shape, material) -> int:
+    updated = 0
+    if _set_render_item_material(shape, material):
+        updated += 1
+
+    # GLB/mesh visuals may keep the visible materials on triangle-mesh
+    # parts instead of only on the parent RenderShape.
+    visited_parts = []
+    for attr_name in ("parts", "get_parts"):
+        try:
+            parts = getattr(shape, attr_name)
+            parts = parts() if callable(parts) else parts
+        except Exception:
+            continue
+        if parts is None:
+            continue
+        for part in parts:
+            if any(part is visited_part for visited_part in visited_parts):
+                continue
+            visited_parts.append(part)
+            if _set_render_item_material(part, material):
+                updated += 1
+
+    return updated
+
+def change_object_texture(
+    scene_or_task,
+    obj,
+    texture_id: str | Path | None,
+    object_type: str | None = None,
+    base_color=(1, 1, 1, 1),
+    metallic: float = 0.1,
+    roughness: float = 0.3,
+    refresh_render: bool = False,
+) -> int:
+    """
+    Change an existing object's visual texture in a SAPIEN scene.
+
+    ``scene_or_task`` can be a raw SAPIEN scene or a task object with a
+    ``scene`` attribute. ``obj`` can be a raw SAPIEN entity/articulation, this
+    repo's Actor or ArticulationActor wrapper, or a scene object name. Returns
+    the number of render materials updated. When ``texture_id`` is ``None``,
+    a random texture is selected from ``object_type``.
+    """
+    scene = _get_scene(scene_or_task)
+    material = _make_texture_material(
+        texture_id=texture_id,
+        object_type=object_type,
+        base_color=base_color,
+        metallic=metallic,
+        roughness=roughness,
+    )
+
+    updated = 0
+    visited_shapes = []
+    for shape in _iter_render_shapes(scene_or_task, obj):
+        if any(shape is visited_shape for visited_shape in visited_shapes):
+            continue
+        visited_shapes.append(shape)
+        updated += _set_render_shape_material(shape, material)
+
+    if updated == 0:
+        raise RuntimeError(f"No render materials were updated for object {obj!r}.")
+
+    if refresh_render:
+        scene.update_render()
+
+    return updated
+
+
+
+
 def get_actor_boundingbox(entity):
     all_points = []
     try:

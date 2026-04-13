@@ -53,7 +53,6 @@ class put_bottle_in_basket(Kitchen_base_large):
             self.bottle_scale = float(bs)
 
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
-        kwargs["include_collision"] = True
         super()._init_task_env_(**kwargs)
 
     def _bottle_quat_from_cfg(self) -> list[float]:

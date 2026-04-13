@@ -38,18 +38,8 @@ parent_directory = os.path.dirname(current_file_path)
 
 
 class Kitchen_base_large(Bench_base_task):
-    FURNITURE_NAMES = {
-        "table", "wall", "ground",
-        "floor_0", "floor_1", "floor_2", "floor_3",
-        "basket_right", "microwave_center",
-    }
-
     def __init__(self):
         pass
-
-    def _get_target_object_names(self) -> set[str]:
-        """Default for furniture-only tasks (open/close cabinet/fridge). Override in tasks with target objects."""
-        return set()
 
     def _extract_intrinsic_scale(self, model_data: dict) -> float:
         """
@@ -246,7 +236,7 @@ class Kitchen_base_large(Bench_base_task):
         np.random.seed(kwags.get("seed", 0))
         torch.manual_seed(kwags.get("seed", 0))
         # random.seed(kwags.get('seed', 0))
-        self.seed = kwags.get("seed", 0) 
+        self.seed = kwags.get("seed", 0)
         print_c(f"#### Seed value {self.seed} ####", "YELLOW")
 
         self.FRAME_IDX = 0
@@ -258,30 +248,30 @@ class Kitchen_base_large(Bench_base_task):
         self.save_data = kwags.get("save_data", False)
         self.dual_arm = kwags.get("dual_arm", True)
         self.eval_mode = kwags.get("eval_mode", False)
+        self.sample_d = kwags.get("sample_d", "objects")
+
         self.cuboid_collision_list = [] # list of cuboid collision objects for curobo planner
+        self.cluttered_objs = list()
 
         self.need_topp = True  # TODO
 
         # Random
-        random_setting = kwags.get("domain_randomization") or {}
+        random_setting = kwags.get("domain_randomization")
         self.random_background = random_setting.get("random_background", False)
-        self.cluttered_table = random_setting.get("cluttered_table", False)
         self.clean_background_rate = random_setting.get("clean_background_rate", 1)
-        self.obstacle_density = random_setting.get("obstacle_density", 3)
         self.random_head_camera_dis = random_setting.get("random_head_camera_dis", 0)
         self.random_table_height = random_setting.get("random_table_height", 0)
         self.random_light = random_setting.get("random_light", False)
         self.crazy_random_light_rate = random_setting.get("crazy_random_light_rate", 0)
         self.crazy_random_light = (0 if not self.random_light else np.random.rand() < self.crazy_random_light_rate)
         self.random_embodiment = random_setting.get("random_embodiment", False)  # TODO
-
-        self._init_collision_metrics()
-
+        self.cluttered_table = random_setting.get("cluttered_table", False)
+        self.obstacle_height = random_setting.get("obstacle_height", "short")
+        self.obstacle_density = random_setting.get("obstacle_density", 3)
         self.file_path = []
         self.plan_success = True
         self.step_lim = None
         self.fix_gripper = False
-        self.sample_d = kwags.get("sample_d", "objects")
         self.setup_scene()
 
         self.left_js = None
@@ -294,7 +284,6 @@ class Kitchen_base_large(Bench_base_task):
         self.take_action_cnt = 0
         self.eval_video_path = kwags.get("eval_video_save_dir", None)
         self.incl_collision = kwags.get("include_collision", False)
-        self.enable_collision_metrics = kwags.get("enable_collision_metrics", False)
 
         self.save_freq = kwags.get("save_freq")
         self.world_pcd = None
@@ -307,11 +296,11 @@ class Kitchen_base_large(Bench_base_task):
             "fridge": [],
             "cabinet": [],
         }
+        # Base env currently does not spawn distractors; keep this for compatibility.
         self.record_cluttered_objects = []
-        self.cluttered_objs = []
 
         self.eval_success = False
-        self.table_z_bias = 0
+        self.table_z_bias = (np.random.uniform(low=-self.random_table_height, high=0) + table_height_bias)  # TODO
         self.need_plan = kwags.get("need_plan", True)
         self.left_joint_path = kwags.get("left_joint_path", [])
         self.right_joint_path = kwags.get("right_joint_path", [])
@@ -347,9 +336,6 @@ class Kitchen_base_large(Bench_base_task):
         self.instruction = None  # for Eval
 
         self.collision_list = [] # list of collision objects for curobo planner
-        self.cuboid_collision_list = [] # list of cuboid collision objects for curobo planner
-        self.collision_list = []  # collision objects for curobo planner
-        self.cuboid_collision_list = []
 
         # Map semantic appliance roles to underlying assets
         self.kitchen_appliance_assets = {
@@ -357,8 +343,6 @@ class Kitchen_base_large(Bench_base_task):
             "cabinet": {"modelname": "036_cabinet", "default_modelid": 46653},
             "drawer": {"modelname": "036_cabinet", "default_modelid": 46653},
         }
-
-        self.item_info = get_task_objects_config()
 
         self.load_robot(**kwags)
         self.create_static_elements(table_xy_bias=table_xy_bias, table_height=0.74)
@@ -373,33 +357,9 @@ class Kitchen_base_large(Bench_base_task):
         self.robot.set_origin_endpose()
 
         self.load_actors()
-
+        # self.load_basic_kitchen_items()
         if self.cluttered_table:
-            self.add_kitchen_gripper_operating_area()
-            self.cuboid_collision_list.append(
-                {
-                    "name": "table",
-                    "dims": [
-                        self.kitchen_counter_length,
-                        self.kitchen_counter_width,
-                        0.002,
-                    ],
-                    "pose": [
-                        self.table_xy_bias[0],
-                        self.table_xy_bias[1],
-                        self._kitchen_table_top_z,
-                        1,
-                        0,
-                        0,
-                        0,
-                    ],
-                }
-            )
             self.get_cluttered_surfaces()
-            self._settle_scene_after_clutter()
-
-        if self.enable_collision_metrics:
-            self._build_collision_name_sets()
 
         # Even for a minimal scene, ensure that articulated objects like the drawer
         # are placed in a stable configuration.
@@ -444,15 +404,13 @@ class Kitchen_base_large(Bench_base_task):
                 [name for name in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, name))])
 
             # wall_texture, table_texture = np.random.randint(0, file_count), np.random.randint(0, file_count)
-            wall_texture = 77
-            table_texture = 13
-            floor_texture = 9936
+            wall_texture = 43
+            table_texture = 141
+            floor_texture = 38
 
             self.wall_texture = f"seen/{wall_texture}"
             self.table_texture = f"seen/{table_texture}"
             self.floor_texture = f"seen/{floor_texture}"
-            # Keep wall untextured so only solid wall color is visible.
-            self.wall_texture = None
             if np.random.rand() <= self.clean_background_rate:
                 self.wall_texture = None
             if np.random.rand() <= self.clean_background_rate:
@@ -488,7 +446,7 @@ class Kitchen_base_large(Bench_base_task):
             self.scene,
             sapien.Pose(p=[0, 1, 1.5]),
             half_size=[3, 0.6, 1.5],
-            color=(0.55, 0.47, 0.38),
+            color=(1, 0.9, 0.9),
             name="wall",
             texture_id=self.wall_texture,
             is_static=True,
@@ -552,10 +510,6 @@ class Kitchen_base_large(Bench_base_task):
         counter_builder.set_initial_pose(sapien.Pose(p=[table_xy_bias[0], table_xy_bias[1], table_height]))
         self.table = counter_builder.build(name="table")
 
-        self.kitchen_counter_length = counter_length
-        self.kitchen_counter_width = counter_width
-        self._kitchen_table_top_z = float(table_height)
-
         # Place static appliances on the table front edge.
         self._load_fridge_on_table(table_height, table_xy_bias)
         self._load_microwave_on_table(table_height, table_xy_bias)
@@ -564,75 +518,9 @@ class Kitchen_base_large(Bench_base_task):
         self._add_cabinet_wall_filler()
         if self.incl_collision:
             self.add_collision()
+
         # Additional kitchen appliances (wall cabinets, pantry rack, etc.)
         # can be re-enabled later via _load_kitchen_appliances if needed.
-
-    def add_kitchen_gripper_operating_area(self):
-        """Keep the default dual-arm home footprint clear of random clutter (office parity)."""
-        x_half_width = 0.075
-        ymax = -0.18
-        ymin = -0.26
-        self.prohibited_area["table"].append(
-            [-0.3 - x_half_width, ymin, -0.3 + x_half_width, ymax]
-        )
-        self.prohibited_area["table"].append(
-            [0.3 - x_half_width, ymin, 0.3 + x_half_width, ymax]
-        )
-
-    def get_cluttered_surfaces(self):
-        """
-        Sample tabletop obstacles from `task_objects.yml` → `objects.kitchenl.obstacles`,
-        mirroring office `get_cluttered_surfaces` + `clutter_surface_split`.
-        """
-        half_l = self.kitchen_counter_length / 2
-        half_w = self.kitchen_counter_width / 2
-        xlim = [
-            self.table_xy_bias[0] - half_l,
-            self.table_xy_bias[0] + half_l,
-        ]
-        ylim = [
-            self.table_xy_bias[1] - half_w,
-            self.table_xy_bias[1] + half_w,
-        ]
-        zlim = np.array([self._kitchen_table_top_z], dtype=float)
-
-        task_objects_list = []
-        seen = set()
-        for entity in self.scene.get_all_actors():
-            actor_name = entity.get_name()
-            if not actor_name or actor_name in seen:
-                continue
-            if actor_name in ("table", "wall", "ground"):
-                continue
-            if actor_name.startswith("floor_"):
-                continue
-            task_objects_list.append(actor_name)
-            seen.add(actor_name)
-        for art in self.scene.get_all_articulations():
-            n = art.get_name()
-            if not n or n in seen:
-                continue
-            task_objects_list.append(n)
-            seen.add(n)
-
-        cluttered_item_info, obj_names_short, obj_names_tall = get_obstacle_objects_subset(
-            "kitchenl", self.sample_d, task_objects_list
-        )
-        self.clutter_surface_split(
-            xlim,
-            ylim,
-            zlim,
-            self.prohibited_area["table"],
-            self.obstacle_density,
-            cluttered_item_info,
-            obj_names_short,
-            obj_names_tall,
-        )
-
-    def _settle_scene_after_clutter(self, steps: int = 3500):
-        """Extra PhysX steps so tall tabletop clutter can rest before ``check_stable``."""
-        for _ in range(int(steps)):
-            self.scene.step()
 
     def _load_fridge_on_table(self, table_height: float, table_xy_bias):
         """Place the static fridge on the right front edge of the table."""
@@ -656,8 +544,9 @@ class Kitchen_base_large(Bench_base_task):
         )
         if self.fridge_left is not None:
             self.fridge_left.set_name("fridge_left")
-            # Interior / semantic volume (e.g. future in-fridge placement hints).
             self.add_prohibit_area(self.fridge_left, padding=0.02, area="fridge")
+        # change_object_texture(self, self.fridge_left, "3","fridge" ,refresh_render=True)
+
     def _get_scene_obj_locations(self, object_name="microwave"):
         if self.scene_id == 0: 
             microwave_location = [0.0, 0.30]
@@ -676,46 +565,6 @@ class Kitchen_base_large(Bench_base_task):
         elif object_name == "basket":
             return basket_location
         raise ValueError(f"Object name {object_name} is not supported")
-
-            # Tabletop clutter uses ``prohibited_area["table"]`` only (office pattern).
-            self.add_prohibit_area(self.fridge_left, padding=0.02, area="table")
-            self._add_fridge_front_table_approach_prohibit(table_xy_bias)
-
-    def _add_fridge_front_table_approach_prohibit(self, table_xy_bias):
-        """
-        Forbid clutter on the countertop strip from the front table edge to the fridge
-        (door-approach zone), using the fridge's world XY footprint in x.
-        """
-        if getattr(self, "fridge_left", None) is None:
-            return
-        half_l = float(self.kitchen_counter_length) / 2
-        half_w = float(self.kitchen_counter_width) / 2
-        x_t_min = float(table_xy_bias[0]) - half_l
-        x_t_max = float(table_xy_bias[0]) + half_l
-        # Countertop edge toward the robot / toe-kick (+y is back toward wall in this layout).
-        y_table_front = float(table_xy_bias[1]) - half_w
-        pad = 0.02
-        bb = self._entity_aabb(self.fridge_left)
-        if bb[0] is None or bb[1] is None:
-            # Fallback: nominal spawn (right rear); approximate footprint on the counter.
-            x_c = float(table_xy_bias[0]) + 0.40
-            y_c = float(table_xy_bias[1]) + 0.30
-            x_min = x_c - 0.20
-            x_max = x_c + 0.20
-            y_fridge_forward = y_c - 0.18
-        else:
-            fr_min, fr_max = bb
-            x_min = float(fr_min[0]) - pad
-            x_max = float(fr_max[0]) + pad
-            y_fridge_forward = float(fr_min[1]) - pad
-
-        x_min = max(x_min, x_t_min)
-        x_max = min(x_max, x_t_max)
-        y_lo = y_table_front + 0.2
-        y_hi = y_fridge_forward + 0.06
-        if x_max <= x_min or y_hi <= y_lo:
-            return
-        self.prohibited_area["table"].append([x_min, y_lo, x_max, y_hi])
 
     def _load_microwave_on_table(self, table_height: float, table_xy_bias):
         """Place the static microwave in the middle of the front edge of the table."""
@@ -1302,7 +1151,6 @@ class Kitchen_base_large(Bench_base_task):
             if self.fridge is not None:
                 self.fridge.set_name("fridge")
                 self.add_prohibit_area(self.fridge, padding=0.02, area="fridge")
-                self.add_prohibit_area(self.fridge, padding=0.02, area="table")
 
         # Wall cabinet on the right, slightly above the counter
         if "cabinet" in self.kitchen_appliance_assets:
@@ -1344,69 +1192,33 @@ class Kitchen_base_large(Bench_base_task):
             return fallback
         return int(np.random.choice(ids))
 
+    def get_cluttered_surfaces(self):
+        # clutter surfaces with additional random obstacles
+        # table ------------------------------------------------------
+        table_bb = get_actor_boundingbox(self.table)
+        xlim = [table_bb[0][0], table_bb[1][0]]
+        ylim = [table_bb[0][1], table_bb[1][1]]
+        zlim = [table_bb[1][2]]
+        xlim[0] += self.table_xy_bias[0]
+        xlim[1] += self.table_xy_bias[0]
+        ylim[0] += self.table_xy_bias[1]
+        ylim[1] += self.table_xy_bias[1]
+        zlim = np.array(zlim) + self.table_z_bias
+        
+        # collect objects already on the scene
+        task_objects_list = []
+        for entity in self.scene.get_all_actors():
+            actor_name = entity.get_name()
+            if actor_name == "":
+                continue
+            if actor_name in ["table", "wall", "ground"]:
+                continue
+            task_objects_list.append(actor_name)
+
+        cluttered_item_info, obj_names_short, obj_names_tall = get_obstacle_objects_subset(
+            "kitchenl", self.sample_d, task_objects_list
+        )
+        self.clutter_surface_split(xlim, ylim, zlim, self.prohibited_area["table"], self.obstacle_density, cluttered_item_info, obj_names_short, obj_names_tall)
+
     def add_extra_cameras(self):
         self.cameras.add_extra_cameras(f"{os.environ['BENCH_ROOT']}/bench_assets/embodiments/office_config.yml")
-
-    def pull_door_circularly(self, arm_tag, door_radius, total_open_angle=45.0, num_steps=30):
-        """
-        Executes a circular trajectory to pull open a hinged door.
-        
-        Args:
-            arm_tag: The identifier for the robotic arm.
-            door_radius (float): The estimated distance from the hinge to the handle in meters.
-            total_open_angle (float): Total degrees to swing the door open.
-            num_steps (int): Number of intermediate waypoints. Higher = smoother.
-        """
-        d_angle = np.deg2rad(total_open_angle) / num_steps
-        current_angle = 0.0
-        
-        # Capture the orientation immediately after grasping. 
-        # This acts as our mathematical anchor to prevent quaternion drift.
-        start_pose = np.array(self.get_arm_pose(arm_tag), dtype=float)
-        start_q = start_pose[3:]
-
-        for i in range(num_steps):
-            next_angle = current_angle + d_angle
-            
-            # Compute Position Deltas (dx, dy)
-            x_curr = door_radius * (1 - np.cos(current_angle))
-            y_curr = -door_radius * np.sin(current_angle)
-            
-            x_next = door_radius * (1 - np.cos(next_angle))
-            y_next = -door_radius * np.sin(next_angle)
-            
-            dx = x_next - x_curr
-            dy = y_next - y_curr
-            
-            # Compute New Orientation Target
-            dq_step = np.array(t3d.quaternions.axangle2quat([0.0, 0.0, 1.0], next_angle), dtype=float)
-            target_q = np.array(t3d.quaternions.qmult(dq_step, start_q), dtype=float)
-            target_q = target_q / max(np.linalg.norm(target_q), 1e-9) # Normalize
-            
-            # Execute the incremental step
-            self.move(self.move_by_displacement(
-                arm_tag=arm_tag, 
-                x=dx, 
-                y=dy, 
-                quat=target_q.tolist()
-            ))
-            
-            current_angle = next_angle
-        
-    def add_fridge_prohibit_area(self, x_padding = 0, y_padding = 0):
-        fridge_pose = self.fridge_left.get_pose().p
-        x_min = fridge_pose[0] - 0.16 - x_padding
-        x_max = fridge_pose[0] + 0.16 + x_padding
-        y_min = fridge_pose[1] - 0.5 - y_padding
-        y_max = fridge_pose[1] - 0.19
-        self.prohibited_area["table"].append([x_min, y_min, x_max, y_max])
-
-        # half_size = [(x_max-x_min)/2, (y_max-y_min)/2, 0.0005]
-        # target = create_box(
-        #     scene=self,
-        #     pose=sapien.Pose([x_min+half_size[0], y_min+half_size[1], 0.73], [1,0,0,0]),
-        #     half_size=half_size,
-        #     color=(1, 0, 0),
-        #     name=f"_collision",
-        #     is_static=True,
-        # )

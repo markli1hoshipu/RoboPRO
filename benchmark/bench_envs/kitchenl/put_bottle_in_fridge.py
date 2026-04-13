@@ -13,8 +13,10 @@ import transforms3d as t3d
 
 class put_bottle_in_fridge(Kitchen_base_large):
     BOTTLE_MASS = 0.1
-    BOTTLE_SPAWN_Z_OFFSET = 0.02
-
+    BOTTLE_SPAWN_Z_OFFSET = 0.04
+    FRIDGE_X_BOUNDS = (-0.33, 0.16)
+    FRIDGE_Y_BOUNDS = (-0.22, 0.22)
+    FRIDGE_Z_BOUNDS = (-0.34, 0.24)
     # Placement target in fridge base-link local frame
     FRIDGE_PLACE_LOCAL = np.array([-0.10, 0.00, 0.05], dtype=float)
 
@@ -23,7 +25,7 @@ class put_bottle_in_fridge(Kitchen_base_large):
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.bottle_modelname = "001_bottle"
-        kwargs["include_collision"] = True
+        kwargs["include_collision"] = False
 
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
@@ -95,7 +97,7 @@ class put_bottle_in_fridge(Kitchen_base_large):
             modelname=self.bottle_modelname,
             model_id=self.bottle_model_id,
             is_static=False,
-            convex=True,
+            # convex=True,
             scale=final_scale,
         )
 
@@ -125,9 +127,9 @@ class put_bottle_in_fridge(Kitchen_base_large):
         inv_tf = np.linalg.inv(base_tf)
         bottle_local_h = inv_tf @ np.array([bottle_world[0], bottle_world[1], bottle_world[2], 1.0], dtype=float)
         x_l, y_l, z_l = bottle_local_h[:3]
-        x_ok = (self.FRIDGE_SUCCESS_X_BOUNDS[0] <= x_l <= self.FRIDGE_SUCCESS_X_BOUNDS[1])
-        y_ok = (self.FRIDGE_SUCCESS_Y_BOUNDS[0] <= y_l <= self.FRIDGE_SUCCESS_Y_BOUNDS[1])
-        z_ok = (self.FRIDGE_SUCCESS_Z_BOUNDS[0] <= z_l <= self.FRIDGE_SUCCESS_Z_BOUNDS[1])
+        x_ok = (self.FRIDGE_X_BOUNDS[0] <= x_l <= self.FRIDGE_X_BOUNDS[1])
+        y_ok = (self.FRIDGE_Y_BOUNDS[0] <= y_l <= self.FRIDGE_Y_BOUNDS[1])
+        z_ok = (self.FRIDGE_Z_BOUNDS[0] <= z_l <= self.FRIDGE_Z_BOUNDS[1])
         return bool(x_ok and y_ok and z_ok)
 
     def play_once(self):
