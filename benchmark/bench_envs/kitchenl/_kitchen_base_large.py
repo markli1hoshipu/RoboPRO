@@ -544,7 +544,8 @@ class Kitchen_base_large(Bench_base_task):
         )
         if self.fridge_left is not None:
             self.fridge_left.set_name("fridge_left")
-            self.add_prohibit_area(self.fridge_left, padding=0.02, area="fridge")
+            self.add_prohibit_area(self.fridge_left, padding=0.05, area="table")
+
         change_object_texture(self, self.fridge_left, "3","fridge" ,refresh_render=True)
 
     def _get_scene_obj_locations(self, object_name="microwave"):
@@ -605,7 +606,7 @@ class Kitchen_base_large(Bench_base_task):
             if isinstance(self.microwave_left.config, dict):
                 self.microwave_left.config["scale"] = float(final_scale)
             self.microwave_left.set_name("microwave_center")
-            self.add_prohibit_area(self.microwave_left, padding=0.01, area="table")
+            self.add_prohibit_area(self.microwave_left, padding=[0.2, 0.05], area="table")
             self.collision_list.append({
                 "actor": self.microwave_left,
                 "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/044_microwave/visual/base0.glb",
@@ -649,7 +650,7 @@ class Kitchen_base_large(Bench_base_task):
                 # For create_actor, model_data["scale"] is usually [sx, sy, sz].
                 self.basket_right.config["scale"] = [float(final_scale)] * 3
             self.basket_right.set_name("basket_right")
-            self.add_prohibit_area(self.basket_right, padding=0.01, area="table")
+            self.add_prohibit_area(self.basket_right, padding=0.05, area="table")
     def add_collision(self):
         print_c("Furniture collisions added","YELLOW")
         self.collision_list.append({
@@ -1150,7 +1151,7 @@ class Kitchen_base_large(Bench_base_task):
             )
             if self.fridge is not None:
                 self.fridge.set_name("fridge")
-                self.add_prohibit_area(self.fridge, padding=0.02, area="fridge")
+                self.add_prohibit_area(self.fridge, padding=0.01, area="fridge")
 
         # Wall cabinet on the right, slightly above the counter
         if "cabinet" in self.kitchen_appliance_assets:
@@ -1205,16 +1206,19 @@ class Kitchen_base_large(Bench_base_task):
         ylim[1] += self.table_xy_bias[1]
         zlim = np.array(zlim) + self.table_z_bias
         
-        # collect objects already on the scene
+        # collect objects already in the scene
         task_objects_list = []
-        for entity in self.scene.get_all_actors():
+        # print_c("articulations in the scene: ", "YELLOW")
+
+        # print([o.get_name() for o in self.scene.get_all_articulations()])
+        for entity in self.scene.get_all_actors()+ self.scene.get_all_articulations():
             actor_name = entity.get_name()
             if actor_name == "":
                 continue
             if actor_name in ["table", "wall", "ground"]:
                 continue
             task_objects_list.append(actor_name)
-
+        # print_c(f"Existing objects in the scene: {task_objects_list}", "YELLOW")
         cluttered_item_info, obj_names_short, obj_names_tall = get_obstacle_objects_subset(
             "kitchenl", self.sample_d, task_objects_list
         )

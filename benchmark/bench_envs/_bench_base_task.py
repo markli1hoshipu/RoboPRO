@@ -657,12 +657,15 @@ class Bench_base_task(Base_Task):
             [1, 1, 1],
         ]) * origin_bounding_size)
 
+        if isinstance(padding,float) or isinstance(padding,int):
+            padding = [padding, padding]
+
         actor_matrix = actor_pose.to_transformation_matrix()
         trans_bounding_pts = actor_matrix[:3, :3] @ origin_bounding_pts.T + actor_matrix[:3, 3].reshape(3, 1)
-        x_min = np.min(trans_bounding_pts[0]) - padding
-        x_max = np.max(trans_bounding_pts[0]) + padding
-        y_min = np.min(trans_bounding_pts[1]) - padding
-        y_max = np.max(trans_bounding_pts[1]) + padding
+        x_min = np.min(trans_bounding_pts[0]) - padding[0]
+        x_max = np.max(trans_bounding_pts[0]) + padding[0]
+        y_min = np.min(trans_bounding_pts[1]) - padding[1]
+        y_max = np.max(trans_bounding_pts[1]) + padding[1]
         # add_robot_visual_box(self, [x_min, y_min, actor_matrix[3, 3]])
         # add_robot_visual_box(self, [x_max, y_max, actor_matrix[3, 3]])
         self.prohibited_area[area].append([x_min, y_min, x_max, y_max])

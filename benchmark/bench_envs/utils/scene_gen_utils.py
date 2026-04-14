@@ -504,12 +504,16 @@ def get_collison_with_objs(object_bounds, obj_pose, x_thr, y_thr = None):
 def get_random_place_pose(xlim, ylim, zlim=None, object_bounds=None, col_thr=0.15, 
                           qpos=(0,0,0), euler=True,
                           rotation=False, rotate_lim = (0,0,0)):
-    
+    max_attempts = 100
+
     if euler:
         qpos = euler2quat(*[np.deg2rad(d) for d in qpos])
     else:
         qpos = qpos
     while True:
+        max_attempts -= 1
+        if max_attempts <= 0:
+                raise RuntimeError("Failed to find a valid placement for the object.")
         obj_pose = rand_pose(
             xlim=xlim,
             ylim=ylim,

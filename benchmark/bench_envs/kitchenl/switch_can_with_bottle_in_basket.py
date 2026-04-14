@@ -1,7 +1,9 @@
 import os
 
+import yaml
+
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
-from bench_envs.utils.scene_gen_utils import get_actor_boundingbox, get_random_place_pose,print_c
+from bench_envs.utils.scene_gen_utils import get_actor_boundingbox, get_random_place_pose, place_actor,print_c
 from envs.utils import *
 import math
 import numpy as np
@@ -9,7 +11,7 @@ import sapien
 import transforms3d as t3d
 
 
-class pick_can_from_basket(Kitchen_base_large):
+class switch_can_with_bottle_in_basket(Kitchen_base_large):
     CAN_MASS = 0.1
     CAN_MODELNAME = "071_can"
     CAN_MODEL_IDS = [0]
@@ -88,10 +90,10 @@ class pick_can_from_basket(Kitchen_base_large):
         world_pos = basket_p + basket_R @ np.array(self.BASKET_CAN_LOCAL, dtype=float)
         return sapien.Pose(world_pos.tolist(), self._can_quat_from_cfg())
 
-    def _is_can_inside_basket(self) -> bool:
+    def _is_inside_basket(self, actor) -> bool:
         box_bb = get_actor_boundingbox(self.basket_right.actor)
-        return np.all((box_bb[0][:2] <= self.can.get_pose().p[:2])  & 
-                       (self.can.get_pose().p[:2] <= box_bb[1][:2]))
+        return np.all((box_bb[0][:2] <= actor.get_pose().p[:2])  & 
+                       (actor.get_pose().p[:2] <= box_bb[1][:2]))
 
     def load_actors(self):
         self.can_model_id = int(np.random.choice(self.can_model_ids))
@@ -109,6 +111,7 @@ class pick_can_from_basket(Kitchen_base_large):
             convex=True,
             scale=final_scale,
         )
+        
         if self.can is not None:
             self.can.set_mass(self.CAN_MASS)
             self.can.set_name("task_can")
@@ -116,15 +119,41 @@ class pick_can_from_basket(Kitchen_base_large):
                 self.can.config["scale"] = [final_scale] * 3
             self._ensure_can_grasp_metadata()
             self.add_prohibit_area(self.can, padding=0.04, area="table")
-        self.des_pose = get_random_place_pose(xlim = [-0.25, -0.15], ylim=[-0.05,0],
-                                        col_thr=0.15,zlim=[0.80], qpos=(0,0,0),
-                                        object_bounds={})
+
+        # ------------------ Bottle -------------------
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+            task_objs = yaml.safe_load(f)
+        
+        self.bottle_modelname = "001_bottle"
+        self.bottle, self.bottle_model_id, self.target_pose = \
+        place_actor(self.bottle_modelname, self, col_thr=0, xlim=[0,0.1], ylim=[0], 
+                    qpos=(90,0,0), object_bounds={}, task_objs=task_objs,
+                     mass = 0.2, rotation=False, scene_name='kitchenl')
+
+        self.add_prohibit_area(self.bottle, padding=0.04, area="table")
+
+        # -------------------destination poses-------------------
+        bottle_bb = get_actor_boundingbox(self.bottle.actor)
+
+        self.can_des_pose = get_random_place_pose(xlim = [-0.25, -0.15], ylim=[-0.05,0],
+                                        col_thr=0.05,zlim=[0.80], qpos=(0,0,0),
+                                        object_bounds=[bottle_bb])
                                         
-        self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
-        print_c(f"Place destination {self.des_pose}", "RED")
+        self.add_prohibit_area(self.can_des_pose, padding=0.0, area="table")
+      
+        basket_bb = get_actor_boundingbox(self.basket_right.actor)
+        self.bottle_des_pose = sapien.Pose(
+            [np.mean([basket_bb[0][0], basket_bb[1][0]]), 
+             np.mean([basket_bb[0][1], basket_bb[1][1]]), 
+             basket_bb[1][2] + 0.05],
+            [1, 0, 0, 0]
+        )
+
+        print_c(f"Can place destination {self.can_des_pose}", "RED")
 
     def play_once(self):
         arm_tag = ArmTag("left")
+        # Pick can from basket
         self.move(
             self.grasp_actor(
                 self.can,
@@ -140,9 +169,32 @@ class pick_can_from_basket(Kitchen_base_large):
         self.move(self.back_to_origin(arm_tag=arm_tag))
         self.add_collision()
         self.update_world()
-        self.move(self.move_to_pose(arm_tag=arm_tag, target_pose=self.des_pose))
+        self.move(self.move_to_pose(arm_tag=arm_tag, target_pose=self.can_des_pose))
         self.move(self.open_gripper(arm_tag=arm_tag))
 
+        # put bottle in basket
+        self.move(
+            self.grasp_actor(
+                self.bottle,
+                arm_tag=arm_tag,
+                pre_grasp_dis=self.GRASP_PRE_DIS,
+                grasp_dis=self.GRASP_DIS,
+                gripper_pos=self.GRASP_CLOSE_POS,
+                contact_point_id=self.GRASP_CONTACT_POINT_ID,
+            )
+        )
+
+        self.attach_object(self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.bottle_modelname}/collision/base{self.bottle_model_id}.glb", str(arm_tag))
+        
+        self.move(
+            self.place_actor(
+                self.bottle,
+                arm_tag=arm_tag,
+                target_pose= self.bottle_des_pose,
+                constrain="auto",
+                pre_dis=0.07,
+                dis=0.005,
+            ))
 
         self.info["info"] = {
             "{A}": f"{self.can_modelname}/base{self.can_model_id}",
@@ -157,7 +209,7 @@ class pick_can_from_basket(Kitchen_base_large):
         can_on_table = np.all((table_bb[0][:2] <= b_pose[:2])  &  (b_pose[:2] <= table_bb[1][:2]))
         can_on_table &= (b_pose[-1] - table_bb[1][-1]) < eps  
         
-        return not self._is_can_inside_basket() and can_on_table \
+        return not self._is_inside_basket(self.can) and can_on_table  and self._is_inside_basket(self.bottle)\
                and self.robot.is_right_gripper_open() \
                and self.robot.is_left_gripper_open()
 
