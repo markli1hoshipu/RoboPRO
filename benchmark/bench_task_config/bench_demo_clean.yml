@@ -8,7 +8,7 @@ embodiment: [aloha-agilex]
 language_num: 100
 domain_randomization:
   random_background: false
-  cluttered_table: true
+  cluttered_table: false
   clean_background_rate: 0
   random_head_camera_dis: 0
   random_table_height: 0
