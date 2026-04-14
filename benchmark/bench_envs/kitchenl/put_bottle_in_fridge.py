@@ -109,6 +109,9 @@ class put_bottle_in_fridge(Kitchen_base_large):
                 self.bottle.config["scale"] = [final_scale] * 3
             self.add_prohibit_area(self.bottle, padding=0.04, area="table")
 
+        if self.fridge_left is not None:
+            self.add_prohibit_area(self.fridge_left, padding=0.1, area="table")
+
     def _fridge_inside_target_pose(self) -> list[float]:
         base_pose = self.fridge_left.get_link_pose("base_link")
         base_tf = base_pose.to_transformation_matrix()
