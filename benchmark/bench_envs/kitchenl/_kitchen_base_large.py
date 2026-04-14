@@ -545,7 +545,7 @@ class Kitchen_base_large(Bench_base_task):
         if self.fridge_left is not None:
             self.fridge_left.set_name("fridge_left")
             self.add_prohibit_area(self.fridge_left, padding=0.02, area="fridge")
-        # change_object_texture(self, self.fridge_left, "3","fridge" ,refresh_render=True)
+        change_object_texture(self, self.fridge_left, "3","fridge" ,refresh_render=True)
 
     def _get_scene_obj_locations(self, object_name="microwave"):
         if self.scene_id == 0: 

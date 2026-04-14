@@ -524,7 +524,7 @@ def get_random_place_pose(xlim, ylim, zlim=None, object_bounds=None, col_thr=0.1
 def place_actor(obj_name, scene, task_objs, col_thr=0.15, object_bounds=None, 
                 obj_id = None, mass = 0.1,  xlim=None, ylim=None, obj_pose=None, 
                 qpos=(0,0,0), rotation=False, rotate_lim = (0,0,0),
-                is_static=False, scale = None):
+                is_static=False, scale = None, scene_name='study'):
     
     max_attempts = 100
     if obj_pose is None:
@@ -545,7 +545,7 @@ def place_actor(obj_name, scene, task_objs, col_thr=0.15, object_bounds=None,
     if isinstance(obj_pose, list):
         obj_pose = sapien.Pose(obj_pose[0],
                     euler2quat(*[np.deg2rad(d) for d in obj_pose[1]]))
-    obj_id = obj_id if obj_id is not None else np.random.choice(task_objs['objects']['study']['targets'][obj_name])
+    obj_id = obj_id if obj_id is not None else np.random.choice(task_objs['objects'][scene_name]['targets'][obj_name])
     
     print_c(f"Generating {obj_name} with id {obj_id} at position {obj_pose}", "BLUE")
     obj = create_actor(
