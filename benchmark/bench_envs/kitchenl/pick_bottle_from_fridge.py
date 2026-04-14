@@ -131,6 +131,9 @@ class pick_bottle_from_fridge(Kitchen_base_large):
                 self.bottle.config["scale"] = [final_scale] * 3
             self.add_prohibit_area(self.bottle, padding=0.04, area="table")
         
+        if self.fridge_left is not None:
+            self.add_prohibit_area(self.fridge_left, padding=0.1, area="table")
+        
         if self.scene_id == 1:
             ylim = [-0.15, 0.05]
         else:
@@ -138,7 +141,7 @@ class pick_bottle_from_fridge(Kitchen_base_large):
         self.des_pose = get_random_place_pose(xlim = [-0.1, 0.2], ylim=ylim,
                                         col_thr=0.15,zlim=[0.78],
                                         object_bounds={})
-        self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
+        self.add_prohibit_area(self.des_pose, padding=0.04, area="table")
 
     def _is_bottle_inside_fridge(self) -> bool:
         bottle_local = self._bottle_local_in_fridge()
