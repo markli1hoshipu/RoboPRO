@@ -126,8 +126,8 @@ class switch_can_with_bottle_in_basket(Kitchen_base_large):
         
         self.bottle_modelname = "001_bottle"
         self.bottle, self.bottle_model_id, self.target_pose = \
-        place_actor(self.bottle_modelname, self, col_thr=0, xlim=[0,0.1], ylim=[0], 
-                    qpos=(90,0,0), object_bounds={}, task_objs=task_objs,
+        place_actor(self.bottle_modelname, self, col_thr=0, xlim=[-0.4,-0.3], ylim=[-0.1, -0.05], 
+                    qpos=(90,0,90), object_bounds={}, task_objs=task_objs,
                      mass = 0.2, rotation=False, scene_name='kitchenl')
 
         self.add_prohibit_area(self.bottle, padding=0.04, area="table")
@@ -135,8 +135,8 @@ class switch_can_with_bottle_in_basket(Kitchen_base_large):
         # -------------------destination poses-------------------
         bottle_bb = get_actor_boundingbox(self.bottle.actor)
 
-        self.can_des_pose = get_random_place_pose(xlim = [-0.25, -0.15], ylim=[-0.05,0],
-                                        col_thr=0.05,zlim=[0.80], qpos=(0,0,0),
+        self.can_des_pose = get_random_place_pose(xlim = [-0.15, -0.1], ylim=[-0.05,0],
+                                        col_thr=0.05, zlim=[0.80], qpos=(0,0,0),
                                         object_bounds=[bottle_bb])
                                         
         self.add_prohibit_area(self.can_des_pose, padding=0.0, area="table")
@@ -150,7 +150,11 @@ class switch_can_with_bottle_in_basket(Kitchen_base_large):
         )
 
         print_c(f"Can place destination {self.can_des_pose}", "RED")
-
+    def add_can_to_collision(self):
+            self.collision_list.append({
+                "actor": self.can,
+                "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.can_modelname}/visual/base{self.can_model_id}.glb",
+            })
     def play_once(self):
         arm_tag = ArmTag("left")
         # Pick can from basket
@@ -167,10 +171,15 @@ class switch_can_with_bottle_in_basket(Kitchen_base_large):
         self.attach_object(self.can, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.can_modelname}/collision/base{self.can_model_id}.glb", str(arm_tag))
 
         self.move(self.back_to_origin(arm_tag=arm_tag))
-        self.add_collision()
-        self.update_world()
         self.move(self.move_to_pose(arm_tag=arm_tag, target_pose=self.can_des_pose))
         self.move(self.open_gripper(arm_tag=arm_tag))
+
+        self.move(self.back_to_origin(arm_tag=arm_tag))
+
+
+        self.add_collision()
+        self.add_can_to_collision()
+        self.update_world()
 
         # put bottle in basket
         self.move(

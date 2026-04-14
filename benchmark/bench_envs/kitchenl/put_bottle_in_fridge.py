@@ -3,7 +3,7 @@ import os
 import yaml
 
 from bench_envs.kitchenl._kitchen_base_large import Kitchen_base_large
-from bench_envs.utils.scene_gen_utils import get_actor_boundingbox_urdf, print_c
+from bench_envs.utils.scene_gen_utils import get_actor_boundingbox_urdf, place_actor, print_c
 from envs.utils import *
 import math
 import numpy as np
@@ -12,7 +12,7 @@ import transforms3d as t3d
 
 
 class put_bottle_in_fridge(Kitchen_base_large):
-    BOTTLE_MASS = 0.1
+    BOTTLE_MASS = 0.2
     BOTTLE_SPAWN_Z_OFFSET = 0.04
     FRIDGE_X_BOUNDS = (-0.33, 0.16)
     FRIDGE_Y_BOUNDS = (-0.22, 0.22)
@@ -24,102 +24,30 @@ class put_bottle_in_fridge(Kitchen_base_large):
         return {self.bottle.get_name()}
 
     def setup_demo(self, is_test: bool = False, **kwargs):
-        self.bottle_modelname = "001_bottle"
         kwargs["include_collision"] = False
-
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
-            task_objs = yaml.safe_load(f)
-
-        self.bottle_model_ids =  task_objs['objects']['kitchenl']['targets'][self.bottle_modelname]
-        self.bottle_spawn_local_x_range = (-0.22, 0.12)
-        self.bottle_spawn_local_y_range = (-0.32, -0.06)
-        # Same convention as `basket_right_rot` in `_kitchen_base_large`: degrees (roll, pitch, yaw).
-        self.bottle_spawn_rot_deg = [0.0, 0.0, 90.0]
-        rot_cfg = kwargs.pop("bottle_spawn_rot_deg", None)
-        if rot_cfg is not None:
-            self.bottle_spawn_rot_deg = [float(rot_cfg[0]), float(rot_cfg[1]), float(rot_cfg[2])]
-        # Uniform scale multiplier on `model_data` intrinsic (cf. `basket_right_scale` × intrinsic).
-        self.bottle_scale = 0.7
-        bs = kwargs.pop("bottle_scale", None)
-        if bs is not None:
-            self.bottle_scale = float(bs)
-
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
-
-        if getattr(self, "microwave_left", None) is not None:
-            try:
-                mw_qpos = np.array(self.microwave_left.get_qpos(), dtype=float)
-                if mw_qpos.size > 0:
-                    mw_qpos[:] = 0.0
-                    self.microwave_left.set_qpos(mw_qpos)
-            except Exception:
-                pass
-
         self.set_fridge_open()
-
-    def _sample_bottle_spawn_pose(self, table_center: np.ndarray) -> sapien.Pose:
-        # Keep current spawn behavior exactly as implemented.
-        x = float(np.random.uniform(table_center[0] - 0.2, table_center[0]))
-        if self.scene_id == 1:
-            ylim = [-0.15, 0]
-        else:
-            ylim = [-0.12, 0.1]
-        y = float(np.random.uniform(ylim[0], ylim[1]))
-        z = float(table_center[2] + self.BOTTLE_SPAWN_Z_OFFSET)
-
-        roll_deg, pitch_deg, yaw_deg = self.bottle_spawn_rot_deg
-        ax = math.radians(roll_deg)
-        ay = math.radians(pitch_deg)
-        az = math.radians(yaw_deg)
-        qx, qy, qz, qw = t3d.euler.euler2quat(ax, ay, az)
-        bottle_quat = [qw, qx, qy, qz]
-        return sapien.Pose([x, y, z], bottle_quat)
 
     def load_actors(self):
         if getattr(self, "fridge_closed_qpos", None) is None:
             self._init_fridge_states()
 
-        self.set_fridge_open()            
+        self.set_fridge_open()    
 
-        table_center = np.array(self.table.get_pose().p, dtype=float)
-        self.bottle_model_id = int(np.random.choice(self.bottle_model_ids))
-        bottle_pose = self._sample_bottle_spawn_pose(table_center)
+        self.bottle_modelname = "001_bottle"
 
-        intrinsic_scale = self._get_asset_model_scale_create_actor(
-            self.bottle_modelname, self.bottle_model_id
-        )
-        final_scale = float(intrinsic_scale) * float(self.bottle_scale)
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+            task_objs = yaml.safe_load(f)
 
-        self.bottle = create_actor(
-            scene=self.scene,
-            pose=bottle_pose,
-            modelname=self.bottle_modelname,
-            model_id=self.bottle_model_id,
-            is_static=False,
-            # convex=True,
-            scale=final_scale,
-        )
 
-        if self.bottle is not None:
-            self.bottle.set_mass(self.BOTTLE_MASS)
+        self.bottle, self.bottle_model_id, self.target_pose = \
+        place_actor(self.bottle_modelname, self, col_thr=0.10, xlim=[0,0.35], ylim=[-0.15,-0.06], 
+                    qpos=(90,0,0), object_bounds=[], task_objs=task_objs,
+                     mass = 0.2, rotation=False, scene_name="kitchenl")
 
-            self.bottle.set_name("task_bottle")
-            if isinstance(self.bottle.config, dict):
-                self.bottle.config["scale"] = [final_scale] * 3
-            self.add_prohibit_area(self.bottle, padding=0.04, area="table")
+        self.add_prohibit_area(self.bottle, padding=0.04, area="table")
 
-        if self.fridge_left is not None:
-            self.add_prohibit_area(self.fridge_left, padding=0.1, area="table")
-
-    def _fridge_inside_target_pose(self) -> list[float]:
-        base_pose = self.fridge_left.get_link_pose("base_link")
-        base_tf = base_pose.to_transformation_matrix()
-        base_R = np.array(base_tf[:3, :3], dtype=float)
-        base_p = np.array(base_tf[:3, 3], dtype=float)
-        world_inside = base_p + base_R @ self.FRIDGE_PLACE_LOCAL
-        bottle_q = self.bottle.get_pose().q.tolist()
-        return world_inside.tolist() + bottle_q
 
     def _is_bottle_inside_fridge(self) -> bool:
         if self.bottle is None or self.fridge_left is None:
@@ -143,8 +71,8 @@ class put_bottle_in_fridge(Kitchen_base_large):
                 self.bottle,
                 arm_tag=arm_tag,
                 pre_grasp_dis=0.07,
-                grasp_dis=0.0,
-                gripper_pos=0.0,
+                grasp_dis=0.01,
+                gripper_pos=0.01,
             )
         )
         self.attach_object(self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.bottle_modelname}/collision/base{self.bottle_model_id}.glb", str(arm_tag))
