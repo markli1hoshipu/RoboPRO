@@ -151,10 +151,15 @@ class pick_milk_box_from_fridge(Kitchen_base_large):
                 ylim = [-0.15, 0]
             else:
                 ylim = [-0.12, 0.1]
+                
+        if self.fridge_left is not None:
+            self.add_prohibit_area(self.fridge_left, padding=0.1, area="table")
+        
         self.des_pose = get_random_place_pose(xlim = [-0.1, 0.2], ylim=ylim,
                                                     col_thr=0.15,zlim=[0.78],
                                                     object_bounds={})
-        self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
+        self.add_prohibit_area(self.des_pose, padding=0.04, area="table")
+    
     def _is_milk_box_inside_fridge(self) -> bool:
         milk_local = self._milk_box_local_in_fridge()
         if milk_local is None:
