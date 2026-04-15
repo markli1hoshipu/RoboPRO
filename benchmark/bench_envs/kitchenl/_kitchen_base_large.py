@@ -248,7 +248,10 @@ class Kitchen_base_large(Bench_base_task):
         self.save_data = kwags.get("save_data", False)
         self.dual_arm = kwags.get("dual_arm", True)
         self.eval_mode = kwags.get("eval_mode", False)
+        self.sample_d = kwags.get("sample_d", "objects")
+
         self.cuboid_collision_list = [] # list of cuboid collision objects for curobo planner
+        self.cluttered_objs = list()
 
         self.need_topp = True  # TODO
 
@@ -262,7 +265,9 @@ class Kitchen_base_large(Bench_base_task):
         self.crazy_random_light_rate = random_setting.get("crazy_random_light_rate", 0)
         self.crazy_random_light = (0 if not self.random_light else np.random.rand() < self.crazy_random_light_rate)
         self.random_embodiment = random_setting.get("random_embodiment", False)  # TODO
-
+        self.cluttered_table = random_setting.get("cluttered_table", False)
+        self.obstacle_height = random_setting.get("obstacle_height", "short")
+        self.obstacle_density = random_setting.get("obstacle_density", 3)
         self.file_path = []
         self.plan_success = True
         self.step_lim = None
@@ -278,7 +283,7 @@ class Kitchen_base_large(Bench_base_task):
         self.now_obs = {}
         self.take_action_cnt = 0
         self.eval_video_path = kwags.get("eval_video_save_dir", None)
-        self.incl_collision = kwags.get("include_collison", False)
+        self.incl_collision = kwags.get("include_collision", False)
 
         self.save_freq = kwags.get("save_freq")
         self.world_pcd = None
@@ -320,6 +325,9 @@ class Kitchen_base_large(Bench_base_task):
         self.basket_right_modelname = "063_tabletrashbin"
         self.basket_right_model_id = 6
 
+        self.scene_id = kwags.get("scene_id") if kwags.get("scene_id") is not None else np.random.randint(0,3)  # for furniture arrangement
+        print_c(f"Scene {self.scene_id} is selected", "YELLOW")
+
         # Cabinet scale: currently only uniform scaling is supported by SAPIEN's URDF loader.
         # This parameter allows you to uniformly resize the cabinet; to truly scale only height,
         # the underlying meshes/URDF would need to encode per-axis scale.
@@ -350,8 +358,8 @@ class Kitchen_base_large(Bench_base_task):
 
         self.load_actors()
         # self.load_basic_kitchen_items()
-        # if self.cluttered_table:
-        #     self.get_cluttered_surfaces()
+        if self.cluttered_table:
+            self.get_cluttered_surfaces()
 
         # Even for a minimal scene, ensure that articulated objects like the drawer
         # are placed in a stable configuration.
@@ -508,6 +516,8 @@ class Kitchen_base_large(Bench_base_task):
         self._load_basket_on_table(table_height, table_xy_bias)
         self._load_cabinet_on_table(table_height, table_xy_bias)
         self._add_cabinet_wall_filler()
+        if self.incl_collision:
+            self.add_collision()
 
         # Additional kitchen appliances (wall cabinets, pantry rack, etc.)
         # can be re-enabled later via _load_kitchen_appliances if needed.
@@ -534,18 +544,34 @@ class Kitchen_base_large(Bench_base_task):
         )
         if self.fridge_left is not None:
             self.fridge_left.set_name("fridge_left")
-            self.add_prohibit_area(self.fridge_left, padding=0.02, area="fridge")
-        if self.incl_collision:
-            self.collision_list.append({
-                "actor": self.fridge_left,
-                "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/124_fridge_hivvdf/blender_public/links/",
-                "pose": self.fridge_left.get_link_pose("link_0"),
-                "files": ["base_link_collision.glb", "link_0_collision.glb"],
-            })
+            self.add_prohibit_area(self.fridge_left, padding=0.05, area="table")
+
+        change_object_texture(self, self.fridge_left, "3","fridge" ,refresh_render=True)
+
+    def _get_scene_obj_locations(self, object_name="microwave"):
+        if self.scene_id == 0: 
+            microwave_location = [0.0, 0.30]
+            basket_location = [-0.37, 0.12, 0]
+        elif self.scene_id == 1:
+            microwave_location = [-0.4, 0.30]
+            basket_location = [0, 0.15, 0]
+        elif self.scene_id == 2:
+            microwave_location = [-0.4, 0.10]
+            # self.microwave_left_rot = [0.0, 180.0, 0.0]
+            basket_location = [-0.4, 0.07, 0.927]
+        else:
+            raise ValueError(f"Invalid scene_id {self.scene_id}")
+        if object_name == "microwave":
+            return microwave_location
+        elif object_name == "basket":
+            return basket_location
+        raise ValueError(f"Object name {object_name} is not supported")
+
     def _load_microwave_on_table(self, table_height: float, table_xy_bias):
         """Place the static microwave in the middle of the front edge of the table."""
-        y_front = table_xy_bias[1] + 0.30
-        x_microwave = table_xy_bias[0] + 0.0
+        
+        x_microwave, y_front = self._get_scene_obj_locations()
+        # x_microwave = table_xy_bias[0] + 0.0
         z_microwave = table_height + 0.02
 
         mw_roll_deg, mw_pitch_deg, mw_yaw_deg = self.microwave_left_rot
@@ -580,7 +606,7 @@ class Kitchen_base_large(Bench_base_task):
             if isinstance(self.microwave_left.config, dict):
                 self.microwave_left.config["scale"] = float(final_scale)
             self.microwave_left.set_name("microwave_center")
-            self.add_prohibit_area(self.microwave_left, padding=0.01, area="table")
+            self.add_prohibit_area(self.microwave_left, padding=[0.2, 0.05], area="table")
             self.collision_list.append({
                 "actor": self.microwave_left,
                 "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/044_microwave/visual/base0.glb",
@@ -589,9 +615,10 @@ class Kitchen_base_large(Bench_base_task):
         """Place the static table-side container (`063_tabletrashbin`) on the left front edge of the table."""
         jx = float(np.random.uniform(self.basket_right_position_jitter_x[0], self.basket_right_position_jitter_x[1]))
         jy = float(np.random.uniform(self.basket_right_position_jitter_y[0], self.basket_right_position_jitter_y[1]))
-        y_front = table_xy_bias[1] + 0.12 + jy
-        x_right = table_xy_bias[0] - 0.37 + jx
-        z_basket = table_height + 0.02
+        x_right, y_front, z_basket = self._get_scene_obj_locations(object_name="basket")
+        y_front += jy
+        x_right += jx
+        z_basket = table_height + 0.02 if z_basket == 0 else z_basket
 
         br_roll_deg, br_pitch_deg, br_yaw_deg = self.basket_right_rot
         br_ax = math.radians(br_roll_deg)
@@ -623,14 +650,25 @@ class Kitchen_base_large(Bench_base_task):
                 # For create_actor, model_data["scale"] is usually [sx, sy, sz].
                 self.basket_right.config["scale"] = [float(final_scale)] * 3
             self.basket_right.set_name("basket_right")
-            self.add_prohibit_area(self.basket_right, padding=0.01, area="table")
-            if self.incl_collision:
-                print_c("collision added","YELLOW")
-                self.collision_list.append({
-                    "actor": self.basket_right,
-                    "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/063_tabletrashbin/collision/base6.glb",
-                })
-   
+            self.add_prohibit_area(self.basket_right, padding=0.05, area="table")
+    def add_collision(self):
+        print_c("Furniture collisions added","YELLOW")
+        self.collision_list.append({
+            "actor": self.basket_right,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/063_tabletrashbin/collision/base6.glb",
+        })
+        # self.collision_list.append({
+        #         "actor": self.fridge_left,
+        #         "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/124_fridge_hivvdf/blender_public/links/",
+        #         "pose": self.fridge_left.get_link_pose("base_link"), 
+        #         "files": ["base_link_collision.glb", "link_0_collision.glb"],
+        #     })
+        # self.collision_list.append({
+        #         "actor": self.cabinet,
+        #         "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/125_cabinet_tynnnw/blender_public/links/",
+        #         "pose": self.cabinet.get_link_pose("base_link"),
+        #         "files": ["base_link_collision.glb", "left_door_collision.glb", "right_door_collision.glb"],
+        #     })
     def _load_cabinet_on_table(self, table_height: float, table_xy_bias):
         """Place the chosen articulated cabinet asset on the opposite end of the table from the drawer."""
         # Mirror the drawer position across the table center in x.
@@ -656,7 +694,6 @@ class Kitchen_base_large(Bench_base_task):
             self.cabinet.set_name("cabinet")
             self.add_prohibit_area(self.cabinet, padding=0.02, area="cabinet")
             self._init_cabinet_states()
-
     def _entity_aabb(self, entity):
         # Actor path: reuse existing utility.
         if hasattr(entity, "get_components"):
@@ -1114,7 +1151,7 @@ class Kitchen_base_large(Bench_base_task):
             )
             if self.fridge is not None:
                 self.fridge.set_name("fridge")
-                self.add_prohibit_area(self.fridge, padding=0.02, area="fridge")
+                self.add_prohibit_area(self.fridge, padding=0.01, area="fridge")
 
         # Wall cabinet on the right, slightly above the counter
         if "cabinet" in self.kitchen_appliance_assets:
@@ -1155,6 +1192,37 @@ class Kitchen_base_large(Bench_base_task):
         if not ids:
             return fallback
         return int(np.random.choice(ids))
+
+    def get_cluttered_surfaces(self):
+        # clutter surfaces with additional random obstacles
+        # table ------------------------------------------------------
+        table_bb = get_actor_boundingbox(self.table)
+        xlim = [table_bb[0][0], table_bb[1][0]]
+        ylim = [table_bb[0][1], table_bb[1][1]]
+        zlim = [table_bb[1][2]]
+        xlim[0] += self.table_xy_bias[0]
+        xlim[1] += self.table_xy_bias[0]
+        ylim[0] += self.table_xy_bias[1]
+        ylim[1] += self.table_xy_bias[1]
+        zlim = np.array(zlim) + self.table_z_bias
+        
+        # collect objects already in the scene
+        task_objects_list = []
+        # print_c("articulations in the scene: ", "YELLOW")
+
+        # print([o.get_name() for o in self.scene.get_all_articulations()])
+        for entity in self.scene.get_all_actors()+ self.scene.get_all_articulations():
+            actor_name = entity.get_name()
+            if actor_name == "":
+                continue
+            if actor_name in ["table", "wall", "ground"]:
+                continue
+            task_objects_list.append(actor_name)
+        # print_c(f"Existing objects in the scene: {task_objects_list}", "YELLOW")
+        cluttered_item_info, obj_names_short, obj_names_tall = get_obstacle_objects_subset(
+            "kitchenl", self.sample_d, task_objects_list
+        )
+        self.clutter_surface_split(xlim, ylim, zlim, self.prohibited_area["table"], self.obstacle_density, cluttered_item_info, obj_names_short, obj_names_tall)
 
     def add_extra_cameras(self):
         self.cameras.add_extra_cameras(f"{os.environ['BENCH_ROOT']}/bench_assets/embodiments/office_config.yml")

@@ -24,15 +24,12 @@ class put_can_in_cabinet(Kitchen_base_large):
     RETREAT_DELTA = dict(y=-0.15)
     GRASP_CONTACT_POINT_ID = 0
 
-    @staticmethod
-    def _right_side_can_contact_points(y_center: float) -> list:
-        # Force right-side grasp for the put task.
-        return [
-            [[6.123233995736766e-17, -6.123233995736766e-17, 1.0, 0.0], [1.0, 3.749399456654644e-33, -6.123233995736766e-17, y_center], [0.0, 1.0, 6.123233995736766e-17, 0.0], [0.0, 0.0, 0.0, 1.0]],
-        ]
+    def _get_target_object_names(self) -> set[str]:
+        return {self.can.get_name()}
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.can_modelname = "071_can"
+        kwargs["include_collision"] = True
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
         self.can_model_ids = task_objs['objects']['kitchenl']['targets'][self.can_modelname]
@@ -132,4 +129,5 @@ class put_can_in_cabinet(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        return self._is_can_inside_cabinet()
+        return self._is_can_inside_cabinet() and self.robot.is_left_gripper_open() \
+                and self.robot.is_right_gripper_open()

@@ -41,12 +41,12 @@ class pick_bottle_from_fridge(Kitchen_base_large):
         except Exception:
             pass
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.bottle.get_name()}
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.bottle_modelname = "001_bottle"
-        # self.bottle_model_ids = [1, 11, 14, 16]
-        # Keep the same upright convention used in put_bottle_in_fridge.
         self.bottle_spawn_rot_deg = [0.0, 0.0, 90.0]
-
         rot_cfg = kwargs.pop("bottle_spawn_rot_deg", None)
         if rot_cfg is not None:
             self.bottle_spawn_rot_deg = [float(rot_cfg[0]), float(rot_cfg[1]), float(rot_cfg[2])]
@@ -130,11 +130,16 @@ class pick_bottle_from_fridge(Kitchen_base_large):
             if isinstance(self.bottle.config, dict):
                 self.bottle.config["scale"] = [final_scale] * 3
             self.add_prohibit_area(self.bottle, padding=0.04, area="table")
-            
-        self.des_pose = get_random_place_pose(xlim = [-0.1, 0.45], ylim=[-0.2,0.1],
+        
+       
+        if self.scene_id == 1:
+            ylim = [-0.15, 0.05]
+        else:
+            ylim = [-0.2, 0.1]
+        self.des_pose = get_random_place_pose(xlim = [-0.1, 0.2], ylim=ylim,
                                         col_thr=0.15,zlim=[0.78],
                                         object_bounds={})
-        self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
+        self.add_prohibit_area(self.des_pose, padding=0.04, area="table")
 
     def _is_bottle_inside_fridge(self) -> bool:
         bottle_local = self._bottle_local_in_fridge()
@@ -145,19 +150,6 @@ class pick_bottle_from_fridge(Kitchen_base_large):
         y_ok = (self.FRIDGE_Y_BOUNDS[0] <= y_l <= self.FRIDGE_Y_BOUNDS[1])
         z_ok = (self.FRIDGE_Z_BOUNDS[0] <= z_l <= self.FRIDGE_Z_BOUNDS[1])
         return bool(x_ok and y_ok and z_ok)
-
-    def _is_bottle_in_right_hand(self) -> bool:
-        if self.bottle is None:
-            return False
-        tcp_pose = np.array(self.get_arm_pose(ArmTag("right")), dtype=float)
-        bottle_p = np.array(self.bottle.get_pose().p, dtype=float)
-        # Keep a tolerant distance threshold for varied bottle geometry/model ids.
-        dist_ok = float(np.linalg.norm(bottle_p - tcp_pose[:3])) < self.IN_HAND_TCP_DIST_THRESHOLD
-        return bool(dist_ok and self.is_right_gripper_close())
-
-    def _is_bottle_retrieved(self) -> bool:
-        # Task success: bottle is no longer in fridge and is held by the right gripper.
-        return (not self._is_bottle_inside_fridge()) and self._is_bottle_in_right_hand()
 
     def play_once(self):
         arm_tag = ArmTag("right")
@@ -178,13 +170,14 @@ class pick_bottle_from_fridge(Kitchen_base_large):
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.LIFT_DELTA))
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
         self.move(self.back_to_origin(arm_tag=arm_tag))
-
+        self.add_collision()
+        self.update_world()
         self.move(
             self.place_actor(
                 self.bottle,
                 arm_tag=arm_tag,
                 target_pose= self.des_pose,
-                constrain="auto",
+                constrain="free",
                 pre_dis=0.07,
                 dis=0.005,
             ))
@@ -194,9 +187,6 @@ class pick_bottle_from_fridge(Kitchen_base_large):
             "{a}": str(arm_tag),
         }
         return self.info
-
-    # def check_success(self):
-    #     return self._is_bottle_retrieved()
     def check_success(self):
         eps = 0.01
         b_pose = self.bottle.get_pose().p

@@ -57,8 +57,12 @@ class put_milk_box_in_fridge(Kitchen_base_large):
         except Exception:
             pass
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.milk_box.get_name()}
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.milk_box_modelname = "038_milk-box"
+        kwargs["include_collision"] = True
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
         self.milk_box_model_ids = task_objs['objects']['kitchenl']['targets'][self.milk_box_modelname]
@@ -97,7 +101,11 @@ class put_milk_box_in_fridge(Kitchen_base_large):
         # Current behavior: randomized tabletop spawn around table center.
         # For base-condition debugging, set x/y directly to table_center.
         x = float(np.random.uniform(table_center[0] - 0.1, table_center[0] + 0.2))
-        y = float(np.random.uniform(table_center[1] - 0.1, table_center[1] + 0.1))
+        if self.scene_id == 1:
+            ylim = [-0.15, 0.05]
+        else:
+            ylim = [-0.12, 0.1]
+        y = float(np.random.uniform(ylim[0],ylim[1]))
         z = float(table_center[2] + self.MILK_BOX_SPAWN_Z_OFFSET)
 
         return sapien.Pose([x, y, z], self._milk_box_quat_from_cfg())
@@ -130,7 +138,10 @@ class put_milk_box_in_fridge(Kitchen_base_large):
                 self.milk_box.config["scale"] = [final_scale] * 3
             self._ensure_milk_box_grasp_metadata()
             self.add_prohibit_area(self.milk_box, padding=0.04, area="table")
-
+        
+        if self.fridge_left is not None:
+            self.add_prohibit_area(self.fridge_left, padding=0.1, area="table")
+            
     def _fridge_inside_target_pose(self) -> list[float]:
         base_pose = self.fridge_left.get_link_pose("base_link")
         base_tf = base_pose.to_transformation_matrix()
@@ -179,4 +190,5 @@ class put_milk_box_in_fridge(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        return self._is_milk_box_inside_fridge()
+        return self._is_milk_box_inside_fridge() and self.robot.is_left_gripper_open() \
+                and self.robot.is_right_gripper_open()

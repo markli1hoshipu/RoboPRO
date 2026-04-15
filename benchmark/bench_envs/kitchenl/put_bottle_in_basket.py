@@ -29,9 +29,14 @@ class put_bottle_in_basket(Kitchen_base_large):
     GRASP_CLOSE_POS = 0.0
     GRASP_CONTACT_POINT_ID = 1
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.bottle.get_name()}
+
     def setup_demo(self, is_test: bool = False, **kwargs):
+
         # Match bottle asset setup used in pick_bottle_from_fridge.
         self.bottle_modelname = "001_bottle"
+        kwargs["include_collision"] = True
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
 
@@ -48,7 +53,6 @@ class put_bottle_in_basket(Kitchen_base_large):
             self.bottle_scale = float(bs)
 
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
-        kwargs["include_collision"] = True
         super()._init_task_env_(**kwargs)
 
     def _bottle_quat_from_cfg(self) -> list[float]:
@@ -61,8 +65,11 @@ class put_bottle_in_basket(Kitchen_base_large):
 
     def _table_center_spawn_pose(self, table_center: np.ndarray) -> sapien.Pose:
         # Spawn near table center with small world-frame jitter.
-        x = float(np.random.uniform(table_center[0] - 0.1, table_center[0] + 0.05))
-        y = float(np.random.uniform(table_center[1] - 0.1, table_center[1] + 0.05))
+        x = float(np.random.uniform(table_center[0] - 0.2, table_center[0] + 0.05))
+        if self.scene_id == 1:
+            y = float(np.random.uniform(table_center[1] - 0.15, table_center[1] + 0.05))
+        else:  
+            y = float(np.random.uniform(table_center[1] - 0.15, table_center[1] + 0))
         z = float(table_center[2] + self.BOTTLE_SPAWN_Z_OFFSET)
         return sapien.Pose([x, y, z], self._bottle_quat_from_cfg())
 
@@ -116,6 +123,12 @@ class put_bottle_in_basket(Kitchen_base_large):
         )
 
         self.attach_object(self.bottle, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.bottle_modelname}/collision/base{self.bottle_model_id}.glb", str(arm_tag))
+        
+        if self.scene_id == 2:
+            self.move(self.move_by_displacement(arm_tag=arm_tag, x = -0.2, y=-0.2, z=0.2))
+        if self.scene_id == 1:
+            self.move(self.move_by_displacement(arm_tag=arm_tag, x = -0.1, y=-0.1, z=0.1))
+
         self.move(
             self.place_actor(
                 self.bottle,
@@ -132,4 +145,5 @@ class put_bottle_in_basket(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        return self._is_can_inside_basket()
+        return self._is_can_inside_basket() and self.robot.is_left_gripper_open() \
+                and self.robot.is_right_gripper_open()

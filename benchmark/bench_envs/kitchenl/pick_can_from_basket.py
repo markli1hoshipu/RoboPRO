@@ -33,12 +33,6 @@ class pick_can_from_basket(Kitchen_base_large):
     RETREAT_AFTER_RELEASE = dict(z=0.12, y=-0.12)
 
     @staticmethod
-    def _world_point_in_entity_local(entity, world_xyz: np.ndarray) -> np.ndarray:
-        inv_tf = np.linalg.inv(entity.get_pose().to_transformation_matrix())
-        h = inv_tf @ np.array([world_xyz[0], world_xyz[1], world_xyz[2], 1.0], dtype=float)
-        return np.array(h[:3], dtype=float)
-
-    @staticmethod
     def _behind_side_can_contact_points(y_center: float) -> list:
         return [
             [[6.123233995736766e-17, -1.0, 0.0, 0.0], [1.0, 6.123233995736766e-17, 0.0, y_center], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]],
@@ -53,7 +47,11 @@ class pick_can_from_basket(Kitchen_base_large):
         cfg["contact_points_group"] = [[0]]
         cfg["contact_points_mask"] = [True]
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.can.get_name()}
+
     def setup_demo(self, is_test: bool = False, **kwargs):
+        kwargs["scene_id"] = 0 # Only use scene 0 for this task, to ensure the cabinet is in the same location and the same door is open across all demos.
         self.can_modelname = self.CAN_MODELNAME
         self.can_model_ids = list(self.CAN_MODEL_IDS)
         self.can_spawn_rot_deg = [90.0, -90.0, 90.0]
@@ -90,25 +88,12 @@ class pick_can_from_basket(Kitchen_base_large):
         world_pos = basket_p + basket_R @ np.array(self.BASKET_CAN_LOCAL, dtype=float)
         return sapien.Pose(world_pos.tolist(), self._can_quat_from_cfg())
 
-    def _can_local_in_basket(self) -> np.ndarray | None:
-        if self.can is None or self.basket_right is None:
-            return None
-        return self._world_point_in_entity_local(self.basket_right, np.array(self.can.get_pose().p, dtype=float))
-
     def _is_can_inside_basket(self) -> bool:
         box_bb = get_actor_boundingbox(self.basket_right.actor)
         return np.all((box_bb[0][:2] <= self.can.get_pose().p[:2])  & 
                        (self.can.get_pose().p[:2] <= box_bb[1][:2]))
-                
-    def _place_target_world_xy(self) -> np.ndarray:
-        p = np.array(self.table.get_pose().p, dtype=float)
-        return np.array([p[0] + self._place_world_x_off, p[1] + self._place_world_y_off], dtype=float)
-
 
     def load_actors(self):
-        self._place_world_x_off = float(self.PLACE_WORLD_X_OFFSET)
-        self._place_world_y_off = float(self.PLACE_WORLD_Y_OFFSET)
-
         self.can_model_id = int(np.random.choice(self.can_model_ids))
         spawn_pose = self._basket_spawn_pose()
 
@@ -131,8 +116,8 @@ class pick_can_from_basket(Kitchen_base_large):
                 self.can.config["scale"] = [final_scale] * 3
             self._ensure_can_grasp_metadata()
             self.add_prohibit_area(self.can, padding=0.04, area="table")
-        self.des_pose = get_random_place_pose(xlim = [-0.25, -0.15], ylim=[-0.15,-0.1],
-                                        col_thr=0.15,zlim=[0.82], qpos=(0,0,0),
+        self.des_pose = get_random_place_pose(xlim = [-0.25, -0.15], ylim=[-0.05,0],
+                                        col_thr=0.15,zlim=[0.80], qpos=(0,0,0),
                                         object_bounds={})
                                         
         self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
@@ -153,6 +138,8 @@ class pick_can_from_basket(Kitchen_base_large):
         self.attach_object(self.can, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.can_modelname}/collision/base{self.can_model_id}.glb", str(arm_tag))
 
         self.move(self.back_to_origin(arm_tag=arm_tag))
+        self.add_collision()
+        self.update_world()
         self.move(self.move_to_pose(arm_tag=arm_tag, target_pose=self.des_pose))
         self.move(self.open_gripper(arm_tag=arm_tag))
 
