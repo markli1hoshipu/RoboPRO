@@ -130,7 +130,7 @@ class move_can_from_cabinet_to_basket(Kitchen_base_large):
             self._ensure_can_grasp_metadata()
             self.add_prohibit_area(self.can, padding=0.04, area="table")
        
-        self.des_pose = get_random_place_pose(xlim = [-0.1, 0], ylim=[0] if self.scene_id == 1 else [-0.05,0.1], 
+        self.des_pose = get_random_place_pose(xlim = [-0.1, 0], ylim=[0] if self.scene_id == 1 else [-0.05,0.05], 
                                         col_thr=0.15,zlim=[0.75], qpos=(0,0,-90),
                                         object_bounds={})
         

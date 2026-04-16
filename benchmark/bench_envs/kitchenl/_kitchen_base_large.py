@@ -325,7 +325,7 @@ class Kitchen_base_large(Bench_base_task):
         self.basket_right_modelname = "063_tabletrashbin"
         self.basket_right_model_id = 6
 
-        self.scene_id = kwags.get("scene_id") if kwags.get("scene_id") is not None else np.random.randint(0,3)  # for furniture arrangement
+        self.scene_id =2 # kwags.get("scene_id") if kwags.get("scene_id") is not None else np.random.randint(0,3)  # for furniture arrangement
         print_c(f"Scene {self.scene_id} is selected", "YELLOW")
 
         # Cabinet scale: currently only uniform scaling is supported by SAPIEN's URDF loader.
