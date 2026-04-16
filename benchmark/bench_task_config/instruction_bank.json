@@ -1,0 +1,64 @@
+{
+  "_comment": "Language perturbation instruction bank. Each task maps to a list of alternative instruction phrasings combining R1 (distraction), R2 (synonym rewording), and R3 (goal-state) styles. Extend this file with additional tasks as needed.",
+
+  "put_cup_on_coaster": [
+    "Place the cup onto the coaster on the table.",
+    "Hey, quick favor -- could you put the cup on that coaster?",
+    "The lights are flickering again, but anyway, move the cup onto the coaster.",
+    "Position the drinking vessel onto the circular mat on the surface.",
+    "Use one arm to set the cylindrical container onto the protective disc.",
+    "Ensure the cup ends up resting on the coaster.",
+    "The desired outcome is that the cup has been placed on the coaster.",
+    "By the end, the cup should be sitting on top of the coaster.",
+    "I forgot my keys in the car, but first, put the cup on the coaster please.",
+    "Transfer the mug to the coaster on the table."
+  ],
+  "move_cup_onto_table": [
+    "Move the cup onto the table.",
+    "Could you grab the cup and place it on the table surface?",
+    "Before we head out, move that cup onto the table.",
+    "Relocate the drinking vessel to the tabletop.",
+    "The end state should be the cup resting on the table.",
+    "Ensure the cup has been moved from its current position onto the table.",
+    "Someone left the door open, anyway, put the cup on the table.",
+    "Transport the cylindrical drinking container to the flat work surface.",
+    "Make sure the cup ends up on the table.",
+    "Place the cup down on the table surface."
+  ],
+  "put_pen_in_pencup": [
+    "Put the pen in the pencil cup.",
+    "Hey, could you drop that pen into the pencil holder?",
+    "The printer is jammed again, but can you put the pen in the pencup?",
+    "Insert the writing instrument into the cylindrical holder.",
+    "Place the elongated marking tool into the upright container.",
+    "Ensure the pen ends up inside the pencil cup.",
+    "The goal is for the pen to be standing in the pencup.",
+    "By the end, the pen should be inserted into the pencil holder.",
+    "Transfer the pen into the pencup on the table.",
+    "Deposit the writing utensil into the pen container."
+  ],
+  "move_seal_onto_book": [
+    "Move the seal onto the book.",
+    "Quick thing -- place the seal on top of the book please.",
+    "I think we're out of coffee, but anyway, move the seal onto the book.",
+    "Position the stamp on the surface of the book.",
+    "Relocate the seal object so it rests on the book.",
+    "The desired outcome is the seal sitting on the book.",
+    "Ensure the seal has been placed on top of the book.",
+    "Transfer the seal from its current spot onto the book.",
+    "Put the stamp-like object onto the flat reading material.",
+    "By the end, the seal should be on the book."
+  ],
+  "put_cup_in_box": [
+    "Put the cup in the box.",
+    "Hey, can you place that cup inside the box?",
+    "Someone parked in my spot again, but could you put the cup in the box?",
+    "Insert the drinking vessel into the open container.",
+    "Place the cylindrical cup into the rectangular receptacle.",
+    "Ensure the cup ends up inside the box.",
+    "The goal is for the cup to be contained within the box.",
+    "By the end, the cup should be sitting inside the box.",
+    "Transfer the cup into the box on the table.",
+    "Deposit the cup into the open-top container."
+  ]
+}
