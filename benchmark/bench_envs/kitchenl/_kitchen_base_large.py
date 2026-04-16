@@ -267,7 +267,7 @@ class Kitchen_base_large(Bench_base_task):
         self.random_embodiment = random_setting.get("random_embodiment", False)  # TODO
         self.cluttered_table = random_setting.get("cluttered_table", False)
         self.obstacle_height = random_setting.get("obstacle_height", "short")
-        self.obstacle_density = random_setting.get("obstacle_density", 3)
+        self.obstacle_density =   random_setting.get("obstacle_density", 3)
         self.file_path = []
         self.plan_success = True
         self.step_lim = None

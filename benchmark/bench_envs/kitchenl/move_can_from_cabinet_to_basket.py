@@ -11,7 +11,7 @@ import sapien
 import transforms3d as t3d
 
 
-class move_bottle_from_cabinet_to_basket(Kitchen_base_large):
+class move_can_from_cabinet_to_basket(Kitchen_base_large):
     CAN_MASS = 0.6
     IN_HAND_TCP_DIST_THRESHOLD = 0.18
 

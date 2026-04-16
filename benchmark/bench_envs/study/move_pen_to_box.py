@@ -25,7 +25,7 @@ class move_pen_to_box(Study_base_task):
             task_objs = yaml.safe_load(f)
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
 
-        if np.random.rand() > self.clean_background_rate and self.obstacle_density >0:
+        if np.random.rand() > self.clean_background_rate and self.obstacle_density >0 and self.cluttered_table:
             des_bb = get_actor_boundingbox(self.box.actor)
             self.obstacle_density = max(0, self.obstacle_density-1) 
             box_obs = "090_trophy"

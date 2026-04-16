@@ -30,7 +30,7 @@ class move_cup_onto_table(Study_base_task):
         des_bb = get_actor_boundingbox(self.des_obj.actor)
 
         #place obstacles inside and next to the box
-        if np.random.rand() > self.clean_background_rate and self.obstacle_density >0:
+        if np.random.rand() > self.clean_background_rate and self.obstacle_density >0 and self.cluttered_table:
             self.obstacle_density = max(0, self.obstacle_density-2) 
             box_obs = "090_trophy"
             gap = 0.05

@@ -27,7 +27,7 @@ class move_cup_put_pen_in_cup(Study_base_task):
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         des_bb = get_actor_boundingbox(self.box.actor)
 
-        if np.random.rand() > self.clean_background_rate and self.obstacle_density >0:
+        if np.random.rand() > self.clean_background_rate and self.obstacle_density >0 and self.cluttered_table:
             self.obstacle_density = max(0, self.obstacle_density-1) 
             box_obs = "001_bottle"
             gap = 0.05
