@@ -26,7 +26,7 @@ class move_cups_into_box(Study_base_task):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
             task_objs = yaml.safe_load(f)
                 #place obstacles inside and next to the box
-        if np.random.rand() > self.clean_background_rate:
+        if np.random.rand() > self.clean_background_rate and self.obstacle_density >0 and self.cluttered_table:
             des_bb = get_actor_boundingbox(self.box.actor)
             box_obs = "001_bottle"
             gap = 0.05

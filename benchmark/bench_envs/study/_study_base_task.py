@@ -137,7 +137,7 @@ class Study_base_task(Bench_base_task):
         self.right_joint_path = kwags.get("right_joint_path", [])
         self.left_cnt = 0
         self.right_cnt = 0
-        self.scene_id =2 #kwags.get("scene_id") if kwags.get("scene_id") is not None else np.random.randint(0,3)  # for furniture arrangement
+        self.scene_id =kwags.get("scene_id") if kwags.get("scene_id") is not None else np.random.randint(0,3)  # for furniture arrangement
         self.incl_collision = kwags.get("include_collison", True)
         self.instruction = None  # for Eval
 

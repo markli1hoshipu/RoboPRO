@@ -27,7 +27,7 @@ class put_seal_in_box(Study_base_task):
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
   
       
-        self.target_name = "100_seal"# np.random.choice(list(task_objs['train']['study']['targets'].keys()))
+        self.target_name = "100_seal"
         self.target_obj, self.target_id, self.target_pose = \
         place_actor(self.target_name, self, col_thr=0.10, xlim=xlim, ylim=ylim, 
                     qpos=(90,0,0), object_bounds=object_bounds, task_objs=task_objs,
