@@ -100,25 +100,57 @@ class Bench_base_task(Base_Task):
         self.scene.set_ambient_light(kwargs.get("ambient_light", [0.5, 0.5, 0.5]))
         # default enable shadow unless specified otherwise
         shadow = kwargs.get("shadow", True)
-        # default spotlight angle and intensity
         direction_lights = kwargs.get("direction_lights", [[[0, 0.5, -1], [0.5, 0.5, 0.5]]])
-        self.direction_light_lst = []
-        for direction_light in direction_lights:
-            if self.random_light:
-                direction_light[1] = [
-                    np.random.rand(),
-                    np.random.rand(),
-                    np.random.rand(),
-                ]
-            self.direction_light_lst.append(
-                self.scene.add_directional_light(direction_light[0], direction_light[1], shadow=shadow))
-        # default point lights position and intensity
         point_lights = kwargs.get("point_lights", [[[1, 0, 1.8], [1, 1, 1]], [[-1, 0, 1.8], [1, 1, 1]]])
-        self.point_light_lst = []
-        for point_light in point_lights:
-            if self.random_light:
-                point_light[1] = [np.random.rand(), np.random.rand(), np.random.rand()]
-            self.point_light_lst.append(self.scene.add_point_light(point_light[0], point_light[1], shadow=shadow))
+
+        apply_lighting_ablation = getattr(self, "apply_lighting_ablation", False)
+        if apply_lighting_ablation:
+            # Per-episode L1/L2/L3/L4 toggles mirror robotwin-plus. L3 (specular)
+            # is applied later once actors exist; here we only set lights.
+            apply_l1 = getattr(self, "_l1_enabled", True)
+            apply_l4 = getattr(self, "_l4_enabled", True) and (np.random.rand() < 0.5)
+            apply_l2 = getattr(self, "_l2_enabled", True) and apply_l4
+            l1_range = getattr(self, "_l1_range", [0.4, 1.8])
+
+            self.direction_light_lst = []
+            for direction_light in direction_lights:
+                direction, color = list(direction_light[0]), list(direction_light[1])
+                if apply_l1:
+                    color = [float(np.random.uniform(l1_range[0], l1_range[1])) for _ in range(3)]
+                if apply_l2:
+                    theta = np.random.uniform(np.deg2rad(8), np.deg2rad(82))
+                    phi = np.random.uniform(0, 2 * np.pi)
+                    direction = [
+                        float(np.sin(theta) * np.cos(phi)),
+                        float(np.sin(theta) * np.sin(phi)),
+                        float(np.cos(theta)),
+                    ]
+                self.direction_light_lst.append(
+                    self.scene.add_directional_light(direction, color, shadow=apply_l4))
+
+            self.point_light_lst = []
+            for point_light in point_lights:
+                pos, color = list(point_light[0]), list(point_light[1])
+                if apply_l1:
+                    color = [float(np.random.uniform(l1_range[0], l1_range[1])) for _ in range(3)]
+                self.point_light_lst.append(self.scene.add_point_light(pos, color, shadow=apply_l4))
+            print(f"[Lighting] L1={apply_l1} L2={apply_l2} L3=(deferred) L4={apply_l4}")
+        else:
+            self.direction_light_lst = []
+            for direction_light in direction_lights:
+                if self.random_light:
+                    direction_light[1] = [
+                        np.random.rand(),
+                        np.random.rand(),
+                        np.random.rand(),
+                    ]
+                self.direction_light_lst.append(
+                    self.scene.add_directional_light(direction_light[0], direction_light[1], shadow=shadow))
+            self.point_light_lst = []
+            for point_light in point_lights:
+                if self.random_light:
+                    point_light[1] = [np.random.rand(), np.random.rand(), np.random.rand()]
+                self.point_light_lst.append(self.scene.add_point_light(point_light[0], point_light[1], shadow=shadow))
 
         # initialize viewer with camera position and orientation
         if self.render_freq:
@@ -137,6 +169,208 @@ class Bench_base_task(Base_Task):
 
     def create_static_elements(self, table_xy_bias=[0, 0], table_height=0.74):
         pass
+
+    # ==================================================================
+    # Perturbation parsing + application helpers.
+    # Called by subclasses (Office/Study/Kitchen base tasks) from their
+    # own _init_task_env_ so vision / object / language / background_plus
+    # flags get wired uniformly.
+    # ==================================================================
+    def _parse_perturbations(self, random_setting):
+        random_setting = random_setting or {}
+        noise_types = ['motion', 'gaussian', 'zoom', 'fog', 'glass']
+
+        # Vision — lighting
+        vision = random_setting.get("vision_perturbation", {}) or {}
+        lighting = vision.get("lighting", {}) or {}
+        self.apply_lighting_ablation = bool(lighting.get("enabled", False))
+        self._l1_enabled = bool(lighting.get("l1", True))
+        self._l2_enabled = bool(lighting.get("l2", True))
+        self._l3_enabled = bool(lighting.get("l3", True))
+        self._l4_enabled = bool(lighting.get("l4", True))
+        self._l1_range = lighting.get("l1_range", [0.4, 1.8])
+
+        # Vision — blur (per-episode noise type; per-frame CV ops applied
+        # in envs/_base_task.py:get_obs).
+        blur = vision.get("blur", {}) or {}
+        if bool(blur.get("enabled", False)):
+            self.blur_perturb_enabled = True
+            forced = blur.get("force_type")
+            if forced and forced in noise_types:
+                self.current_noise_type = forced
+            else:
+                self.current_noise_type = noise_types[self.ep_num % len(noise_types)]
+            # Severity 2/5 gives s=0.25 which is visually meaningful but not
+            # destructive; overall scaled by YAML `strength`.
+            self.current_severity = 2
+            self.current_s = (self.current_severity - 1) / 4.0
+            self.blur_strength = float(blur.get("strength", 1.0))
+            if self.current_noise_type == 'zoom':
+                zoom_min = 1.00
+                zoom_max = 1.1 + self.current_s * (1.56 - 1.11)
+                self.zoom_factor = float(np.random.uniform(zoom_min, zoom_max))
+            else:
+                self.zoom_factor = None
+            print(f"[Vision] blur={self.current_noise_type} s={self.current_s:.2f} strength={self.blur_strength}")
+        else:
+            self.blur_perturb_enabled = False
+            self.current_noise_type = None
+
+        # Vision — pixel shift (per-frame; randomized inside consumer loop).
+        shift = vision.get("pixel_shift", {}) or {}
+        self.pixel_shift_enabled = bool(shift.get("enabled", False))
+        self.pixel_shift_max = float(shift.get("max_shift", 5))
+        self.pixel_shift_strength = float(shift.get("strength", 1.0))
+
+        # Object perturbation
+        obj = random_setting.get("object_perturbation", {}) or {}
+        tgt_tex = obj.get("target_texture", {}) or {}
+        self.target_texture_enabled = bool(tgt_tex.get("enabled", False))
+        self.target_texture_source = str(tgt_tex.get("texture_source", "seen"))
+        self.unseen_obstacles = bool(obj.get("unseen_obstacles", False))
+
+        # Background_plus (B1+/B2) — ported from robotwin-plus.
+        bg_plus = random_setting.get("background_plus", {}) or {}
+        self.bg_plus_enabled = bool(bg_plus.get("enabled", False))
+        self.bg_plus_color_tint = bool(bg_plus.get("color_tint", True))
+        self.bg_plus_tint_range = bg_plus.get("tint_range", [0.5, 1.5])
+        self.bg_plus_surface_material = bool(bg_plus.get("surface_material", True))
+        self.bg_plus_metallic_range = bg_plus.get("metallic_range", [0.0, 0.8])
+        self.bg_plus_roughness_range = bg_plus.get("roughness_range", [0.05, 0.95])
+        self.bg_plus_floor_texture = bool(bg_plus.get("floor_texture", True))
+
+        # Language
+        lang = random_setting.get("language_perturbation", {}) or {}
+        self.language_perturbation_enabled = bool(lang.get("enabled", False))
+        self._instruction_bank_path = lang.get("instruction_bank")
+
+    def _apply_l3_specular(self):
+        """Apply L3 specular/shininess variation to all actors in the scene.
+        Must be called after load_actors. Robotwin-plus reference:
+        /shared_work/Robotwin-plus/envs/_base_task.py:478-492.
+        """
+        if not getattr(self, "apply_lighting_ablation", False):
+            return
+        if not getattr(self, "_l3_enabled", True):
+            return
+        if np.random.rand() >= 0.5:
+            return
+        specular_strength = float(np.random.uniform(0.3, 6.0))
+        shininess = float(np.random.uniform(10, 250))
+        for actor in self.scene.get_all_actors():
+            mats = actor.get_materials() if hasattr(actor, 'get_materials') else []
+            for mat in mats:
+                if mat is None:
+                    continue
+                try:
+                    mat.set_specular(specular_strength)
+                    mat.set_shininess(shininess)
+                except Exception:
+                    pass
+        print(f"[Lighting] L3 spec={specular_strength:.2f} shine={shininess:.0f}")
+
+    def _apply_target_texture(self):
+        """Per-episode swap of the target object's base-color texture with a
+        random background-texture PNG. Gated on object_perturbation.target_texture.
+        """
+        if not getattr(self, "target_texture_enabled", False):
+            return
+        target = getattr(self, "target_obj", None)
+        if target is None:
+            return
+        src = getattr(self, "target_texture_source", "seen")
+        if src == "background":
+            src = "seen"
+        tex_dir = f"./assets/background_texture/{src}"
+        if not os.path.isdir(tex_dir):
+            return
+        pngs = [f for f in os.listdir(tex_dir) if f.endswith(".png")]
+        if not pngs:
+            return
+        tex_path = os.path.join(tex_dir, np.random.choice(pngs))
+        try:
+            # In this codebase target_obj is the Actor wrapper; the underlying
+            # sapien.Entity lives on `.actor`. Fall back to `.entity` or the
+            # object itself for other shapes.
+            entity = (getattr(target, "actor", None)
+                      or getattr(target, "entity", None)
+                      or target)
+            rbc = entity.find_component_by_type(sapien.render.RenderBodyComponent)
+            if rbc is None:
+                return
+            tex2d = sapien.render.RenderTexture2D(tex_path)
+            for shape in rbc.render_shapes:
+                try:
+                    for part in shape.parts:
+                        mat = part.material
+                        if mat is None:
+                            continue
+                        try:
+                            mat.set_base_color_texture(tex2d)
+                            mat.set_base_color([1, 1, 1, 1])
+                        except Exception:
+                            pass
+                except AttributeError:
+                    try:
+                        mat = shape.material
+                        if mat is not None:
+                            mat.set_base_color_texture(tex2d)
+                            mat.set_base_color([1, 1, 1, 1])
+                    except Exception:
+                        pass
+            print(f"[Object] target_texture -> {os.path.basename(tex_path)}")
+        except Exception as e:
+            print(f"[Object] target_texture failed: {e}")
+
+    def _maybe_apply_language_perturbation(self):
+        """If enabled, pick a random instruction from instruction_bank.json for
+        the current task_name and set it as the active instruction. Records the
+        result to self.info so collect_data.py persists it into scene_info.json.
+        """
+        if not getattr(self, "language_perturbation_enabled", False):
+            return None
+        bank_path = getattr(self, "_instruction_bank_path", None)
+        if not bank_path:
+            return None
+        if not os.path.isabs(bank_path):
+            # Try BENCH_ROOT (where bench_task_config lives) then ROBOTWIN_ROOT.
+            for root in (os.environ.get("BENCH_ROOT"), os.environ.get("ROBOTWIN_ROOT"), "."):
+                if not root:
+                    continue
+                # Config path may already start with 'benchmark/…' when BENCH_ROOT
+                # is the 'benchmark' dir, so try both joined and stripped forms.
+                candidates = [os.path.join(root, bank_path)]
+                if bank_path.startswith("benchmark/"):
+                    candidates.append(os.path.join(root, bank_path[len("benchmark/"):]))
+                for c in candidates:
+                    if os.path.exists(c):
+                        bank_path = c
+                        break
+                else:
+                    continue
+                break
+        if not os.path.exists(bank_path):
+            print(f"[Language] bank not found at {bank_path}")
+            return None
+        try:
+            with open(bank_path, "r", encoding="utf-8") as f:
+                bank = json.load(f)
+        except Exception as e:
+            print(f"[Language] failed to load bank: {e}")
+            return None
+        pool = bank.get(self.task_name, [])
+        if not pool:
+            return None
+        instruction = str(np.random.choice(pool))
+        self.set_instruction(instruction=instruction)
+        if not isinstance(getattr(self, "info", None), dict):
+            self.info = {}
+        self.info["language_perturbation"] = {
+            "instruction": instruction,
+            "bank": bank_path,
+        }
+        print(f"[Language] {self.task_name} -> '{instruction[:60]}'")
+        return instruction
 
     def get_cluttered_surfaces(self):
         pass

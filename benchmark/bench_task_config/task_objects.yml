@@ -1,4 +1,20 @@
-# objects we sample for generating training data
+# objects we sample for generating training data.
+# `object_ood` mirrors the `objects` schema but lists model ids that are
+# visually distinct from the seen set — used when
+# `object_perturbation.unseen_obstacles: true` in the task_config YAML.
+object_ood:
+  office:
+    obstacles:
+      short:
+        031_jam-jar: [0,1,2,3,4]
+        039_mug: [0,1]
+        068_boxdrink: [0,1,2]
+        092_notebook: [0,1,2]
+        094_rest: [0,1,2,3]
+      tall:
+        029_olive-oil: [0,1,2,3]
+        038_milk-box: [0,1,2]
+        080_pillbottle: [1,2,3,4]
 objects:
   office:
     targets:
