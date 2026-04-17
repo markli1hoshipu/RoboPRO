@@ -1,6 +1,6 @@
 # Object perturbation config: target texture swap + unseen obstacles
 render_freq: 0
-episode_num: 100
+episode_num: 3
 use_seed: false
 save_freq: 15
 embodiment: [aloha-agilex]
@@ -18,8 +18,17 @@ domain_randomization:
   object_perturbation:
     target_texture:
       enabled: true
-      texture_source: background  # use background_texture asset bank
-    unseen_obstacles: true         # use "objects_unseen" distribution from task_objects.yml
+      texture_source: seen          # picks from assets/background_texture/seen
+    unseen_obstacles: true          # samples obstacles from task_objects.yml:object_ood
+
+  background_plus:                  # B1+/B2 from robotwin-plus
+    enabled: true
+    color_tint: true
+    tint_range: [0.5, 1.5]
+    surface_material: true
+    metallic_range: [0.0, 0.8]
+    roughness_range: [0.05, 0.95]
+    floor_texture: true
 
 camera:
   head_camera_type: D435

@@ -79,8 +79,6 @@ class KitchenS_base_task(Bench_base_task):
         self.obstacle_height = random_setting.get("obstacle_height", "short")
         self.obstacle_density = random_setting.get("obstacle_density", 3)
 
-        self._parse_perturbation_config(kwags)
-
         self.file_path = []
         self.plan_success = True
         self.step_lim = None
@@ -96,6 +94,7 @@ class KitchenS_base_task(Bench_base_task):
         self.now_obs = {}
         self.take_action_cnt = 0
         self.eval_video_path = kwags.get("eval_video_save_dir", None)
+        self.incl_collision = kwags.get("include_collision", False)
 
         self.save_freq = kwags.get("save_freq")
         self.world_pcd = None
@@ -189,7 +188,7 @@ class KitchenS_base_task(Bench_base_task):
 
         scene_0: MW left, Dishrack center, Sink right
         scene_1: MW left, Sink center, Dishrack right
-        scene_2: MW left, Dishrack front-center rotated, Sink right
+        scene_2: MW center, Dishrack left, Sink right
         """
         if self.scene_id == 0:
             locations = {
@@ -205,8 +204,8 @@ class KitchenS_base_task(Bench_base_task):
             }
         elif self.scene_id == 2:
             locations = {
-                "microwave": [-0.32, 0.18],
-                "dishrack": [0.10, 0.05],
+                "microwave": [0.10, 0.18],
+                "dishrack": [-0.32, 0.25],
                 "sink": [0.42, 0.08],
             }
         else:
@@ -215,6 +214,63 @@ class KitchenS_base_task(Bench_base_task):
         if object_name not in locations:
             raise ValueError(f"Unknown object_name '{object_name}', expected one of {list(locations.keys())}")
         return locations[object_name]
+
+    # ------------------------------------------------------------------
+    # Spawn helper with prohibited-area rejection
+    # ------------------------------------------------------------------
+
+    def rand_pose_on_counter(
+        self,
+        xlim,
+        ylim,
+        zlim=None,
+        qpos=(1, 0, 0, 0),
+        rotate_rand=False,
+        rotate_lim=(0, 0, 0),
+        ylim_prop=False,
+        obj_padding=0.02,
+        attempts=80,
+    ):
+        """Sample a pose in ``xlim × ylim`` that avoids every box already in
+        ``self.prohibited_area["table"]``. Falls back to the last sample if no
+        clear pose is found within ``attempts`` tries.
+
+        ``obj_padding`` is the half-extent used to treat the sampled point as
+        a footprint (so the footprint, not just the center, must clear the
+        existing prohibited boxes).
+        """
+        from envs.utils import rand_pose
+
+        if zlim is None:
+            zlim = [self.kitchens_info["table_height"] + self.table_z_bias + 0.001]
+
+        pose = None
+        for _ in range(attempts):
+            pose = rand_pose(
+                xlim=xlim,
+                ylim=ylim,
+                zlim=zlim,
+                qpos=list(qpos),
+                rotate_rand=rotate_rand,
+                rotate_lim=list(rotate_lim),
+                ylim_prop=ylim_prop,
+            )
+            x, y = float(pose.p[0]), float(pose.p[1])
+            fx0, fx1 = x - obj_padding, x + obj_padding
+            fy0, fy1 = y - obj_padding, y + obj_padding
+            blocked = False
+            for (x0, y0, x1, y1) in self.prohibited_area.get("table", []):
+                if fx1 >= x0 and fx0 <= x1 and fy1 >= y0 and fy0 <= y1:
+                    blocked = True
+                    break
+            if not blocked:
+                return pose
+        print_c(
+            f"[KitchenS] rand_pose_on_counter exhausted {attempts} attempts; "
+            f"using last sample at ({pose.p[0]:.3f}, {pose.p[1]:.3f})",
+            "YELLOW",
+        )
+        return pose
 
     # ------------------------------------------------------------------
     # Static scene construction
@@ -277,21 +333,42 @@ class KitchenS_base_task(Bench_base_task):
             is_static=True,
         )
 
-        # Countertop -----------------------------------------------------
+        # Countertop geometry (shared with fixture loaders) --------------
         counter_length = self.kitchens_info["table_area"][0]
         counter_width = self.kitchens_info["table_area"][1]
         counter_thickness = 0.04
+        self.kitchens_info["counter_thickness"] = counter_thickness
 
-        self.table = create_table(
-            self.scene,
-            sapien.Pose(p=[table_xy_bias[0], table_xy_bias[1], table_height]),
-            length=counter_length,
-            width=counter_width,
-            height=table_height,
-            thickness=counter_thickness,
-            is_static=True,
-            texture_id=self.table_texture,
+        # Sink position & hole dims — computed here so the counter can be
+        # built with a matching through-hole around the basin.
+        sink_rel_x, sink_rel_y = self._get_scene_obj_locations("sink")
+        self.kitchens_info["sink_geom"] = {
+            "rel_p": [sink_rel_x, sink_rel_y],
+            "hole_hx": 0.13,
+            "hole_hy": 0.20,
+            "depth": 0.09,
+            "inner_hx": 0.12,
+            "inner_hy": 0.19,
+        }
+
+        # Backsplash (visual, behind the counter) ------------------------
+        self._create_backsplash(counter_length, counter_width, table_height, table_xy_bias)
+
+        # Countertop — single static actor composed of 4 pieces around
+        # the sink opening so objects can fall into the basin.
+        self._create_counter_with_sink_hole(
+            counter_length, counter_width, counter_thickness,
+            table_height, table_xy_bias,
         )
+
+        # Base cabinets below the counter (visual only) ------------------
+        self._create_base_cabinets(counter_length, counter_width, table_height, counter_thickness, table_xy_bias)
+
+        # Thin dark trim along the front edge of the counter ------------
+        self._create_counter_edge_trim(counter_length, counter_width, table_height, counter_thickness, table_xy_bias)
+
+        # Upper decorative open shelves (left & right) -------------------
+        self._create_upper_shelves(table_height, table_xy_bias)
 
         self.kitchens_info["table_lims"] = [
             -counter_length / 2, -counter_width / 2,
@@ -312,6 +389,212 @@ class KitchenS_base_task(Bench_base_task):
             self.add_collision()
 
     # ------------------------------------------------------------------
+    # Counter & decorative elements
+    # ------------------------------------------------------------------
+
+    def _create_counter_with_sink_hole(
+        self,
+        counter_length,
+        counter_width,
+        counter_thickness,
+        table_height,
+        table_xy_bias,
+    ):
+        """Build a single static "table" actor composed of 4 counter pieces
+        arranged around the sink opening, so objects can physically fall
+        into the basin.
+        """
+        sink_geom = self.kitchens_info["sink_geom"]
+        sink_rel_x, sink_rel_y = sink_geom["rel_p"]
+        sink_hx = sink_geom["hole_hx"]
+        sink_hy = sink_geom["hole_hy"]
+
+        th = counter_thickness / 2
+        counter_top_z = table_height - th
+
+        cl, cr = -counter_length / 2, counter_length / 2
+        cf, cb = -counter_width / 2, counter_width / 2
+        hl = sink_rel_x - sink_hx
+        hr = sink_rel_x + sink_hx
+        hf = sink_rel_y - sink_hy
+        hb = sink_rel_y + sink_hy
+
+        if self.table_texture is not None:
+            texture_path = f"./assets/background_texture/{self.table_texture}.png"
+            texture2d = sapien.render.RenderTexture2D(texture_path)
+            counter_mat = sapien.render.RenderMaterial()
+            counter_mat.set_base_color_texture(texture2d)
+            counter_mat.base_color = [1, 1, 1, 1]
+            counter_mat.metallic = 0.1
+            counter_mat.roughness = 0.3
+        else:
+            counter_mat = sapien.render.RenderMaterial(base_color=[0.28, 0.27, 0.26, 1])
+            counter_mat.metallic = 0.12
+            counter_mat.roughness = 0.22
+
+        counter_pieces = [
+            ("right", hr, cr, cf, cb),
+            ("left",  cl, hl, cf, cb),
+            ("front", hl, hr, cf, hf),
+            ("back",  hl, hr, hb, cb),
+        ]
+
+        builder = self.scene.create_actor_builder()
+        builder.set_physx_body_type("static")
+        for _, x1, x2, y1, y2 in counter_pieces:
+            hx = (x2 - x1) / 2
+            hy = (y2 - y1) / 2
+            cx = (x1 + x2) / 2
+            cy = (y1 + y2) / 2
+            if hx <= 1e-6 or hy <= 1e-6:
+                continue
+            piece_pose = sapien.Pose([cx, cy, 0])
+            builder.add_box_collision(
+                pose=piece_pose,
+                half_size=[hx, hy, th],
+                material=self.scene.default_physical_material,
+            )
+            builder.add_box_visual(pose=piece_pose, half_size=[hx, hy, th], material=counter_mat)
+
+        builder.set_initial_pose(
+            sapien.Pose(p=[table_xy_bias[0], table_xy_bias[1], counter_top_z])
+        )
+        self.table = builder.build(name="table")
+
+    def _create_backsplash(self, counter_length, counter_width, table_height, table_xy_bias):
+        backsplash_z = table_height + 0.22
+        create_visual_textured_box(
+            self.scene,
+            sapien.Pose(p=[
+                table_xy_bias[0],
+                table_xy_bias[1] + counter_width / 2 + 0.005,
+                backsplash_z,
+            ]),
+            half_size=[counter_length / 2 + 0.02, 0.006, 0.22],
+            color=(0.92, 0.94, 0.96),
+            name="backsplash",
+        )
+
+    def _create_base_cabinets(
+        self,
+        counter_length,
+        counter_width,
+        table_height,
+        counter_thickness,
+        table_xy_bias,
+    ):
+        cabinet_h = (table_height - counter_thickness) / 2
+        cabinet_z = cabinet_h
+        cx = table_xy_bias[0]
+        cy = table_xy_bias[1]
+
+        create_visual_textured_box(
+            self.scene,
+            sapien.Pose(p=[cx, cy - counter_width / 2 + 0.01, cabinet_z]),
+            half_size=[counter_length / 2, 0.01, cabinet_h],
+            color=(0.75, 0.60, 0.42),
+            name="cabinet_front",
+        )
+        for dx in [-0.23, 0.0, 0.23]:
+            create_visual_textured_box(
+                self.scene,
+                sapien.Pose(p=[cx + dx, cy - counter_width / 2 + 0.005, cabinet_z]),
+                half_size=[0.003, 0.003, cabinet_h - 0.02],
+                color=(0.55, 0.42, 0.28),
+                name=f"cabinet_divider_{dx}",
+            )
+        for dx in [-0.35, -0.12, 0.12, 0.35]:
+            handle_z = cabinet_z + 0.05
+            create_visual_textured_box(
+                self.scene,
+                sapien.Pose(p=[cx + dx, cy - counter_width / 2 - 0.005, handle_z]),
+                half_size=[0.025, 0.005, 0.004],
+                color=(0.65, 0.65, 0.68),
+                name=f"cabinet_handle_{dx}",
+            )
+        create_visual_textured_box(
+            self.scene,
+            sapien.Pose(p=[cx - counter_length / 2 + 0.01, cy, cabinet_z]),
+            half_size=[0.01, counter_width / 2, cabinet_h],
+            color=(0.70, 0.56, 0.40),
+            name="cabinet_left",
+        )
+        create_visual_textured_box(
+            self.scene,
+            sapien.Pose(p=[cx + counter_length / 2 - 0.01, cy, cabinet_z]),
+            half_size=[0.01, counter_width / 2, cabinet_h],
+            color=(0.70, 0.56, 0.40),
+            name="cabinet_right",
+        )
+        create_visual_textured_box(
+            self.scene,
+            sapien.Pose(p=[cx, cy + counter_width / 2 - 0.01, cabinet_z]),
+            half_size=[counter_length / 2, 0.01, cabinet_h],
+            color=(0.65, 0.52, 0.38),
+            name="cabinet_back",
+        )
+
+    def _create_counter_edge_trim(
+        self, counter_length, counter_width, table_height, counter_thickness, table_xy_bias
+    ):
+        create_visual_textured_box(
+            self.scene,
+            sapien.Pose(p=[
+                table_xy_bias[0],
+                table_xy_bias[1] - counter_width / 2,
+                table_height - counter_thickness / 2,
+            ]),
+            half_size=[counter_length / 2, 0.003, counter_thickness / 2 + 0.002],
+            color=(0.22, 0.21, 0.20),
+            name="counter_edge",
+        )
+
+    def _create_upper_shelves(self, table_height, table_xy_bias):
+        counter_width = self.kitchens_info["table_area"][1]
+        cx = table_xy_bias[0]
+        cy = table_xy_bias[1]
+
+        for shelf_side, sx, sw in [("right", 0.28, 0.48), ("left", -0.28, 0.40)]:
+            shelf_base_z = table_height + 0.32
+            shelf_total_h = 0.38
+            shelf_depth = 0.10
+            shelf_back_y = cy + counter_width / 2 - 0.01
+            shelf_front_y = shelf_back_y - shelf_depth
+            shelf_center_y = (shelf_back_y + shelf_front_y) / 2
+            plank_thickness = 0.012
+
+            create_visual_textured_box(
+                self.scene,
+                sapien.Pose(p=[cx + sx, shelf_back_y, shelf_base_z + shelf_total_h / 2]),
+                half_size=[sw / 2, 0.004, shelf_total_h / 2],
+                color=(0.68, 0.54, 0.38),
+                name=f"shelf_{shelf_side}_back",
+            )
+            create_visual_textured_box(
+                self.scene,
+                sapien.Pose(p=[cx + sx - sw / 2, shelf_center_y, shelf_base_z + shelf_total_h / 2]),
+                half_size=[plank_thickness / 2, shelf_depth / 2, shelf_total_h / 2],
+                color=(0.75, 0.60, 0.42),
+                name=f"shelf_{shelf_side}_left",
+            )
+            create_visual_textured_box(
+                self.scene,
+                sapien.Pose(p=[cx + sx + sw / 2, shelf_center_y, shelf_base_z + shelf_total_h / 2]),
+                half_size=[plank_thickness / 2, shelf_depth / 2, shelf_total_h / 2],
+                color=(0.75, 0.60, 0.42),
+                name=f"shelf_{shelf_side}_right",
+            )
+            for i, frac in enumerate([0.0, 0.5, 1.0]):
+                board_z = shelf_base_z + frac * shelf_total_h
+                create_visual_textured_box(
+                    self.scene,
+                    sapien.Pose(p=[cx + sx, shelf_center_y, board_z]),
+                    half_size=[sw / 2, shelf_depth / 2, plank_thickness / 2],
+                    color=(0.75, 0.60, 0.42),
+                    name=f"shelf_{shelf_side}_board_{i}",
+                )
+
+    # ------------------------------------------------------------------
     # Fixture loaders
     # ------------------------------------------------------------------
 
@@ -319,7 +602,12 @@ class KitchenS_base_task(Bench_base_task):
         x, y = self._get_scene_obj_locations("microwave")
         x += table_xy_bias[0]
         y += table_xy_bias[1]
-        z = table_height + 0.06
+
+        # 1.5× the default scale from model_data.json (0.15 → 0.225).
+        # Geometry scales uniformly, so the base-below-root offset scales too.
+        mw_scale_mult = 1.5
+        mw_scale = 0.15 * mw_scale_mult
+        z = table_height + 0.06 * mw_scale_mult
 
         quat = euler2quat(0, 0, np.pi / 2, axes='sxyz')
         pose = sapien.Pose([x, y, z], [quat[0], quat[1], quat[2], quat[3]])
@@ -331,6 +619,7 @@ class KitchenS_base_task(Bench_base_task):
                 modelname="044_microwave",
                 modelid=0,
                 fix_root_link=True,
+                scale=mw_scale,
             )
         except Exception as e:
             print(f"[KitchenS] failed to load microwave URDF: {e}")
@@ -348,39 +637,48 @@ class KitchenS_base_task(Bench_base_task):
         x, y = self._get_scene_obj_locations("dishrack")
         x += table_xy_bias[0]
         y += table_xy_bias[1]
-        z = table_height
 
-        if self.scene_id == 2:
-            q = euler2quat(-np.pi / 2, 0, np.pi / 4, axes='sxyz')
-        else:
-            q = euler2quat(-np.pi / 2, 0, 0, axes='sxyz')
+        # Base orientation lays the rack flat on the counter (basin opens up)
+        # by rotating +90° around the world x-axis.
+        rack_q = np.array([0.707, 0.707, 0, 0])  # wxyz, +90° about x
 
-        self.dishrack = create_glb_actor(
-            scene=self.scene,
-            pose=sapien.Pose(p=[x, y, z], q=[q[0], q[1], q[2], q[3]]),
-            model_name="135_dish-rack",
-            scale=[1, 1, 1],
-            convex=False,
+        # Compute z offset from the actual visual mesh bounds (json extents do
+        # not match the glb). After the +90° x-rotation, the mesh's original
+        # +y axis becomes world +z, so world bottom = origin_z + y_min * scale.
+        rack_asset_dir = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/135_dish-rack"
+        with open(f"{rack_asset_dir}/model_data0.json") as _f:
+            _rd = json.load(_f)
+        _rack_scale = _rd["scale"][0]
+        _rack_mesh = trimesh.load(f"{rack_asset_dir}/base0.glb", force="mesh")
+        _y_min = float(_rack_mesh.bounds[0][1])
+        rack_z = table_height - _y_min * _rack_scale
+
+        self.dishrack = create_actor(
+            scene=self,
+            pose=sapien.Pose(p=[x, y, rack_z], q=rack_q.tolist()),
+            modelname="135_dish-rack",
+            convex=True,
+            model_id=0,
             is_static=True,
-            mass=2,
         )
         self.dishrack.set_name("dishrack")
-        self.add_prohibit_area(self.dishrack, padding=0.02, area="table")
+        self.add_prohibit_area(self.dishrack, padding=0.04, area="table")
         self.collision_list.append({
             "actor": self.dishrack,
             "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/135_dish-rack/collision/base0.glb",
         })
 
     def _load_sink(self, table_height, table_xy_bias):
-        x, y = self._get_scene_obj_locations("sink")
-        x += table_xy_bias[0]
-        y += table_xy_bias[1]
+        sink_geom = self.kitchens_info["sink_geom"]
+        rel_x, rel_y = sink_geom["rel_p"]
+        x = rel_x + table_xy_bias[0]
+        y = rel_y + table_xy_bias[1]
 
-        hole_hx = 0.13
-        hole_hy = 0.20
-        depth = 0.09
-        inner_hx = 0.12
-        inner_hy = 0.19
+        hole_hx = sink_geom["hole_hx"]
+        hole_hy = sink_geom["hole_hy"]
+        depth = sink_geom["depth"]
+        inner_hx = sink_geom["inner_hx"]
+        inner_hy = sink_geom["inner_hy"]
 
         sink_z = table_height
         wall_thickness = hole_hx - inner_hx
@@ -392,13 +690,13 @@ class KitchenS_base_task(Bench_base_task):
         material.metallic = 0.6
         material.roughness = 0.3
 
-        # Bottom
+        # Basin floor
         bottom_half = [inner_hx, inner_hy, wall_thickness / 2]
         bottom_pose = sapien.Pose([0, 0, -depth + wall_thickness / 2])
         builder.add_box_collision(pose=bottom_pose, half_size=bottom_half)
         builder.add_box_visual(pose=bottom_pose, half_size=bottom_half, material=material)
 
-        # Four walls
+        # Four side walls
         walls = [
             ([hole_hx - wall_thickness / 2, 0, -depth / 2], [wall_thickness / 2, hole_hy, depth / 2]),  # +x
             ([-(hole_hx - wall_thickness / 2), 0, -depth / 2], [wall_thickness / 2, hole_hy, depth / 2]),  # -x
@@ -413,9 +711,69 @@ class KitchenS_base_task(Bench_base_task):
         builder.set_initial_pose(sapien.Pose(p=[x, y, sink_z]))
         self.sink = builder.build(name="sink")
 
+        # Thin chrome rim framing the hole (visual only)
+        rim_t = 0.012
+        rim_hz = 0.003
+        rim_z = table_height + 0.003
+        rim_color = (0.82, 0.82, 0.85)
+        create_box(
+            self.scene,
+            sapien.Pose(p=[x, y - hole_hy - rim_t / 2, rim_z]),
+            half_size=[hole_hx + rim_t, rim_t / 2, rim_hz],
+            color=rim_color, name="sink_rim_front", is_static=True,
+        )
+        create_box(
+            self.scene,
+            sapien.Pose(p=[x, y + hole_hy + rim_t / 2, rim_z]),
+            half_size=[hole_hx + rim_t, rim_t / 2, rim_hz],
+            color=rim_color, name="sink_rim_back", is_static=True,
+        )
+        create_box(
+            self.scene,
+            sapien.Pose(p=[x - hole_hx - rim_t / 2, y, rim_z]),
+            half_size=[rim_t / 2, hole_hy, rim_hz],
+            color=rim_color, name="sink_rim_left", is_static=True,
+        )
+        create_box(
+            self.scene,
+            sapien.Pose(p=[x + hole_hx + rim_t / 2, y, rim_z]),
+            half_size=[rim_t / 2, hole_hy, rim_hz],
+            color=rim_color, name="sink_rim_right", is_static=True,
+        )
+
+        # Faucet — upright post, gooseneck spout, small side handle
+        faucet_y = y + inner_hy + 0.02
+        faucet_color = (0.82, 0.82, 0.85)
+        create_visual_textured_box(
+            self.scene,
+            sapien.Pose(p=[x, faucet_y, table_height + 0.10]),
+            half_size=[0.010, 0.010, 0.10],
+            color=faucet_color,
+            name="faucet_post",
+        )
+        create_visual_textured_box(
+            self.scene,
+            sapien.Pose(p=[x, faucet_y - 0.06, table_height + 0.19]),
+            half_size=[0.008, 0.07, 0.008],
+            color=faucet_color,
+            name="faucet_spout",
+        )
+        create_visual_textured_box(
+            self.scene,
+            sapien.Pose(p=[x + 0.04, faucet_y, table_height + 0.06]),
+            half_size=[0.012, 0.006, 0.015],
+            color=faucet_color,
+            name="faucet_handle",
+        )
+
+        # Prohibited zone covers basin + faucet footprint so task objects
+        # never spawn on top of the open sink.
+        sink_pad = 0.03
         self.prohibited_area["table"].append([
-            x - hole_hx - 0.02, y - hole_hy - 0.02,
-            x + hole_hx + 0.02, y + hole_hy + 0.02,
+            x - hole_hx - sink_pad,
+            y - hole_hy - sink_pad,
+            x + hole_hx + sink_pad,
+            faucet_y + sink_pad,
         ])
 
     # ------------------------------------------------------------------
