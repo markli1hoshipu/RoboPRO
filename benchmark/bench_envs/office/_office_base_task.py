@@ -405,7 +405,11 @@ class Office_base_task(Bench_base_task):
             "actor": self.file_holder,
             "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/122_file-holder/base.glb",
         })
-        
+        # ---------------- Texture randomization for furniture --------------------------------
+        # change_object_texture(self, self.file_holder, str(np.random.randint(0, 3)),"file" ,refresh_render=True)
+        # change_object_texture(self, self.shelf, str(np.random.randint(0, 3)),"shelf" ,refresh_render=True)
+        # change_object_texture(self, self.cabinet, str(np.random.randint(0, 3)),"drawer" ,refresh_render=True)
+
     def load_basic_office_items(self):
         # load office items: items that are always placed as obstacles ie key obstacles
         entities = self.scene.get_all_actors()

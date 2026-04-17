@@ -74,31 +74,32 @@ class put_phone_on_holder(Office_base_task):
         })
         self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
         self.add_prohibit_area(self.des_obj, padding=0.01, area=f"table")
-
-        #  ---------------------------------------------------------------------
-        self.id_list = [i for i in range(20)]
-        self.bottle_id = np.random.choice(self.id_list)
-        center_x = (self.target_obj.get_pose().p[0] + self.des_obj.get_pose().p[0]) / 2
-        center_y = (self.target_obj.get_pose().p[1] + self.des_obj.get_pose().p[1]) / 2
-        self.bottle = rand_create_actor(
-            self,
-            xlim=[center_x-0.01,center_x+0.01],
-            ylim=[center_y-0.03,center_y+0.03],
-            modelname="001_bottle",
-            rotate_rand=True,
-            rotate_lim=[0, 1, 0],
-            qpos=[0.66, 0.66, -0.25, -0.25],
-            convex=True,
-            model_id=self.bottle_id,
-            scale = [0.14, 0.14, 0.14],
-        )
-        
-        self.stabilize_object(self.bottle)
-        self.add_prohibit_area(self.bottle, padding=-0.02, area="table")
-        self.collision_list.append({
-            "actor": self.bottle,
-            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb",
-        })  
+        if np.random.rand() > self.clean_background_rate and self.obstacle_density >0 and self.cluttered_table:
+            self.obstacle_density = max(0, self.obstacle_density-1)
+            #  ---------------------------------------------------------------------
+            self.id_list = [i for i in range(20)]
+            self.bottle_id = np.random.choice(self.id_list)
+            center_x = (self.target_obj.get_pose().p[0] + self.des_obj.get_pose().p[0]) / 2
+            center_y = (self.target_obj.get_pose().p[1] + self.des_obj.get_pose().p[1]) / 2
+            self.bottle = rand_create_actor(
+                self,
+                xlim=[center_x-0.01,center_x+0.01],
+                ylim=[center_y-0.03,center_y+0.03],
+                modelname="001_bottle",
+                rotate_rand=True,
+                rotate_lim=[0, 1, 0],
+                qpos=[0.66, 0.66, -0.25, -0.25],
+                convex=True,
+                model_id=self.bottle_id,
+                scale = [0.14, 0.14, 0.14],
+            )
+            
+            self.stabilize_object(self.bottle)
+            self.add_prohibit_area(self.bottle, padding=-0.02, area="table")
+            self.collision_list.append({
+                "actor": self.bottle,
+                "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/001_bottle/collision/base{self.bottle_id}.glb",
+            })  
 
     def play_once(self):
         # Determine which arm to use based on target_obj's position (left if target_obj is on left side, else right)

@@ -37,7 +37,32 @@ class move_seal_onto_book(Study_base_task):
                                       boundary_thr=0.20, side="right" if self.scene_id == 0 else "left")
         
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]        
+      
+          #place obstacles inside and next to the box
+        if np.random.rand() > self.clean_background_rate and self.obstacle_density >0 and self.cluttered_table:
+            des_bb = get_actor_boundingbox(self.box.actor)
+            self.obstacle_density = max(0, self.obstacle_density-1) 
+            box_obs = "090_trophy"
+            gap = 0.05
+            y_gap = 0.08
+            place_pose =  [[des_bb[1][0]+gap if self.scene_id == 0 else des_bb[0][0]-gap, 
+                           des_bb[1][1]-np.random.uniform(low=y_gap, 
+                                    high=des_bb[1][1]-des_bb[0][1] - y_gap),
+                           des_bb[0][-1]],(90,0,0)]
+            bid = np.random.choice(task_objs["objects"]["study"]["obstacles"]["tall"][box_obs])
+            box_obs_tar, obs_tar_id, _= place_actor(box_obs, self, 
+                           task_objs = task_objs, obj_id = bid,
+                          obj_pose=place_pose, mass = 0.5, is_static=False)
+            self.collision_list.append({
+                "actor":box_obs_tar,
+                "collision_path": self.col_temp.format(object=box_obs,
+                                                        object_id=obs_tar_id)
+            })
+            object_bounds.append(get_actor_boundingbox(box_obs_tar.actor))
+      
         bcs_bb = get_actor_boundingbox(self.bookcase)
+      
+
         x_w = bcs_bb[1][0] - bcs_bb[0][0]
         y_l = bcs_bb[1][1] - bcs_bb[0][1]
 

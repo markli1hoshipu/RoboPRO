@@ -33,9 +33,30 @@ class move_seal_onto_table(Study_base_task):
    
         des_bb = get_actor_boundingbox(self.box.actor)
     
+        if np.random.rand() > self.clean_background_rate and self.obstacle_density >0 and self.cluttered_table:
+            self.obstacle_density = max(0, self.obstacle_density-1) 
+            box_obs = "001_bottle"
+            gap = 0.05
+            y_gap = 0.08
+            place_pose =  [[des_bb[1][0]+ gap if self.scene_id == 0 else des_bb[0][0]-gap, 
+                           des_bb[1][1]-np.random.uniform(low=y_gap, 
+                                    high=des_bb[1][1]-des_bb[0][1] - y_gap),
+                           des_bb[0][-1]],(90,0,0)]
+            bid = np.random.choice(task_objs["objects"]["study"]["obstacles"]["tall"][box_obs])
+            box_obs_tar, obs_tar_id, _= place_actor(box_obs, self, 
+                           task_objs = task_objs, obj_id = bid,
+                          obj_pose=place_pose, mass = 0.5, is_static=False)
+            self.collision_list.append({
+                "actor":box_obs_tar,
+                "collision_path": self.col_temp.format(object=box_obs,
+                                                        object_id=obs_tar_id)
+            })
+            object_bounds.append(get_actor_boundingbox(box_obs_tar.actor))
     
         # Object 1
         self.target_name ="100_seal"
+
+        
         box_pose = self.box.get_pose().p
         place_pose =  [[box_pose[0], box_pose[1]-0.05, des_bb[0][-1] + 0.03],(90,0,180)]
        
@@ -44,7 +65,8 @@ class move_seal_onto_table(Study_base_task):
                     obj_pose=place_pose, mass = 0.1)
 
         
-        self.target_place_pose = get_random_place_pose(xlim = [xlim[0], xlim[1]-0.1], ylim=ylim,
+        
+        self.target_place_pose = get_random_place_pose(xlim = [xlim[0] + 0.1, xlim[1] - 0.1], ylim=ylim,
                                              col_thr=0.1, object_bounds=object_bounds)
         
         # Get the placement pose

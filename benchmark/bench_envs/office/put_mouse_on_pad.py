@@ -84,29 +84,31 @@ class put_mouse_on_pad(Office_base_task):
         self.des_obj_pose = self.des_obj.get_pose().p.tolist() + [0, 0, 0, 1]
         self.des_obj_pose[2] += 0.02
 
-        # ------------------------------------------------------------
-        center_x = (self.target_obj.get_pose().p[0] + self.des_obj.get_pose().p[0]) / 2
-        center_y = (self.target_obj.get_pose().p[1] + self.des_obj.get_pose().p[1]) / 2
-        id_list = [i for i in range(4)]
-        self.milk_box_id = np.random.choice(id_list)
-        self.milk_box = rand_create_actor(
-            self,
-            xlim=[center_x],
-            ylim=[center_y],
-            modelname="038_milk-box",
-            rotate_rand=True,
-            rotate_lim=[0, 1, 0],
-            qpos=[0.66, 0.66, -0.25, -0.25],
-            convex=True,
-            model_id=self.milk_box_id,
-        )
-        
-        self.milk_box.set_mass(0.1)
-        self.add_prohibit_area(self.milk_box, padding=0.01, area="table")
-        self.collision_list.append({
-            "actor": self.milk_box,
-            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.milk_box_id}.glb",
-        })
+        if np.random.rand() > self.clean_background_rate and self.obstacle_density >0 and self.cluttered_table:
+            self.obstacle_density = max(0, self.obstacle_density-1)  # Ensure non-negative density
+            # ------------------------------------------------------------
+            center_x = (self.target_obj.get_pose().p[0] + self.des_obj.get_pose().p[0]) / 2
+            center_y = (self.target_obj.get_pose().p[1] + self.des_obj.get_pose().p[1]) / 2
+            id_list = [i for i in range(4)]
+            self.milk_box_id = np.random.choice(id_list)
+            self.milk_box = rand_create_actor(
+                self,
+                xlim=[center_x],
+                ylim=[center_y],
+                modelname="038_milk-box",
+                rotate_rand=True,
+                rotate_lim=[0, 1, 0],
+                qpos=[0.66, 0.66, -0.25, -0.25],
+                convex=True,
+                model_id=self.milk_box_id,
+            )
+            
+            self.milk_box.set_mass(0.1)
+            self.add_prohibit_area(self.milk_box, padding=0.01, area="table")
+            self.collision_list.append({
+                "actor": self.milk_box,
+                "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.milk_box_id}.glb",
+            })
 
     def play_once(self):
         # Determine which arm to use based on target_obj position (right if on right side, left otherwise)

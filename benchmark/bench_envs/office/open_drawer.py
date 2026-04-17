@@ -33,6 +33,11 @@ class open_drawer(Office_base_task):
 
         self.disable_panel()
 
+        init_move = { k: v for k,v in zip(['x','y','z'],np.random.uniform(0.05, 0.15, size=3))}
+        print_c(f"Initial move before grasping: {init_move}", "RED")
+        self.move(self.move_by_displacement(arm_tag=arm_tag, **init_move))
+
+
         self.move(self.grasp_actor(self.cabinet, arm_tag=arm_tag, pre_grasp_dis=0.05, grasp_dis=0.025))
 
         # Pull the drawer
@@ -42,12 +47,12 @@ class open_drawer(Office_base_task):
         self.move(self.open_gripper(arm_tag=arm_tag))
 
         # Record information about the objects and arm used in the task
-        # self.info["info"] = {
-        #     "{A}": f"047_mouse/base{self.mouse_id}",
-        #     "{B}": f"{self.color_name}",
-        #     "{a}": str(arm_tag),
-        # }
-        # return self.info
+        self.info["info"] = {
+            # "{A}": f"047_mouse/base{self.mouse_id}",
+            # "{B}": f"{self.color_name}",
+            # "{a}": str(arm_tag),
+        }
+        return self.info
 
     def check_success(self):
         end_pose_actual = self.cabinet.get_qpos()[0]

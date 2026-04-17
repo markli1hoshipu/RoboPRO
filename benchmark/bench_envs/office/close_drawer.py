@@ -33,6 +33,12 @@ class close_drawer(Office_base_task):
         arm_tag = ArmTag("left") if self.arr_v == 2 else ArmTag("right")
 
         self.disable_panel()
+        
+        
+
+        init_move = { k: v for k,v in zip(['x','y','z'],np.random.uniform(0.05, 0.15, size=3))}
+        print_c(f"Initial move before grasping: {init_move}", "RED")
+        self.move(self.move_by_displacement(arm_tag=arm_tag, **init_move))
 
         _, actions = self.grasp_actor(self.cabinet, arm_tag=arm_tag, pre_grasp_dis=0.05, grasp_dis=0.025)
 
