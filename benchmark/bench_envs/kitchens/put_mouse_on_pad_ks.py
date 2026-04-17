@@ -7,7 +7,7 @@ from copy import deepcopy
 import glob
 
 
-class put_fork_on_plate_ks(KitchenS_base_task):
+class put_mouse_on_pad_ks(KitchenS_base_task):
 
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
@@ -35,49 +35,93 @@ class put_fork_on_plate_ks(KitchenS_base_task):
                 obj_padding=0.04,
             )
 
-        self.fork_id = np.random.choice(self.item_info[self.sample_d]["kitchens"]["targets"]["033_fork"])
+        # Mouse lives under the "office" domain in task_objects.yml — borrow
+        # it here to isolate scene-vs-task debugging on KitchenS.
+        self.mouse_id = np.random.choice(
+            self.item_info[self.sample_d]["office"]["targets"]["047_mouse"]
+        )
         self.target_obj = create_actor(
             scene=self,
             pose=rand_pos,
-            modelname="033_fork",
+            modelname="047_mouse",
             convex=True,
-            model_id=self.fork_id,
-            scale=self.item_info['scales']['033_fork'].get(f'{self.fork_id}', None),
+            model_id=self.mouse_id,
+            scale=self.item_info['scales']['047_mouse'].get(f'{self.mouse_id}', None),
         )
         self.target_obj.set_mass(0.05)
 
-        self.plate_id = np.random.choice(self.item_info[self.sample_d]["kitchens"]["targets"]["003_plate"])
         target_rand_pose = self.rand_pose_on_counter(
             xlim=[0],
             ylim=[-0.23, 0.05],
-            qpos=[0.5, 0.5, 0.5, 0.5],
+            qpos=[1, 0, 0, 0],
             rotate_rand=False,
-            obj_padding=0.08,
+            obj_padding=0.07,
         )
 
-        self.des_obj = create_actor(
+        colors = {
+            "Red": (1, 0, 0),
+            "Green": (0, 1, 0),
+            "Blue": (0, 0, 1),
+            "Yellow": (1, 1, 0),
+            "Cyan": (0, 1, 1),
+            "Magenta": (1, 0, 1),
+            "Black": (0, 0, 0),
+            "Gray": (0.5, 0.5, 0.5),
+        }
+
+        color_items = list(colors.items())
+        color_index = np.random.choice(len(color_items))
+        self.color_name, self.color_value = color_items[color_index]
+
+        half_size = [0.06, 0.06, 0.0005]
+        self.des_obj = create_box(
             scene=self,
             pose=target_rand_pose,
-            modelname="003_plate",
-            convex=True,
-            model_id=self.plate_id,
-            scale=self.item_info['scales']['003_plate'].get(f'{self.plate_id}', None),
+            half_size=half_size,
+            color=self.color_value,
+            name="box",
             is_static=True,
         )
         self.add_prohibit_area(self.des_obj, padding=0.01, area="table")
         self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
-
         self.des_obj_pose = self.des_obj.get_pose().p.tolist() + [0, 0, 0, 1]
         self.des_obj_pose[2] += 0.02
+
+        center_x = (self.target_obj.get_pose().p[0] + self.des_obj.get_pose().p[0]) / 2
+        center_y = (self.target_obj.get_pose().p[1] + self.des_obj.get_pose().p[1]) / 2
+        id_list = [i for i in range(4)]
+        self.milk_box_id = np.random.choice(id_list)
+        self.milk_box = rand_create_actor(
+            self,
+            xlim=[center_x],
+            ylim=[center_y],
+            modelname="038_milk-box",
+            rotate_rand=True,
+            rotate_lim=[0, 1, 0],
+            qpos=[0.66, 0.66, -0.25, -0.25],
+            convex=True,
+            model_id=self.milk_box_id,
+        )
+
+        self.milk_box.set_mass(0.1)
+        self.add_prohibit_area(self.milk_box, padding=0.01, area="table")
+        self.collision_list.append({
+            "actor": self.milk_box,
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/038_milk-box/collision/base{self.milk_box_id}.glb",
+        })
 
     def play_once(self):
         arm_tag = ArmTag("right" if self.target_obj.get_pose().p[0] > 0 else "left")
 
         self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.1)
 
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.2))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
 
-        self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/033_fork/collision/base{self.fork_id}.glb", str(arm_tag))
+        self.attach_object(
+            self.target_obj,
+            f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/047_mouse/collision/base{self.mouse_id}.glb",
+            str(arm_tag),
+        )
         self.enable_table(enable=True)
 
         self.move(

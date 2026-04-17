@@ -93,6 +93,13 @@ class Office_base_task(Bench_base_task):
         self.obstacle_height = random_setting.get("obstacle_height", "short")
         self.obstacle_density = random_setting.get("obstacle_density", 3)
 
+        # Parse vision/object/language/background_plus perturbation flags
+        # before setup_scene() so lighting ablation can consult them.
+        self._parse_perturbations(random_setting)
+        # Targets must keep using the baseline distribution (same asset ids
+        # that check_success expects). Only obstacles swap to the OOD pool.
+        self.obstacle_distribution = "object_ood" if self.unseen_obstacles else self.sample_d
+
         self.file_path = []
         self.plan_success = True
         self.step_lim = None
@@ -202,9 +209,15 @@ class Office_base_task(Bench_base_task):
         self.load_actors()
         self.add_gripper_operating_area()
 
+        # Apply per-episode object perturbations on the freshly-loaded target.
+        self._apply_target_texture()
+
         if self.cluttered_table:
             self.load_basic_office_items()
             self.get_cluttered_surfaces()
+
+        # Lighting L3 (specular/shininess) must run after actors exist.
+        self._apply_l3_specular()
 
         if self.enable_collision_metrics:
             self._build_collision_name_sets()  # build collision name sets for collision metrics
@@ -267,6 +280,18 @@ class Office_base_task(Bench_base_task):
         else:
             self.wall_texture, self.table_texture, self.floor_texture = None, None, None
         
+        # background_plus: resolve per-episode random RGB tints / material once
+        bg_plus_on = getattr(self, "bg_plus_enabled", False)
+        bg_wall_color = (1, 0.9, 0.9)
+        bg_floor_color = (0.85, 0.85, 0.85)
+        if bg_plus_on and getattr(self, "bg_plus_color_tint", True):
+            lo, hi = self.bg_plus_tint_range
+            bg_wall_color = tuple(float(np.random.uniform(lo, hi)) for _ in range(3))
+            print(f"[Background+] wall tint={[round(c,2) for c in bg_wall_color]}")
+        if bg_plus_on and getattr(self, "bg_plus_floor_texture", True):
+            bg_floor_color = tuple(float(np.random.uniform(0.3, 1.0)) for _ in range(3))
+            print(f"[Background+] floor tint={[round(c,2) for c in bg_floor_color]}")
+
         # floor--------------------------------------------------------
         self.floor_parts = []
 
@@ -282,18 +307,18 @@ class Office_base_task(Bench_base_task):
                 self.scene,
                 sapien.Pose(p=pos),
                 half_size=[1, 1, 0.005],
-                color=(0.85, 0.85, 0.85),
+                color=bg_floor_color,
                 name=f"floor_{i}",
                 texture_id=self.floor_texture,
             )
             self.floor_parts.append(floor_part)
-        
+
         # wall--------------------------------------------------------
         self.wall = create_box(
             self.scene,
             sapien.Pose(p=[0, 1, 1.5]),
             half_size=[3, 0.6, 1.5],
-            color=(1, 0.9, 0.9),
+            color=bg_wall_color,
             name="wall",
             texture_id=self.wall_texture,
             is_static=True,
@@ -309,6 +334,25 @@ class Office_base_task(Bench_base_task):
             is_static=True,
             texture_id=self.table_texture,
         )
+        if bg_plus_on and getattr(self, "bg_plus_surface_material", True):
+            try:
+                m_lo, m_hi = self.bg_plus_metallic_range
+                r_lo, r_hi = self.bg_plus_roughness_range
+                metallic = float(np.random.uniform(m_lo, m_hi))
+                roughness = float(np.random.uniform(r_lo, r_hi))
+                for mat in (self.table.entity if hasattr(self.table, 'entity') else self.table).find_component_by_type(sapien.render.RenderBodyComponent).render_shapes:
+                    try:
+                        for part in mat.parts:
+                            if part.material is not None:
+                                part.material.metallic = metallic
+                                part.material.roughness = roughness
+                    except AttributeError:
+                        if getattr(mat, 'material', None) is not None:
+                            mat.material.metallic = metallic
+                            mat.material.roughness = roughness
+                print(f"[Background+] table metallic={metallic:.2f} roughness={roughness:.2f}")
+            except Exception as e:
+                print(f"[Background+] table material tweak failed: {e}")
         self.office_info["table_lims"] = [-self.office_info["table_area"][0]/2, -self.office_info["table_area"][1]/2, self.office_info["table_area"][0]/2, self.office_info["table_area"][1]/2]
         self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
         # ------------------------------------------------------------
@@ -531,7 +575,7 @@ class Office_base_task(Bench_base_task):
             task_objects_list.append(actor_name)
 
         cluttered_item_info, obj_names_short, obj_names_tall = get_obstacle_objects_subset(
-            "office", self.sample_d, task_objects_list
+            "office", self.obstacle_distribution, task_objects_list
         )
 
         self.clutter_surface_split(xlim, ylim, zlim, self.prohibited_area["table"], self.obstacle_density, cluttered_item_info, obj_names_short, obj_names_tall)

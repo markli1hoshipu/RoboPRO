@@ -1,4 +1,4 @@
-# Vision perturbation config: lighting L1-L4, blur N1-N5, per-frame pixel shift
+# Vision perturbation — BLUR ONLY (cycles N1-N5 per episode)
 render_freq: 0
 episode_num: 3
 use_seed: false
@@ -17,20 +17,20 @@ domain_randomization:
 
   vision_perturbation:
     lighting:
-      enabled: true
-      l1: true    # diffuse color tint
-      l1_range: [0.4, 1.8]  # per-channel intensity range (default was [0, 3.5])
-      l2: true    # random light direction
-      l3: true    # specular/shininess variation
-      l4: true    # shadow toggle
+      enabled: false
+      l1: false
+      l1_range: [0.4, 1.8]
+      l2: false
+      l3: false
+      l4: false
     blur:
       enabled: true
-      force_type: null   # null = cycle N1-N5 by episode; or "motion"/"gaussian"/"zoom"/"fog"/"glass"
-      strength: 0.2      # scale factor applied to blur intensity (1.0 = full)
+      force_type: null   # null = cycle N1-N5 by episode
+      strength: 0.2
     pixel_shift:
-      enabled: true
-      max_shift: 5       # max pixels per axis per frame
-      strength: 0.1      # scale factor applied to shift magnitude (1.0 = full)
+      enabled: false
+      max_shift: 5
+      strength: 0.1
 
 camera:
   head_camera_type: D435
