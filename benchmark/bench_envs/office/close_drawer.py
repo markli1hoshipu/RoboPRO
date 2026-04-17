@@ -47,12 +47,12 @@ class close_drawer(Office_base_task):
         self.move(self.open_gripper(arm_tag=arm_tag))
 
         # Record information about the objects and arm used in the task
-        # self.info["info"] = {
-        #     "{A}": f"047_mouse/base{self.mouse_id}",
-        #     "{B}": f"{self.color_name}",
-        #     "{a}": str(arm_tag),
-        # }
-        # return self.info
+        self.info["info"] = {
+            "{A}": f"none",
+            "{B}": f"none",
+            "{a}": "none",
+        }
+        return self.info
 
     def check_success(self):
         end_pose_actual = self.cabinet.get_qpos()[0]

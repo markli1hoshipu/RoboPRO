@@ -284,7 +284,7 @@ class Kitchen_base_large(Bench_base_task):
         self.take_action_cnt = 0
         self.eval_video_path = kwags.get("eval_video_save_dir", None)
         self.incl_collision = kwags.get("include_collision", False)
-
+        self.jitter_basket = kwags.get("jitter_basket", True)
         self.save_freq = kwags.get("save_freq")
         self.world_pcd = None
 
@@ -325,7 +325,7 @@ class Kitchen_base_large(Bench_base_task):
         self.basket_right_modelname = "063_tabletrashbin"
         self.basket_right_model_id = 6
 
-        self.scene_id =2 # kwags.get("scene_id") if kwags.get("scene_id") is not None else np.random.randint(0,3)  # for furniture arrangement
+        self.scene_id = kwags.get("scene_id") if kwags.get("scene_id") is not None else np.random.randint(0,3)  # for furniture arrangement
         print_c(f"Scene {self.scene_id} is selected", "YELLOW")
 
         # Cabinet scale: currently only uniform scaling is supported by SAPIEN's URDF loader.
@@ -515,6 +515,12 @@ class Kitchen_base_large(Bench_base_task):
         self._load_microwave_on_table(table_height, table_xy_bias)
         self._load_basket_on_table(table_height, table_xy_bias)
         self._load_cabinet_on_table(table_height, table_xy_bias)
+
+        # change_object_texture(self, self.basket_right, str(np.random.randint(0, 3)),"basket" ,refresh_render=True)
+        # change_object_texture(self, self.microwave_left, str(np.random.randint(0, 3)),"microwave" ,refresh_render=True)
+        # change_object_texture(self, self.cabinet, str(np.random.randint(0, 3)),"shelf" ,refresh_render=True)
+        # change_object_texture(self, self.fridge_left, str(np.random.randint(0, 3)),"fridge" ,refresh_render=True)
+
         self._add_cabinet_wall_filler()
         if self.incl_collision:
             self.add_collision()
@@ -616,8 +622,9 @@ class Kitchen_base_large(Bench_base_task):
         jx = float(np.random.uniform(self.basket_right_position_jitter_x[0], self.basket_right_position_jitter_x[1]))
         jy = float(np.random.uniform(self.basket_right_position_jitter_y[0], self.basket_right_position_jitter_y[1]))
         x_right, y_front, z_basket = self._get_scene_obj_locations(object_name="basket")
-        y_front += jy
-        x_right += jx
+        if self.jitter_basket:
+            y_front += jy
+            x_right += jx
         z_basket = table_height + 0.02 if z_basket == 0 else z_basket
 
         br_roll_deg, br_pitch_deg, br_yaw_deg = self.basket_right_rot
