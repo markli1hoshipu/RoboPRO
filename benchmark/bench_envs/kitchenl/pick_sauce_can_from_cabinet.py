@@ -78,28 +78,6 @@ class pick_sauce_can_from_cabinet(Kitchen_base_large):
         super()._init_task_env_(**kwargs)
         self._ensure_cabinet_open()
 
-    def _sauce_can_quat_from_cfg(self) -> list[float]:
-        roll_deg, pitch_deg, yaw_deg = self.sauce_can_spawn_rot_deg
-        ax = math.radians(roll_deg)
-        ay = math.radians(pitch_deg)
-        az = math.radians(yaw_deg)
-        qx, qy, qz, qw = t3d.euler.euler2quat(ax, ay, az)
-        return [qw, qx, qy, qz]
-
-    def _cabinet_inside_spawn_pose(self) -> sapien.Pose:
-        base_pose = self.cabinet.get_link_pose("base_link")
-        base_tf = base_pose.to_transformation_matrix()
-        base_R = np.array(base_tf[:3, :3], dtype=float)
-        base_p = np.array(base_tf[:3, 3], dtype=float)
-        world_inside = base_p + base_R @ self.CABINET_SAUCE_CAN_LOCAL
-
-        # Current behavior: randomized spawn around the cabinet-local anchor.
-        # To disable randomization, remove the offsets below.
-        world_inside[0] += float(np.random.uniform(-0.05, 0.05))
-        world_inside[1] += float(np.random.uniform(0.00, 0.10))
-
-        return sapien.Pose(world_inside.tolist(), self._sauce_can_quat_from_cfg())
-
     def _sauce_can_local_in_cabinet(self) -> np.ndarray | None:
         if self.sauce_can is None or self.cabinet is None:
             return None
@@ -113,8 +91,7 @@ class pick_sauce_can_from_cabinet(Kitchen_base_large):
         self._ensure_cabinet_open()
 
         self.sauce_can_model_id = int(np.random.choice(self.sauce_can_model_ids))
-        spawn_pose = self._cabinet_inside_spawn_pose()
-
+        spawn_pose = sapien.Pose([0.206523, 0.0804209, 1.23062], [0.5, 0.5, 0.5, 0.5])
         intrinsic_scale = self._get_asset_model_scale_create_actor(self.sauce_can_modelname, self.sauce_can_model_id)
         final_scale = float(intrinsic_scale) * float(self.sauce_can_scale)
 
@@ -141,7 +118,8 @@ class pick_sauce_can_from_cabinet(Kitchen_base_large):
         self.des_pose = get_random_place_pose(xlim = [-0.1, 0.25], ylim=ylim,
                                               col_thr=0.15,zlim=[0.78],
                                         object_bounds={})
-        self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
+        
+        self.add_prohibit_area(self.des_pose, padding=0.03, area="table")
 
     def _is_sauce_can_inside_cabinet(self) -> bool:
         sauce_local = self._sauce_can_local_in_cabinet()
@@ -169,8 +147,9 @@ class pick_sauce_can_from_cabinet(Kitchen_base_large):
         self.attach_object(self.sauce_can, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.sauce_can_modelname}/collision/base{self.sauce_can_model_id}.glb", str(arm_tag))
 
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
-        self.move(self.back_to_origin(arm_tag=arm_tag))
-
+        # self.move(self.back_to_origin(arm_tag=arm_tag))
+        self.add_collision(objects=("cabinet"))
+        self.update_world()
         self.move(
             self.place_actor(
                 self.sauce_can,

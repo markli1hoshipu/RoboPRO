@@ -131,14 +131,11 @@ class pick_can_from_cabinet(Kitchen_base_large):
                 self.can.config["scale"] = [final_scale] * 3
             self._ensure_can_grasp_metadata()
             self.add_prohibit_area(self.can, padding=0.04, area="table")
-        if self.scene_id == 1:
-            ylim = [-0.15, 0.05]
-        else:
-            ylim = [-0.15, 0.05]
+        ylim = [-0.15, 0.05]
         self.des_pose = get_random_place_pose(xlim = [0.2, 0.45], ylim=ylim,
-                                        col_thr=0.15,zlim=[0.79],
+                                        col_thr=0.15,zlim=[0.77],
                                         object_bounds={})
-        self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
+        self.add_prohibit_area(self.des_pose, padding=0.03, area="table")
         print_c(f"Placing {self.can_model_id} at {self.des_pose}", "RED")
     def _is_can_inside_cabinet(self) -> bool:
         can_local = self._can_local_in_cabinet()
@@ -150,17 +147,6 @@ class pick_can_from_cabinet(Kitchen_base_large):
         z_ok = (self.CABINET_Z_BOUNDS[0] <= z_l <= self.CABINET_Z_BOUNDS[1])
         return bool(x_ok and y_ok and z_ok)
 
-    def _is_can_in_right_hand(self) -> bool:
-        if self.can is None:
-            return False
-        tcp_pose = np.array(self.get_arm_pose(ArmTag("right")), dtype=float)
-        can_p = np.array(self.can.get_pose().p, dtype=float)
-        dist_ok = float(np.linalg.norm(can_p - tcp_pose[:3])) < self.IN_HAND_TCP_DIST_THRESHOLD
-        return bool(dist_ok and self.is_right_gripper_close())
-
-    def _is_can_retrieved(self) -> bool:
-        # Success: can is held in hand and no longer inside cabinet volume.
-        return (not self._is_can_inside_cabinet()) and self._is_can_in_right_hand()
 
     def play_once(self):
         arm_tag = ArmTag("right")
@@ -180,7 +166,7 @@ class pick_can_from_cabinet(Kitchen_base_large):
         # Lift is intentionally skipped because retreat already clears cabinet edge robustly.
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
         self.move(self.back_to_origin(arm_tag=arm_tag))
-        self.add_collision()
+        self.add_collision(objects=("cabinet"))
         self.update_world()
 
         self.move(

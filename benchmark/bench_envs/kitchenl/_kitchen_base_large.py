@@ -658,24 +658,27 @@ class Kitchen_base_large(Bench_base_task):
                 self.basket_right.config["scale"] = [float(final_scale)] * 3
             self.basket_right.set_name("basket_right")
             self.add_prohibit_area(self.basket_right, padding=0.05, area="table")
-    def add_collision(self):
+    def add_collision(self, objects=("basket")):
         print_c("Furniture collisions added","YELLOW")
-        self.collision_list.append({
-            "actor": self.basket_right,
-            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/063_tabletrashbin/collision/base6.glb",
-        })
-        # self.collision_list.append({
-        #         "actor": self.fridge_left,
-        #         "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/124_fridge_hivvdf/blender_public/links/",
-        #         "pose": self.fridge_left.get_link_pose("base_link"), 
-        #         "files": ["base_link_collision.glb", "link_0_collision.glb"],
-        #     })
-        # self.collision_list.append({
-        #         "actor": self.cabinet,
-        #         "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/125_cabinet_tynnnw/blender_public/links/",
-        #         "pose": self.cabinet.get_link_pose("base_link"),
-        #         "files": ["base_link_collision.glb", "left_door_collision.glb", "right_door_collision.glb"],
-        #     })
+        if "basket" in objects:
+            self.collision_list.append({
+                "actor": self.basket_right,
+                "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/063_tabletrashbin/collision/base6.glb",
+            })
+        if "fridge" in objects:
+            self.collision_list.append({
+                    "actor": self.fridge_left,
+                    "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/124_fridge_hivvdf/blender_public/links/",
+                    "pose": self.fridge_left.get_link_pose("base_link"), 
+                    "files": ["base_link_collision.glb", "link_0_collision.glb"],
+                })
+        if "cabinet" in objects:
+            self.collision_list.append({
+                    "actor": self.cabinet,
+                    "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/125_cabinet_tynnnw/blender_public/links/",
+                    "pose": self.cabinet.get_link_pose("base_link"),
+                    "files": ["base_link_collision.glb", "left_door_collision.glb", "right_door_collision.glb"],
+                })
     def _load_cabinet_on_table(self, table_height: float, table_xy_bias):
         """Place the chosen articulated cabinet asset on the opposite end of the table from the drawer."""
         # Mirror the drawer position across the table center in x.

@@ -91,7 +91,7 @@ objects:
       038_milk-box: [0, 2]
       068_boxdrink: [0,1,2,3]
       071_can: [0,1,2]
-      105_sauce-can: [4, 5]
+      105_sauce-can: [4,5]
       114_bottle: [4]
     obstacles:
       short:

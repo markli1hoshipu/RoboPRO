@@ -133,8 +133,8 @@ class move_can_from_cabinet_to_basket(Kitchen_base_large):
         self.des_pose = get_random_place_pose(xlim = [-0.1, 0], ylim=[0] if self.scene_id == 1 else [-0.05,0.05], 
                                         col_thr=0.15,zlim=[0.75], qpos=(0,0,-90),
                                         object_bounds={})
-        
-        self.add_prohibit_area(self.des_pose, padding=0.0, area="table")
+        if self.scene_id != 1:
+            self.add_prohibit_area(self.des_pose, padding=0.03, area="table")
 
         basket_bb = get_actor_boundingbox(self.basket_right.actor)
         self.des_basket_pose = sapien.Pose(
@@ -152,17 +152,6 @@ class move_can_from_cabinet_to_basket(Kitchen_base_large):
         z_ok = (self.CABINET_Z_BOUNDS[0] <= z_l <= self.CABINET_Z_BOUNDS[1])
         return bool(x_ok and y_ok and z_ok)
 
-    def _is_can_in_right_hand(self) -> bool:
-        if self.can is None:
-            return False
-        tcp_pose = np.array(self.get_arm_pose(ArmTag("right")), dtype=float)
-        can_p = np.array(self.can.get_pose().p, dtype=float)
-        dist_ok = float(np.linalg.norm(can_p - tcp_pose[:3])) < self.IN_HAND_TCP_DIST_THRESHOLD
-        return bool(dist_ok and self.is_right_gripper_close())
-
-    def _is_can_retrieved(self) -> bool:
-        # Success: can is held in hand and no longer inside cabinet volume.
-        return (not self._is_can_inside_cabinet()) and self._is_can_in_right_hand()
 
     def take_can(self):
         arm_tag = ArmTag("right")
