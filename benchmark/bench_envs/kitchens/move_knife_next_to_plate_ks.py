@@ -17,21 +17,23 @@ class move_knife_next_to_plate_ks(KitchenS_base_task):
         return {self.target_obj.get_name()}
 
     def load_actors(self):
+        # Narrow yaw range (±pi/4 around axis of knife handle) and xlim so
+        # the single handle-grasp contact stays in IK-feasible orientations.
         rand_pos = self.rand_pose_on_counter(
-            xlim=[-0.45, 0.45],
-            ylim=[-0.23, 0.05],
+            xlim=[-0.32, 0.32],
+            ylim=[-0.20, 0.00],
             qpos=[0.5, 0.5, 0.5, 0.5],
             rotate_rand=True,
-            rotate_lim=[0, 3.14, 0],
+            rotate_lim=[0, np.pi / 4, 0],
             obj_padding=0.04,
         )
         while abs(rand_pos.p[0]) < 0.3:
             rand_pos = self.rand_pose_on_counter(
-                xlim=[-0.45, 0.45],
-                ylim=[-0.23, 0.05],
+                xlim=[-0.32, 0.32],
+                ylim=[-0.20, 0.00],
                 qpos=[0.5, 0.5, 0.5, 0.5],
                 rotate_rand=True,
-                rotate_lim=[0, 3.14, 0],
+                rotate_lim=[0, np.pi / 4, 0],
                 obj_padding=0.04,
             )
 

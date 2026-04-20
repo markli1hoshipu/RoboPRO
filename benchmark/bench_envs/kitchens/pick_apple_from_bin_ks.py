@@ -9,6 +9,15 @@ import glob
 
 class pick_apple_from_bin_ks(KitchenS_base_task):
 
+    # Scripted top-down grasp. 035_apple's labeled contacts all encode
+    # side-grasp orientations; in a bin cavity those IK solutions are
+    # narrow/infeasible. A scripted top-down descent bypasses that.
+    # For aloha: input pose maps directly to end-link (gripper_bias=0.12,
+    # delta_matrix=identity). This quat makes link +x point in world -z.
+    TOP_DOWN_Q = [-0.5, 0.5, -0.5, -0.5]
+    # TCP = link_pos + link_x * 0.12; for top-down wrist, link_z = tcp_z + 0.12.
+    TCP_OFFSET = 0.12
+
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
@@ -72,8 +81,34 @@ class pick_apple_from_bin_ks(KitchenS_base_task):
     def play_once(self):
         arm_tag = self.arm_tag
 
-        self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.07)
+        # Counter cuboid must be out of the Curobo world so the wrist can
+        # drop to apple height inside the bin.
+        self.enable_table(enable=False)
 
+        self.move(self.open_gripper(arm_tag, pos=1.0))
+
+        apple_p = self.target_obj.get_pose().p
+        bp = self.bin.get_pose().p
+
+        # Hover above the bin rim, centered over the apple.
+        hover_tcp_z = float(bp[2]) + 0.12
+        hover_pose = [
+            float(apple_p[0]),
+            float(apple_p[1]),
+            hover_tcp_z + self.TCP_OFFSET,
+        ] + self.TOP_DOWN_Q
+        self.move(self.move_to_pose(arm_tag, hover_pose))
+
+        # Descend to apple.
+        grasp_tcp_z = float(apple_p[2]) + 0.005
+        grasp_pose = [
+            float(apple_p[0]),
+            float(apple_p[1]),
+            grasp_tcp_z + self.TCP_OFFSET,
+        ] + self.TOP_DOWN_Q
+        self.move(self.move_to_pose(arm_tag, grasp_pose))
+
+        self.move(self.close_gripper(arm_tag, pos=0.0))
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.25))
 
     def check_success(self):

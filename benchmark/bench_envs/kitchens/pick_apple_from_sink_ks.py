@@ -9,6 +9,19 @@ import glob
 
 class pick_apple_from_sink_ks(KitchenS_base_task):
 
+    # Scripted top-down grasp. The apple's labeled contacts all encode
+    # side-grasp orientations, which have no IK in the sink basin. A
+    # scripted top-down descent bypasses that.
+    # For aloha (delta_matrix=identity, gripper_bias=0.12), the quat passed
+    # to move_to_pose maps directly to the end-link orientation, and the
+    # input position IS the end-link position (the 0.12 - gripper_bias
+    # offset cancels). With this quat, link +x points in world -z.
+    TOP_DOWN_Q = [-0.5, 0.5, -0.5, -0.5]
+    # TCP sits 0.12 m ahead of the link along link +x. For a top-down
+    # wrist, link +x = world -z, so TCP = link_pos + [0, 0, -0.12].
+    # To place TCP at desired z, set link_z = desired_tcp_z + 0.12.
+    TCP_OFFSET = 0.12
+
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
@@ -20,13 +33,12 @@ class pick_apple_from_sink_ks(KitchenS_base_task):
         sink_p = self.sink.get_pose().p
         sg = self.kitchens_info["sink_geom"]
 
-        # Apple spawns across much of the sink basin footprint. Side grasps
-        # need the arm to dip below the counter, which is ok once the table
-        # obstacle is disabled in play_once. y is biased toward the robot
-        # (front of sink) since deep-reach IK fails when the apple is at the
-        # far wall.
-        bx = sink_p[0] + np.random.uniform(-sg["inner_hx"] * 0.45, sg["inner_hx"] * 0.45)
-        by = sink_p[1] + np.random.uniform(-sg["inner_hy"] * 0.50, sg["inner_hy"] * 0.15)
+        # Apple spawns anywhere inside the sink basin (margin for apple radius
+        # ~3 cm). A scripted top-down descent in play_once makes the full
+        # basin reachable, so we can use a wide range for real position
+        # variation.
+        bx = sink_p[0] + np.random.uniform(-sg["inner_hx"] * 0.65, sg["inner_hx"] * 0.65)
+        by = sink_p[1] + np.random.uniform(-sg["inner_hy"] * 0.65, sg["inner_hy"] * 0.65)
         bz = sink_p[2] - 0.01
         rand_pos = sapien.Pose([bx, by, bz], [0.5, 0.5, 0.5, 0.5])
 
@@ -40,13 +52,12 @@ class pick_apple_from_sink_ks(KitchenS_base_task):
         )
         self.target_obj.set_mass(0.05)
 
-        # Arm choice is driven by the sampled apple x (sink may straddle midline).
+        # Arm choice is driven by the sampled apple x.
         self.arm_tag = ArmTag("right" if bx > 0 else "left")
         self.lift_z = sink_p[2] + 0.25
 
         # Pre-compute a clear counter pose on the same arm side to place the
-        # apple after retrieving it from the sink. rand_pose_on_counter avoids
-        # the sink + faucet prohibited zone automatically.
+        # apple after retrieving it from the sink.
         side_sign = 1 if self.arm_tag == "right" else -1
         target_rand_pose = self.rand_pose_on_counter(
             xlim=[0.05 * side_sign, 0.32 * side_sign] if side_sign > 0 else [-0.32, -0.05],
@@ -56,25 +67,44 @@ class pick_apple_from_sink_ks(KitchenS_base_task):
             obj_padding=0.05,
         )
         self.des_obj_pose = target_rand_pose.p.tolist() + [0, 0, 0, 1]
-        # Lift target slightly so the apple is released just above the counter.
         self.des_obj_pose[2] += 0.04
 
     def play_once(self):
         arm_tag = self.arm_tag
 
-        # Apple sits inside the sink basin (below counter level). The Curobo
-        # world models the counter as a solid cuboid with no sink hole, so
-        # any side grasp that would dip below the counter is IK-rejected.
-        # Drop the table obstacle before planning so the planner can reach in.
+        # Table/counter cuboid must be out of the Curobo world so the wrist
+        # can dip below the rim. Sink walls are not in the Curobo world.
         self.enable_table(enable=False)
 
-        arm_tag, actions = self.grasp_actor(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.07)
-        self.move((arm_tag, actions))
+        # --- scripted top-down grasp ---
+        self.move(self.open_gripper(arm_tag, pos=1.0))
 
-        # Lift clear of the sink rim before re-enabling the counter obstacle.
+        apple_p = self.target_obj.get_pose().p
+        sink_p = self.sink.get_pose().p
+
+        # Hover: TCP ~8 cm above counter rim, centered over apple.
+        hover_tcp_z = float(sink_p[2]) + 0.08
+        hover_pose = [
+            float(apple_p[0]),
+            float(apple_p[1]),
+            hover_tcp_z + self.TCP_OFFSET,
+        ] + self.TOP_DOWN_Q
+        self.move(self.move_to_pose(arm_tag, hover_pose))
+
+        # Descend: TCP at apple's center (fingers straddle the apple).
+        grasp_tcp_z = float(apple_p[2]) + 0.005
+        grasp_pose = [
+            float(apple_p[0]),
+            float(apple_p[1]),
+            grasp_tcp_z + self.TCP_OFFSET,
+        ] + self.TOP_DOWN_Q
+        self.move(self.move_to_pose(arm_tag, grasp_pose))
+
+        # Close and lift clear of the rim.
+        self.move(self.close_gripper(arm_tag, pos=0.0))
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.25))
 
-        # Place on the counter.
+        # Place on counter.
         self.attach_object(
             self.target_obj,
             f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/035_apple/collision/base{self.apple_id}.glb",
@@ -97,8 +127,6 @@ class pick_apple_from_sink_ks(KitchenS_base_task):
         table_top_z = self.kitchens_info["table_height"] + self.table_z_bias
         sink_p = self.sink.get_pose().p
         sg = self.kitchens_info["sink_geom"]
-        # Apple is on the counter surface (not hovering, not back in the sink),
-        # both grippers open.
         on_counter_z = abs(tp[2] - table_top_z) < 0.08
         outside_sink = (abs(tp[0] - sink_p[0]) > sg["hole_hx"]
                         or abs(tp[1] - sink_p[1]) > sg["hole_hy"])

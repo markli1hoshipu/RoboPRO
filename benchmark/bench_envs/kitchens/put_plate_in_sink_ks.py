@@ -9,6 +9,13 @@ import glob
 
 class put_plate_in_sink_ks(KitchenS_base_task):
 
+    # Fully scripted: top-down rim pinch, then drop over sink. Plate contacts
+    # on model_data0 encode top-down rim orientations but grasp_actor's
+    # chosen pose is frequently IK-unreachable for the aloha arm; bypassing
+    # it mirrors what pick_apple_from_sink_ks does.
+    TOP_DOWN_Q = [-0.5, 0.5, -0.5, -0.5]
+    TCP_OFFSET = 0.12
+
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
@@ -17,23 +24,24 @@ class put_plate_in_sink_ks(KitchenS_base_task):
         return {self.target_obj.get_name()}
 
     def load_actors(self):
+        sink_p = self.sink.get_pose().p
+        self.arm_tag = ArmTag("right" if sink_p[0] > 0 else "left")
+        side_sign = 1 if self.arm_tag == "right" else -1
+
+        # Plate spawns on the same side as the sink/arm. Plate center offset
+        # at least 0.18 so the near-side rim (at plate.x - 0.085 * side_sign)
+        # sits comfortably inside the arm workspace. y narrowed to the
+        # empirically reachable top-down envelope (successful seeds had
+        # plate.y ∈ [-0.14, -0.09]).
+        x_range = [0.18, 0.28] if side_sign > 0 else [-0.28, -0.18]
+
         rand_pos = self.rand_pose_on_counter(
-            xlim=[-0.32, 0.32],
-            ylim=[-0.15, 0.05],
+            xlim=x_range,
+            ylim=[-0.15, -0.08],
             qpos=[0.5, 0.5, 0.5, 0.5],
-            rotate_rand=True,
-            rotate_lim=[0, np.pi / 2, 0],
-            obj_padding=0.05,
+            rotate_rand=False,
+            obj_padding=0.10,
         )
-        while abs(rand_pos.p[0]) < 0.3:
-            rand_pos = self.rand_pose_on_counter(
-                xlim=[-0.4, 0.4],
-                ylim=[-0.15, 0.05],
-                qpos=[0.5, 0.5, 0.5, 0.5],
-                rotate_rand=True,
-                rotate_lim=[0, np.pi / 2, 0],
-                obj_padding=0.05,
-            )
 
         self.plate_id = 0
         self.target_obj = create_actor(
@@ -47,34 +55,50 @@ class put_plate_in_sink_ks(KitchenS_base_task):
 
         self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
 
-        # Sink is static and already in the scene; drop point is just above the rim
-        # so the plate falls into the basin on gripper release.
-        sink_p = self.sink.get_pose().p
-        self.des_obj_pose = [sink_p[0], sink_p[1], sink_p[2] + 0.05, 0, 0, 0, 1]
-
     def play_once(self):
-        arm_tag = ArmTag("right" if self.target_obj.get_pose().p[0] > 0 else "left")
+        arm_tag = self.arm_tag
+        side_sign = 1 if arm_tag == "right" else -1
 
-        self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.07)
+        # Counter cuboid must be out of the Curobo world so the wrist can
+        # dip below rim z when placing plate into the sink basin.
+        self.enable_table(enable=False)
 
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
+        self.move(self.open_gripper(arm_tag, pos=1.0))
+
+        plate_p = self.target_obj.get_pose().p
+        # Rim point nearest the robot-arm base: inner side of plate along x.
+        rim_x = float(plate_p[0]) - 0.085 * side_sign
+        rim_y = float(plate_p[1])
+        rim_z_top = float(plate_p[2]) + 0.012  # rim sits ~1.2 cm above base
+
+        hover_tcp_z = rim_z_top + 0.10
+        hover_pose = [rim_x, rim_y, hover_tcp_z + self.TCP_OFFSET] + self.TOP_DOWN_Q
+        self.move(self.move_to_pose(arm_tag, hover_pose))
+
+        grasp_tcp_z = rim_z_top - 0.002
+        grasp_pose = [rim_x, rim_y, grasp_tcp_z + self.TCP_OFFSET] + self.TOP_DOWN_Q
+        self.move(self.move_to_pose(arm_tag, grasp_pose))
+
+        self.move(self.close_gripper(arm_tag, pos=0.0))
+
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.25))
 
         self.attach_object(
             self.target_obj,
             f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/003_plate/collision/base{self.plate_id}.glb",
             str(arm_tag),
         )
-        self.enable_table(enable=True)
 
-        self.move(
-            self.place_actor(
-                self.target_obj,
-                arm_tag=arm_tag,
-                target_pose=self.des_obj_pose,
-                constrain="align",
-                pre_dis=0.08,
-                dis=0.01,
-            ))
+        sink_p = self.sink.get_pose().p
+        drop_tcp_z = float(sink_p[2]) + 0.14
+        drop_pose = [
+            float(sink_p[0]) - 0.085 * side_sign,  # align plate rim over sink center
+            float(sink_p[1]),
+            drop_tcp_z + self.TCP_OFFSET,
+        ] + self.TOP_DOWN_Q
+        self.move(self.move_to_pose(arm_tag, drop_pose))
+
+        self.move(self.open_gripper(arm_tag, pos=1.0))
 
     def check_success(self):
         sink_p = self.sink.get_pose().p
