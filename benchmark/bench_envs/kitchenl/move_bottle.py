@@ -26,10 +26,10 @@ class move_bottle(Kitchen_base_large):
         self.move_thr = 0.3
         if self.scene_id in [1,2]:
             self.side_to_place  = "right"
-            xlim = [-0.1, 0.5-self.move_thr]
+            xlim = [-0, 0.4-self.move_thr]
         else:
             self.side_to_place  = np.random.choice(["left", "right"])  
-            xlim = [0.1, -0.5+self.move_thr]
+            xlim = [0.1, -0.4+self.move_thr]
 
       
         self.target_name = "001_bottle"
