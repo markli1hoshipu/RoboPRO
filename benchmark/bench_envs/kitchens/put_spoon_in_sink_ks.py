@@ -9,6 +9,11 @@ import glob
 
 class put_spoon_in_sink_ks(KitchenS_base_task):
 
+    # Mirror put_spoon_on_plate_ks (the working reference) but replace the
+    # plate target with the sink pose. Restrict spoon spawn to the same
+    # side as the sink (sink.x is always >= +0.10) so grasp + carry stays
+    # on the right arm and never crosses the midline.
+
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
@@ -18,22 +23,13 @@ class put_spoon_in_sink_ks(KitchenS_base_task):
 
     def load_actors(self):
         rand_pos = self.rand_pose_on_counter(
-            xlim=[-0.32, 0.32],
-            ylim=[-0.15, 0.05],
+            xlim=[0.30, 0.45],
+            ylim=[-0.23, 0.05],
             qpos=[0.5, 0.5, 0.5, 0.5],
             rotate_rand=True,
-            rotate_lim=[0, np.pi / 2, 0],
-            obj_padding=0.05,
+            rotate_lim=[0, 3.14, 0],
+            obj_padding=0.04,
         )
-        while abs(rand_pos.p[0]) < 0.3:
-            rand_pos = self.rand_pose_on_counter(
-                xlim=[-0.4, 0.4],
-                ylim=[-0.15, 0.05],
-                qpos=[0.5, 0.5, 0.5, 0.5],
-                rotate_rand=True,
-                rotate_lim=[0, np.pi / 2, 0],
-                obj_padding=0.05,
-            )
 
         self.spoon_id = 0
         self.target_obj = create_actor(
@@ -47,33 +43,39 @@ class put_spoon_in_sink_ks(KitchenS_base_task):
 
         self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
 
-        # Sink is static and already in the scene; drop point is just above the rim
-        # so the spoon falls into the basin on gripper release.
-        sink_p = self.sink.get_pose().p
-        self.des_obj_pose = [sink_p[0], sink_p[1], sink_p[2] + 0.05, 0, 0, 0, 1]
-
     def play_once(self):
-        arm_tag = ArmTag("right" if self.target_obj.get_pose().p[0] > 0 else "left")
+        arm_tag = ArmTag("right")
 
-        self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.07)
+        self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.1)
 
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
 
         self.attach_object(
             self.target_obj,
             f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/134_spoon/collision/base{self.spoon_id}.glb",
             str(arm_tag),
         )
+
         self.enable_table(enable=True)
 
+        sink_p = self.sink.get_pose().p
+        # Drop target shifted slightly toward the robot so the gripper
+        # wrist stays inside the reachable envelope (sink center at
+        # x=0.42 is near the right arm's extension limit).
+        sink_target = [
+            float(sink_p[0]) - 0.05,
+            float(sink_p[1]),
+            float(sink_p[2]) + 0.04,
+            0, 0, 0, 1,
+        ]
         self.move(
             self.place_actor(
                 self.target_obj,
                 arm_tag=arm_tag,
-                target_pose=self.des_obj_pose,
-                constrain="align",
-                pre_dis=0.08,
-                dis=0.01,
+                target_pose=sink_target,
+                constrain="free",
+                pre_dis=0.05,
+                dis=0.005,
             ))
 
     def check_success(self):
