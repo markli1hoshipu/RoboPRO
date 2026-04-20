@@ -17,25 +17,29 @@ class put_fork_on_plate_ks(KitchenS_base_task):
         return {self.target_obj.get_name()}
 
     def load_actors(self):
+        # Narrow yaw/xlim so the single handle contact stays IK-feasible.
         rand_pos = self.rand_pose_on_counter(
-            xlim=[-0.45, 0.45],
-            ylim=[-0.23, 0.05],
+            xlim=[-0.32, 0.32],
+            ylim=[-0.20, 0.00],
             qpos=[0.5, 0.5, 0.5, 0.5],
             rotate_rand=True,
-            rotate_lim=[0, 3.14, 0],
+            rotate_lim=[0, np.pi / 4, 0],
             obj_padding=0.04,
         )
         while abs(rand_pos.p[0]) < 0.3:
             rand_pos = self.rand_pose_on_counter(
-                xlim=[-0.45, 0.45],
-                ylim=[-0.23, 0.05],
+                xlim=[-0.32, 0.32],
+                ylim=[-0.20, 0.00],
                 qpos=[0.5, 0.5, 0.5, 0.5],
                 rotate_rand=True,
-                rotate_lim=[0, 3.14, 0],
+                rotate_lim=[0, np.pi / 4, 0],
                 obj_padding=0.04,
             )
 
-        self.fork_id = np.random.choice(self.item_info[self.sample_d]["kitchens"]["targets"]["033_fork"])
+        # Restrict to fork model 0: other models have collision hulls that
+        # intersect the counter cuboid when attached, triggering
+        # INVALID_START_STATE_WORLD_COLLISION right after the lift.
+        self.fork_id = 0
         self.target_obj = create_actor(
             scene=self,
             pose=rand_pos,
@@ -78,17 +82,23 @@ class put_fork_on_plate_ks(KitchenS_base_task):
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.2))
 
         self.attach_object(self.target_obj, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/033_fork/collision/base{self.fork_id}.glb", str(arm_tag))
-        self.enable_table(enable=True)
+        self.enable_table(enable=False)
 
-        self.move(
-            self.place_actor(
-                self.target_obj,
-                arm_tag=arm_tag,
-                target_pose=self.des_obj_pose,
-                constrain="align",
-                pre_dis=0.05,
-                dis=0.005,
-            ))
+        # Use move_by_displacement + open_gripper instead of place_actor.
+        # place_actor with this elongated fork geometry repeatedly fails
+        # trajectory optimisation; a simpler carry-and-drop succeeds.
+        plate_p = self.des_obj.get_pose().p
+        spawn_p = self.target_obj.get_pose().p
+        self.move(self.move_by_displacement(
+            arm_tag=arm_tag,
+            x=float(plate_p[0]) - float(spawn_p[0]),
+            y=float(plate_p[1]) - float(spawn_p[1]),
+            z=0.0,
+        ))
+        # Descend close to the plate so the fork lands within the
+        # 0.02m xy tolerance instead of bouncing off from lift height.
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=-0.15))
+        self.move(self.open_gripper(arm_tag, pos=1.0))
 
     def check_success(self):
         end_pose_actual = self.target_obj.get_pose().p

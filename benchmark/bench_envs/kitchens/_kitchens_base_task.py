@@ -854,6 +854,12 @@ class KitchenS_base_task(Bench_base_task):
             pre_grasp_dis=pre_grasp_dis, grasp_dis=grasp_dis,
             gripper_pos=gripper_pos, contact_point_id=contact_point_id,
         )
+        # grasp_actor returns [] when choose_grasp_pose finds no valid
+        # pre-grasp; degrade to a clean plan failure so the collector
+        # retries with a new seed instead of crashing.
+        if not actions:
+            self.plan_success = False
+            return
         self.move((arm_tag, [actions[0]]))
         self.enable_table(enable=False)
         self.move((arm_tag, actions[1:]))
