@@ -21,7 +21,7 @@ class move_cup_onto_table(Study_base_task):
         super()._init_task_env_(**kwargs)
   
     def load_actors(self):
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
         
         self.des_obj = self.box

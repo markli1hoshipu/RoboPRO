@@ -121,7 +121,7 @@ class switch_can_with_bottle_in_basket(Kitchen_base_large):
             self.add_prohibit_area(self.can, padding=0.04, area="table")
 
         # ------------------ Bottle -------------------
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
         
         self.bottle_modelname = "001_bottle"

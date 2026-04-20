@@ -23,7 +23,7 @@ class move_cups_into_box(Study_base_task):
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
                 #place obstacles inside and next to the box
         if np.random.rand() > self.clean_background_rate and self.obstacle_density >0 and self.cluttered_table:

@@ -1,13 +1,13 @@
-# Test config — same as bench_demo_kitchens_clean but only 20 episodes.
 render_freq: 0
-episode_num: 20
+episode_num: 5
 use_seed: false
 save_freq: 15
-embodiment: [aloha-agilex]
-language_num: 20
+embodiment:
+- aloha-agilex
+language_num: 5
 domain_randomization:
   random_background: false
-  cluttered_table: False
+  cluttered_table: false
   clean_background_rate: 0
   random_head_camera_dis: 0
   random_table_height: 0

@@ -63,7 +63,7 @@ class put_milk_box_in_fridge(Kitchen_base_large):
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.milk_box_modelname = "038_milk-box"
         kwargs["include_collision"] = True
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
         self.milk_box_model_ids = task_objs['objects']['kitchenl']['targets'][self.milk_box_modelname]
 

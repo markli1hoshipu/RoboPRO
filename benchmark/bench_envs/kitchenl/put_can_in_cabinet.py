@@ -30,7 +30,7 @@ class put_can_in_cabinet(Kitchen_base_large):
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.can_modelname = "071_can"
         kwargs["include_collision"] = True
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
         self.can_model_ids = task_objs['objects']['kitchenl']['targets'][self.can_modelname]
         self.can_spawn_rot_deg = [90.0, 0.0, 90.0]

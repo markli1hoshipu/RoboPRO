@@ -22,7 +22,7 @@ class move_cup_put_pen_in_cup(Study_base_task):
 
     def load_actors(self):
         print_c(self.seed, "YELLOW")
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         des_bb = get_actor_boundingbox(self.box.actor)
