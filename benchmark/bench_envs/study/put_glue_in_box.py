@@ -29,12 +29,34 @@ class put_glue_in_box(Study_base_task):
       
         object_bounds = [get_actor_boundingbox(o) for o in self.scene_objs]
         
+        if np.random.rand() > self.clean_background_rate and self.obstacle_density >0 and self.cluttered_table:
+            self.obstacle_density = max(0, self.obstacle_density-1)  # Ensure non-negative density
+            des_bb = get_actor_boundingbox(self.box.actor)
+            box_obs = "090_trophy"
+            gap = 0.05
+            y_gap = 0.08
+            bid = np.random.choice(task_objs["objects"]["study"]["obstacles"]["tall"][box_obs])
+            place_pose =  [[des_bb[1][0]+gap if self.scene_id == 0 else des_bb[0][0]-gap, 
+                           des_bb[1][1]-np.random.uniform(low=y_gap, 
+                                    high=des_bb[1][1]-des_bb[0][1] - y_gap),
+                           des_bb[0][-1]],(90,0,0)]
+            bid = np.random.choice(task_objs["objects"]["study"]["obstacles"]["tall"][box_obs])
+            box_obs_tar, obs_tar_id, _= place_actor(box_obs, self, 
+                           task_objs = task_objs, obj_id = bid,
+                          obj_pose=place_pose, mass = 0.5, is_static=False)
+            self.collision_list.append({
+                "actor":box_obs_tar,
+                "collision_path": self.col_temp.format(object=box_obs,
+                                                        object_id=obs_tar_id)
+            })
+        
+        ylim = [0, ylim[1]]
+
         self.target_name = "095_glue"
         self.target_obj, self.target_id, self.target_pose = \
         place_actor(self.target_name, self, col_thr=0.10, xlim=xlim, ylim=ylim, 
                     qpos=(90,0,0), object_bounds=object_bounds, task_objs=task_objs,
                      mass = 0.1, rotation=False)
-        
         self.des_obj = self.box
         des_bb = get_actor_boundingbox(self.des_obj.actor)
 

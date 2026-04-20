@@ -27,13 +27,15 @@ class move_cups_into_box(Study_base_task):
             task_objs = yaml.safe_load(f)
                 #place obstacles inside and next to the box
         if np.random.rand() > self.clean_background_rate and self.obstacle_density >0 and self.cluttered_table:
+            self.obstacle_density = max(0, self.obstacle_density-1)  # Ensure non-negative density
             des_bb = get_actor_boundingbox(self.box.actor)
             box_obs = "001_bottle"
             gap = 0.05
+            y_gap = 0.08
             bid = np.random.choice(task_objs["objects"]["study"]["obstacles"]["tall"][box_obs])
             place_pose =  [[des_bb[1][0]+gap if self.scene_id == 0 else des_bb[0][0]-gap, 
-                           des_bb[1][1]-np.random.uniform(low=0, 
-                                    high=des_bb[1][1]-des_bb[0][1]),
+                           des_bb[1][1]-np.random.uniform(low=y_gap, 
+                                    high=des_bb[1][1]-des_bb[0][1] - y_gap),
                            des_bb[0][-1]],(90,0,0)]
             bid = np.random.choice(task_objs["objects"]["study"]["obstacles"]["tall"][box_obs])
             box_obs_tar, obs_tar_id, _= place_actor(box_obs, self, 
