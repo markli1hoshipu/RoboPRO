@@ -37,7 +37,7 @@ class put_bottle_in_basket(Kitchen_base_large):
         # Match bottle asset setup used in pick_bottle_from_fridge.
         self.bottle_modelname = "001_bottle"
         kwargs["include_collision"] = True
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
 
         self.bottle_model_ids =  task_objs['objects']['kitchenl']['targets'][self.bottle_modelname]

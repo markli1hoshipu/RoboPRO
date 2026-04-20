@@ -662,7 +662,22 @@ class KitchenS_base_task(Bench_base_task):
             is_static=True,
         )
         self.dishrack.set_name("dishrack")
-        self.add_prohibit_area(self.dishrack, padding=0.04, area="table")
+        # add_prohibit_area assumes the mesh is origin-centered, but the
+        # dish-rack mesh is offset in mesh-y (~-0.13 m). After +90° x-rot
+        # that becomes a world-z offset, but mesh z also maps to world -y,
+        # so the footprint on the counter is NOT centered at the actor
+        # pose. Compute the true AABB from the scaled visual mesh.
+        _mx_min, _my_min, _mz_min = _rack_mesh.bounds[0] * _rack_scale
+        _mx_max, _my_max, _mz_max = _rack_mesh.bounds[1] * _rack_scale
+        _rack_x0, _rack_x1 = _mx_min, _mx_max
+        _rack_y0, _rack_y1 = -_mz_max, -_mz_min
+        _rack_pad = 0.04
+        self.prohibited_area["table"].append([
+            x + _rack_x0 - _rack_pad,
+            y + _rack_y0 - _rack_pad,
+            x + _rack_x1 + _rack_pad,
+            y + _rack_y1 + _rack_pad,
+        ])
         self.collision_list.append({
             "actor": self.dishrack,
             "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/135_dish-rack/collision/base0.glb",

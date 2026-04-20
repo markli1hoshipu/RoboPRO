@@ -40,7 +40,7 @@ class put_can_infront_of_microwave(Kitchen_base_large):
         else:
             xlim = [0, 0.1]
         self.target_name = "071_can"
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
 
         self.target_obj, self.target_id, self.target_pose = \

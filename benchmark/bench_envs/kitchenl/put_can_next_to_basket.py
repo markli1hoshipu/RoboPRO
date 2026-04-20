@@ -33,7 +33,7 @@ class put_can_next_to_basket(Kitchen_base_large):
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.can_modelname = "071_can"
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
         self.can_model_ids = task_objs["objects"]["kitchenl"]["targets"][self.can_modelname]
         kwargs["scene_id"] = np.random.choice([0,1])
@@ -45,7 +45,7 @@ class put_can_next_to_basket(Kitchen_base_large):
 
 
     def load_actors(self):
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
         if self.scene_id == 0:
             xlim = [-0.15, 0]

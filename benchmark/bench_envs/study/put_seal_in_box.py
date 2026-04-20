@@ -18,7 +18,7 @@ class put_seal_in_box(Study_base_task):
         super()._init_task_env_(**kwargs)
 
     def load_actors(self):
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
         
         xlim, ylim, self.side_to_place = get_position_limits(self.table, boundary_thr=0.20, 

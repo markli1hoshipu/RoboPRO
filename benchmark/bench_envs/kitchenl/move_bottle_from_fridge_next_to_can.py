@@ -106,7 +106,7 @@ class move_bottle_from_fridge_next_to_can(Kitchen_base_large):
         self.add_prohibit_area(self.fridge_left.get_pose(), padding=[0.15,0.5], area="table")
         self.cuboid_collision_list.append({"name": "table", "dims": [1.2, 0.7, 0.002], "pose": [0,0,0.74,1,0,0,0]})
         self._init_fridge_states()
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
         
         self.bottle_model_id = np.random.choice(task_objs["objects"]["kitchenl"]["targets"]["001_bottle"])

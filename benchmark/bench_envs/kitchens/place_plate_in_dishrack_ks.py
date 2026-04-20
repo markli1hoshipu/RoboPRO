@@ -1,0 +1,86 @@
+from bench_envs.kitchens._kitchens_base_task import KitchenS_base_task
+from envs.utils import *
+import sapien
+import math
+from envs._GLOBAL_CONFIGS import *
+from copy import deepcopy
+import glob
+
+
+class place_plate_in_dishrack_ks(KitchenS_base_task):
+
+    def setup_demo(self, is_test=False, **kwargs):
+        kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
+        super()._init_task_env_(**kwargs)
+
+    def _get_target_object_names(self) -> set[str]:
+        return {self.target_obj.get_name()}
+
+    def load_actors(self):
+        rand_pos = self.rand_pose_on_counter(
+            xlim=[-0.32, 0.32],
+            ylim=[-0.15, 0.05],
+            qpos=[0.5, 0.5, 0.5, 0.5],
+            rotate_rand=True,
+            obj_padding=0.06,
+        )
+        while abs(rand_pos.p[0]) < 0.3:
+            rand_pos = self.rand_pose_on_counter(
+                xlim=[-0.32, 0.32],
+                ylim=[-0.15, 0.05],
+                qpos=[0.5, 0.5, 0.5, 0.5],
+                rotate_rand=True,
+                obj_padding=0.06,
+            )
+
+        self.target_obj = create_actor(
+            scene=self,
+            pose=rand_pos,
+            modelname="003_plate",
+            convex=True,
+            model_id=0,
+        )
+        self.target_obj.set_mass(0.1)
+
+        self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
+
+        # The dishrack visual footprint is offset from the actor pose in y by
+        # about -0.09 m (see _load_dishrack's _mz min/max handling). Place the
+        # plate above the center of the rack, offset by the same amount so it
+        # sits over the slots.
+        rack_p = self.dishrack.get_pose().p
+        self.des_obj_pose = [rack_p[0], rack_p[1] - 0.09, rack_p[2] + 0.06, 0, 0, 0, 1]
+
+    def play_once(self):
+        arm_tag = ArmTag("right" if self.target_obj.get_pose().p[0] > 0 else "left")
+
+        self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.08)
+
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
+
+        self.attach_object(
+            self.target_obj,
+            f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/003_plate/collision/base0.glb",
+            str(arm_tag),
+        )
+        self.enable_table(enable=True)
+
+        self.move(
+            self.place_actor(
+                self.target_obj,
+                arm_tag=arm_tag,
+                target_pose=self.des_obj_pose,
+                constrain="align",
+                pre_dis=0.08,
+                dis=0.01,
+            ))
+
+    def check_success(self):
+        tp = self.target_obj.get_pose().p
+        rack_p = self.dishrack.get_pose().p
+        # Plate must be horizontally over the rack (generous eps for footprint)
+        eps_x, eps_y = 0.12, 0.12
+        return (abs(tp[0] - rack_p[0]) < eps_x
+                and abs(tp[1] - (rack_p[1] - 0.09)) < eps_y
+                and self.robot.is_left_gripper_open()
+                and self.robot.is_right_gripper_open())

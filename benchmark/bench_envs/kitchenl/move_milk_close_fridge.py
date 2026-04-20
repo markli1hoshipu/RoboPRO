@@ -87,7 +87,7 @@ class move_milk_close_fridge(Kitchen_base_large):
         self._init_fridge_states()
 
         self.milk_box_model_id = 0
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
         
         scale = task_objs["scales"][self.obj_name][f"{self.milk_box_model_id}"]

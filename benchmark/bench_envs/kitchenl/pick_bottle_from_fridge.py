@@ -102,7 +102,7 @@ class pick_bottle_from_fridge(Kitchen_base_large):
             self._init_fridge_states()
         self.set_fridge_open()
   
-        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r") as f:
+        with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
 
         self.bottle_model_id = np.random.choice(task_objs['objects']['kitchenl']['targets'][self.bottle_modelname])
