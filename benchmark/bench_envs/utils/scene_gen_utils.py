@@ -628,3 +628,15 @@ def point_to_box_distance(point, b_min, b_max):
     dz = max(0, b_min[2] - point[2], point[2] - b_max[2])
     
     return np.sqrt(dx**2 + dy**2 + dz**2)
+def get_obj_new_pose(obj):
+    obj_pose = obj.get_pose()
+    bbox = get_actor_boundingbox(obj.actor)
+    if bbox[0][-1] < obj_pose.p[-1]:
+        new_p = [obj_pose.p[0], obj_pose.p[1], 
+                    2*obj_pose.p[2]- bbox[0][2]]
+        obj.actor.set_pose(
+            sapien.Pose(
+                p = new_p, 
+                q = obj_pose.q)
+        )
+        print_c(f"Pose adjusted to {new_p}", "YELLOW")

@@ -1,8 +1,10 @@
 from bench_envs.kitchens._kitchens_base_task import KitchenS_base_task
+from bench_envs.utils.scene_gen_utils import get_obj_new_pose
 from envs.utils import *
 import sapien, math, os, glob
 from envs._GLOBAL_CONFIGS import *
 from copy import deepcopy
+from transforms3d.euler import euler2quat
 
 
 class chain_apple_bin_plate_knife_sink_ks(KitchenS_base_task):
@@ -39,7 +41,7 @@ class chain_apple_bin_plate_knife_sink_ks(KitchenS_base_task):
 
         # 2) Apple on counter (must grasp → drop in bin)
         apple_pose = self.rand_pose_on_counter(
-            xlim=[-0.32, 0.32], ylim=[-0.15, 0.05],
+            xlim=[-0.32, 0.32], ylim=[-0.15, 0],
             qpos=[0.5, 0.5, 0.5, 0.5], rotate_rand=True, rotate_lim=[0, np.pi, 0],
             obj_padding=0.05,
         )
@@ -59,7 +61,7 @@ class chain_apple_bin_plate_knife_sink_ks(KitchenS_base_task):
         )
         self.plate = create_actor(
             scene=self, pose=plate_pose, modelname="003_plate",
-            convex=True, model_id=0,
+            convex=True, model_id=0
         )
         self.plate.set_mass(0.1)
         self.add_prohibit_area(self.plate, padding=0.02, area="table")
@@ -67,14 +69,17 @@ class chain_apple_bin_plate_knife_sink_ks(KitchenS_base_task):
         # 4) Knife on counter (→ sink)
         knife_pose = self.rand_pose_on_counter(
             xlim=[-0.32, 0.32], ylim=[-0.15, 0.05],
-            qpos=[0.5, 0.5, 0.5, 0.5], rotate_rand=True, rotate_lim=[0, np.pi, 0],
+            qpos= euler2quat(0,np.deg2rad(90), 0), rotate_rand=False, rotate_lim=[0, np.pi, 0],
             obj_padding=0.05,
         )
         self.knife = create_actor(
             scene=self, pose=knife_pose, modelname="034_knife",
-            convex=True, model_id=0,
+            convex=True, model_id=0, 
+            scale=0.09
         )
         self.knife.set_mass(0.05)
+        get_obj_new_pose(self.knife)
+        
         self.add_prohibit_area(self.knife, padding=0.02, area="table")
 
         # Targets
