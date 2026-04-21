@@ -46,18 +46,19 @@ class put_pen_in_pencup(Study_base_task):
             place_actor("059_pencup", self, col_thr=0.15, xlim=[(xlim[0]+xlim[1])/2, xlim[1]],
                         ylim= ylim, qpos=(90,0,90),
                         object_bounds=object_bounds, task_objs=task_objs,
-                        obj_id = 1, mass = 0.2, rotation=False)
-
+                        obj_id = 1, mass = 0.2, rotation=False) 
+        self.collision_list.append({
+                "actor":self.des_obj,
+                "collision_path": self.col_temp.format(object="059_pencup",
+                                                        object_id=1)
+            })
         # Get the placement pose
         self.des_obj_pose = self.des_obj_pose.p.tolist() + euler2quat(0,0,np.deg2rad(90)).tolist()
         self.des_obj_pose[2] = 0.90
 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
 
-        self.collision_list.append({
-            "actor":self.bookcase,
-            "collision_path": self.col_temp.format(object="014_bookcase", object_id="3")
-        })
+
         self.add_prohibit_area(self.target_obj, padding=0.10, area="table")
         self.add_prohibit_area(self.des_obj, padding=0.0, area="table")
 

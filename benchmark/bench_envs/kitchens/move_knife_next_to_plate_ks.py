@@ -40,11 +40,12 @@ class move_knife_next_to_plate_ks(KitchenS_base_task):
             is_static=True,
         )
         self.add_prohibit_area(self.des_obj, padding=0.01, area="table")
+        from transforms3d.euler import euler2quat
 
         rand_pos = self.rand_pose_on_counter(
             xlim=[0.16, 0.22],
             ylim=[-0.12, -0.05],
-            qpos=[0.7071068, 0.0, -0.7071068, 0.0],
+            qpos=euler2quat( 0, -math.pi / 2,0),
             rotate_rand=False,
             obj_padding=0.08,
         )
@@ -66,7 +67,9 @@ class move_knife_next_to_plate_ks(KitchenS_base_task):
         self.des_obj_pose[2] += 0.02
 
     def play_once(self):
-        arm_tag = ArmTag("right" if self.target_obj.get_pose().p[0] > 0 else "left")
+        arm_side = "right" if self.target_obj.get_pose().p[0] > 0 else "left"
+        print(arm_side)
+        arm_tag = ArmTag(arm_side)
 
         self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.1)
 

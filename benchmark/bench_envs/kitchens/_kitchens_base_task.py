@@ -50,6 +50,7 @@ class KitchenS_base_task(Bench_base_task):
         np.random.seed(kwags.get("seed", 0))
         torch.manual_seed(kwags.get("seed", 0))
         self.seed = kwags.get("seed", 0)
+        print_c(f"#### Seed value {self.seed} ####", "YELLOW")
 
         self.FRAME_IDX = 0
         self.task_name = kwags.get("task_name")
@@ -652,7 +653,8 @@ class KitchenS_base_task(Bench_base_task):
         # 135_dish-rack is a benchmark-custom asset under assets/objects_bench/
         # (shipped via benchmark/bench_assets/). create_actor is hardcoded to
         # assets/objects/, so the actor is built inline here.
-        rack_asset_dir = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/135_dish-rack"
+        # rack_asset_dir = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/135_dish-rack"
+        rack_asset_dir = f"{os.environ['BENCH_ROOT']}/bench_assets/135_dish-rack"
         with open(f"{rack_asset_dir}/model_data0.json") as _f:
             _rd = json.load(_f)
         # Default JSON scale (0.6435) puts the rack top at z ≈ 0.89, putting
@@ -701,7 +703,7 @@ class KitchenS_base_task(Bench_base_task):
         ])
         self.collision_list.append({
             "actor": self.dishrack,
-            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/135_dish-rack/collision/base0.glb",
+            "collision_path": f"{os.environ['BENCH_ROOT']}/bench_assets/135_dish-rack/collision/base0.glb",
         })
 
     def _load_sink(self, table_height, table_xy_bias):

@@ -48,13 +48,14 @@ class move_cup_put_pen_in_cup(Study_base_task):
             object_bounds.append(get_actor_boundingbox(box_obs_tar.actor))
 
         xlim, ylim, self.side_to_place = get_position_limits(self.table,
-                                         boundary_thr=[0.15, 0.25], side="left" if self.scene_id == 0 else "right")
+                                         boundary_thr=[0.15, 0.2], side="left" if self.scene_id == 0 else "right")
       
         self.target_name = "058_markpen"
         self.target_obj, self.target_id, self.target_pose = \
         place_actor(self.target_name, self, col_thr=0.0, xlim=[0],
                     ylim=[-0.087], qpos=(90,0,0),object_bounds= object_bounds,
                      task_objs=task_objs,  obj_id = 0, mass = 0.1)
+        
         self.add_prohibit_area(self.target_obj, padding=0.1, area="table")
 
         object_bounds.append(get_actor_boundingbox(self.target_obj.actor))
@@ -66,9 +67,16 @@ class move_cup_put_pen_in_cup(Study_base_task):
         self.cup_obj, self.cup_obj_id, self.cup_obj_pose = \
             place_actor(self.cup_name, self, task_objs = task_objs,
                     obj_pose=place_pose, mass = 0.4)
-       
-        self.cup_des_pose = get_random_place_pose(xlim = [xlim[0], np.mean(xlim)], ylim=ylim,
+        
+
+        if self.scene_id == 0:
+            xlim = [des_bb[1][0]+0.1, des_bb[1][0]+0.2]
+        else:
+            xlim = [des_bb[0][0]-0.2, des_bb[0][0]-0.1]
+        
+        self.cup_des_pose = get_random_place_pose(xlim = xlim, ylim=[-0.1,0.1],
                                              col_thr=0.10, object_bounds=object_bounds)
+        
         self.add_prohibit_area(self.cup_des_pose, padding=0.12, area="table")
 
         # Get the placement pose
@@ -94,7 +102,7 @@ class move_cup_put_pen_in_cup(Study_base_task):
                 pre_dis=pre_dis,
                 dis=dis
             ))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=z))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=z, y=-z))
 
         return self.cup_obj.get_pose()
     

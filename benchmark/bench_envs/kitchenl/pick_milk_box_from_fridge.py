@@ -159,7 +159,8 @@ class pick_milk_box_from_fridge(Kitchen_base_large):
                                                     col_thr=0.15,zlim=[0.78],
                                                     object_bounds={})
         self.add_prohibit_area(self.des_pose, padding=0.04, area="table")
-    
+        self.add_prohibit_area(self.fridge_left.get_pose(), padding=[0.15,0.5], area="table")
+
     def _is_milk_box_inside_fridge(self) -> bool:
         milk_local = self._milk_box_local_in_fridge()
         if milk_local is None:
@@ -186,7 +187,7 @@ class pick_milk_box_from_fridge(Kitchen_base_large):
 
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.LIFT_DELTA))
         self.move(self.move_by_displacement(arm_tag=arm_tag, **self.RETREAT_DELTA))
-        self.move(self.back_to_origin(arm_tag=arm_tag))
+        # self.move(self.back_to_origin(arm_tag=arm_tag))
         self.move(
             self.place_actor(
                 self.milk_box,
