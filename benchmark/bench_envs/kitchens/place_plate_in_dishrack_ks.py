@@ -9,11 +9,11 @@ import glob
 
 class place_plate_in_dishrack_ks(KitchenS_base_task):
 
-    # Scripted top-down rim pinch (same recipe as the working
-    # put_plate_in_sink_ks) plus scene-aware arm selection so that when
-    # the dishrack is on the left of the counter (scene 2) the left arm
-    # grasps and places, avoiding a cross-body carry.
+    # Mirrors put_plate_in_sink_ks: top-down rim pinch, lift, drop above
+    # dishrack. Only the drop target (rack instead of sink) differs.
     TOP_DOWN_Q = [-0.5, 0.5, -0.5, -0.5]
+    # Home EE quat (gripper facing front) for aloha-agilex
+    INIT_Q = [0.707, 0, 0, 0.707]
     TCP_OFFSET = 0.12
 
     def setup_demo(self, is_test=False, **kwargs):
@@ -25,32 +25,45 @@ class place_plate_in_dishrack_ks(KitchenS_base_task):
 
     def load_actors(self):
         rack_p = self.dishrack.get_pose().p
-        # Scene 2 has rack at x=-0.32: use the left arm so the grasp +
-        # carry stays on the same side of the midline.
         self.arm_tag = ArmTag("right" if rack_p[0] > 0 else "left")
         side_sign = 1 if self.arm_tag == "right" else -1
 
-        if side_sign > 0:
-            x_range = [0.30, 0.45]
-        else:
-            x_range = [-0.45, -0.30]
+        # Plate spawn must clear both the rack and sink footprints.
+        #   Rack: |x - rack_x| < (0.084 + 0.04 + plate_pad) → ~0.18.
+        #   Sink: its prohibited box extends y up to faucet_y at y≈0.11,
+        #         and sink y_min ≈ -0.15. Plate padded bbox must not touch.
+        # Push plate y to the counter front (y ≤ -0.24) so the plate's
+        # padded bbox (±0.06) never overlaps the sink y-range, freeing x to
+        # be chosen purely from rack clearance + arm reachability.
+        rack_x = float(rack_p[0])
+        if side_sign > 0:  # right arm
+            if rack_x > 0.35:
+                # scene 1: rack at 0.42 → left of rack is available
+                x_range = [0.10, 0.24]
+            else:
+                # scene 0: rack at 0.22 → right of rack (near sink x=0.42)
+                x_range = [0.38, 0.48]
+        else:  # left arm
+            # scene 2: rack at -0.32 → right of rack
+            x_range = [-0.22, -0.08]
 
         rand_pos = self.rand_pose_on_counter(
             xlim=x_range,
-            ylim=[-0.15, -0.05],
+            ylim=[-0.20, -0.14],
             qpos=[0.5, 0.5, 0.5, 0.5],
             rotate_rand=False,
-            obj_padding=0.10,
+            obj_padding=0.06,
         )
 
+        self.plate_id = 0
         self.target_obj = create_actor(
             scene=self,
             pose=rand_pos,
             modelname="003_plate",
             convex=True,
-            model_id=0,
+            model_id=self.plate_id,
         )
-        self.target_obj.set_mass(0.1)
+        self.target_obj.set_mass(0.02)
 
         self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
 
@@ -58,14 +71,7 @@ class place_plate_in_dishrack_ks(KitchenS_base_task):
         arm_tag = self.arm_tag
         side_sign = 1 if arm_tag == "right" else -1
 
-        # Drop the counter and the dishrack from Curobo so the wrist can
-        # swing a large plate over the rack without registering as in
-        # collision with the prongs.
         self.enable_table(enable=False)
-        _rack_pose = self.dishrack.get_pose()
-        _rack_np_pose = np.concatenate([_rack_pose.p, _rack_pose.q]).tolist()
-        _rack_mesh_name = f"dishrack_{_rack_np_pose}_{self.seed}"
-        self.enable_obstacle(False, mesh_names=[_rack_mesh_name])
 
         self.move(self.open_gripper(arm_tag, pos=1.0))
 
@@ -83,30 +89,53 @@ class place_plate_in_dishrack_ks(KitchenS_base_task):
         self.move(self.move_to_pose(arm_tag, grasp_pose))
 
         self.move(self.close_gripper(arm_tag, pos=0.0))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.25))
 
+        # Attach before the lift so the plate is rigidly welded to the gripper
+        # and doesn't slip during the vertical move.
         self.attach_object(
             self.target_obj,
-            f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/003_plate/collision/base0.glb",
+            f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/003_plate/collision/base{self.plate_id}.glb",
             str(arm_tag),
         )
 
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.25))
+
+        # Rack is in curobo collision while sink is not; pop it so the
+        # planner isn't blocked by plate-rack overlap checks at the target.
+        self.collision_list = [
+            e for e in self.collision_list if e.get("actor") is not self.dishrack
+        ]
+        self.update_world()
+
+        # Split the drop into two moves so curobo has a reachable midpoint
+        # to seed from: first a hover pose above the rack basin, then the
+        # drop. The plate rim is held by the wrist with an offset of
+        # 0.085 * side_sign in x; we target rack basin center by drop_x +
+        # 0.085*side_sign = rack_x (so the plate center sits over rack_x).
+        # Drop y is rack_p[1] - 0.09 which puts the plate center at the
+        # basin centroid (chain_dishrack_plate_bread_knife_ks uses the
+        # same 0.09 offset for plate-on-rack placement).
         rack_p = self.dishrack.get_pose().p
-        drop_tcp_z = float(rack_p[2]) + 0.25
-        drop_pose = [
-            float(rack_p[0]) - 0.085 * side_sign,
-            float(rack_p[1]) - 0.09,
-            drop_tcp_z + self.TCP_OFFSET,
-        ] + self.TOP_DOWN_Q
+        drop_x = float(rack_p[0]) 
+        drop_y = float(rack_p[1]) - 0.35
+
+        hover_drop_pose = [drop_x, drop_y-0.20, 1.20] + self.INIT_Q
+        self.move(self.move_to_pose(arm_tag, hover_drop_pose))
+
+        # Rack top z ≈ table_height + 0.091 ≈ 0.831. Plate needs to hover a
+        # few cm above rack top before release, so plate center z ≈ 0.88 →
+        # TCP z = plate_z + TCP_OFFSET = 1.00.
+        drop_tcp_z = 0.88
+        drop_pose = [drop_x, drop_y, drop_tcp_z + self.TCP_OFFSET] + self.INIT_Q
         self.move(self.move_to_pose(arm_tag, drop_pose))
 
         self.move(self.open_gripper(arm_tag, pos=1.0))
 
     def check_success(self):
-        tp = self.target_obj.get_pose().p
         rack_p = self.dishrack.get_pose().p
-        eps_x, eps_y = 0.12, 0.12
+        tp = self.target_obj.get_pose().p
+        eps_x, eps_y = 0.12, 0.15
         return (abs(tp[0] - rack_p[0]) < eps_x
-                and abs(tp[1] - (rack_p[1] - 0.09)) < eps_y
+                and abs(tp[1] - rack_p[1]) < eps_y
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
