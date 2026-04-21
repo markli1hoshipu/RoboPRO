@@ -22,8 +22,11 @@ class move_knife_next_to_plate_ks(KitchenS_base_task):
         return len(unstable_list) == 0, unstable_list
 
     def load_actors(self):
+        # Plate: place somewhere along the counter (not pinned to the middle).
+        # The arm chosen in play_once is based on knife x-sign, so plate can
+        # be anywhere as long as the knife has clearance to its side.
         target_rand_pose = self.rand_pose_on_counter(
-            xlim=[0],
+            xlim=[-0.20, 0.20],
             ylim=[-0.23, 0.05],
             qpos=[0.5, 0.5, 0.5, 0.5],
             rotate_rand=False,
@@ -40,12 +43,20 @@ class move_knife_next_to_plate_ks(KitchenS_base_task):
             is_static=True,
         )
         self.add_prohibit_area(self.des_obj, padding=0.01, area="table")
-        from transforms3d.euler import euler2quat
 
+        # Knife: spawn on either side of the plate so either arm can be used.
+        plate_x = float(self.des_obj.get_pose().p[0])
+        # Pick a side at random; 60% chance spawn to the side with more room.
+        if np.random.rand() < 0.5:
+            knife_xlim = [plate_x + 0.14, plate_x + 0.22]
+        else:
+            knife_xlim = [plate_x - 0.22, plate_x - 0.14]
+        # Clamp to counter lims so we don't fall off the edge.
+        knife_xlim = [max(-0.32, knife_xlim[0]), min(0.32, knife_xlim[1])]
         rand_pos = self.rand_pose_on_counter(
-            xlim=[0.16, 0.22],
-            ylim=[-0.12, -0.05],
-            qpos=euler2quat( 0, -math.pi / 2,0),
+            xlim=knife_xlim,
+            ylim=[-0.15, 0.0],
+            qpos=[0.7071068, 0.0, -0.7071068, 0.0],
             rotate_rand=False,
             obj_padding=0.08,
         )
@@ -90,11 +101,13 @@ class move_knife_next_to_plate_ks(KitchenS_base_task):
         cur_tcp = (self.robot.get_right_ee_pose() if str(arm_tag) == "right"
                    else self.robot.get_left_ee_pose())
         cur_q = list(cur_tcp[3:7])
+        cur_q = [0.7071068, 0.0, -0.7071068, 0.0]  # Override to top-down for better IK
+        cur_q = [1,0,0,0]
 
         target_tcp_xyz = [
-            float(plate_p[0]) + 0.1 * side_sign,
+            float(plate_p[0]) + 0.15 * side_sign,
             float(plate_p[1]),
-            counter_z + 0.15,
+            counter_z+0.20,
         ]
 
         self.move(self.move_to_pose(arm_tag, target_tcp_xyz + cur_q))
