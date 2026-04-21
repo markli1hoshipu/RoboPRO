@@ -190,22 +190,26 @@ class KitchenS_base_task(Bench_base_task):
         scene_1: MW left, Sink center, Dishrack right
         scene_2: MW center, Dishrack left, Sink right
         """
+        # Dishrack y was originally 0.25 but the aloha arm IK envelope cannot
+        # reach the elevated rack (z ≈ 0.96) at that depth. Pulled forward to
+        # 0.18 so the plate target (rack_y - 0.09 = 0.09) is at the same
+        # comfortable depth as the sink basin (y = 0.08).
         if self.scene_id == 0:
             locations = {
                 "microwave": [-0.32, 0.18],
-                "dishrack": [0.10, 0.25],
+                "dishrack": [0.22, 0.15],
                 "sink": [0.42, 0.08],
             }
         elif self.scene_id == 1:
             locations = {
                 "microwave": [-0.32, 0.18],
-                "dishrack": [0.42, 0.25],
+                "dishrack": [0.42, 0.15],
                 "sink": [0.10, 0.08],
             }
         elif self.scene_id == 2:
             locations = {
                 "microwave": [0.10, 0.18],
-                "dishrack": [-0.32, 0.25],
+                "dishrack": [-0.32, 0.15],
                 "sink": [0.42, 0.08],
             }
         else:
@@ -645,22 +649,33 @@ class KitchenS_base_task(Bench_base_task):
         # Compute z offset from the actual visual mesh bounds (json extents do
         # not match the glb). After the +90° x-rotation, the mesh's original
         # +y axis becomes world +z, so world bottom = origin_z + y_min * scale.
-        rack_asset_dir = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/135_dish-rack"
+        # 135_dish-rack is a benchmark-custom asset under assets/objects_bench/
+        # (shipped via benchmark/bench_assets/). create_actor is hardcoded to
+        # assets/objects/, so the actor is built inline here.
+        rack_asset_dir = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/135_dish-rack"
         with open(f"{rack_asset_dir}/model_data0.json") as _f:
             _rd = json.load(_f)
-        _rack_scale = _rd["scale"][0]
+        # Default JSON scale (0.6435) puts the rack top at z ≈ 0.89, putting
+        # the plate target z (rack_center + 0.06) at ≈ 0.96. The aloha arm
+        # wrist target (plate_z + TCP_OFFSET) ≈ 1.08 is past the IK envelope
+        # at the rack's depth on the counter. Scaling the rack to 0.4
+        # lowers the plate target to ≈ 0.90 → wrist ≈ 1.02 (sink-equivalent).
+        _rack_scale = 0.4
         _rack_mesh = trimesh.load(f"{rack_asset_dir}/base0.glb", force="mesh")
         _y_min = float(_rack_mesh.bounds[0][1])
         rack_z = table_height - _y_min * _rack_scale
 
-        self.dishrack = create_actor(
-            scene=self,
-            pose=sapien.Pose(p=[x, y, rack_z], q=rack_q.tolist()),
-            modelname="135_dish-rack",
-            convex=True,
-            model_id=0,
-            is_static=True,
-        )
+        _rack_scale_xyz = [_rack_scale, _rack_scale, _rack_scale]
+        _rack_builder = self.scene.create_actor_builder()
+        _rack_builder.set_physx_body_type("static")
+        _rack_builder.add_multiple_convex_collisions_from_file(
+            filename=f"{rack_asset_dir}/collision/base0.glb", scale=_rack_scale_xyz)
+        _rack_builder.add_visual_from_file(
+            filename=f"{rack_asset_dir}/base0.glb", scale=_rack_scale_xyz)
+        _rack_entity = _rack_builder.build()
+        _rack_entity.set_pose(sapien.Pose(p=[x, y, rack_z], q=rack_q.tolist()))
+        _rack_entity.set_name("135_dish-rack")
+        self.dishrack = Simple_Actor(_rack_entity, scale=_rack_scale_xyz)
         self.dishrack.set_name("dishrack")
         # add_prohibit_area assumes the mesh is origin-centered, but the
         # dish-rack mesh is offset in mesh-y (~-0.13 m). After +90° x-rot
@@ -680,7 +695,7 @@ class KitchenS_base_task(Bench_base_task):
         ])
         self.collision_list.append({
             "actor": self.dishrack,
-            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/135_dish-rack/collision/base0.glb",
+            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/135_dish-rack/collision/base0.glb",
         })
 
     def _load_sink(self, table_height, table_xy_bias):
