@@ -12,6 +12,8 @@ class place_plate_in_dishrack_ks(KitchenS_base_task):
     # Mirrors put_plate_in_sink_ks: top-down rim pinch, lift, drop above
     # dishrack. Only the drop target (rack instead of sink) differs.
     TOP_DOWN_Q = [-0.5, 0.5, -0.5, -0.5]
+    # Home EE quat (gripper facing front) for aloha-agilex
+    INIT_Q = [0.707, 0, 0, 0.707]
     TCP_OFFSET = 0.12
 
     def setup_demo(self, is_test=False, **kwargs):
@@ -61,7 +63,7 @@ class place_plate_in_dishrack_ks(KitchenS_base_task):
             convex=True,
             model_id=self.plate_id,
         )
-        self.target_obj.set_mass(0.1)
+        self.target_obj.set_mass(0.02)
 
         self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
 
@@ -88,13 +90,15 @@ class place_plate_in_dishrack_ks(KitchenS_base_task):
 
         self.move(self.close_gripper(arm_tag, pos=0.0))
 
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.25))
-
+        # Attach before the lift so the plate is rigidly welded to the gripper
+        # and doesn't slip during the vertical move.
         self.attach_object(
             self.target_obj,
             f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/003_plate/collision/base{self.plate_id}.glb",
             str(arm_tag),
         )
+
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.25))
 
         # Rack is in curobo collision while sink is not; pop it so the
         # planner isn't blocked by plate-rack overlap checks at the target.
@@ -112,23 +116,17 @@ class place_plate_in_dishrack_ks(KitchenS_base_task):
         # basin centroid (chain_dishrack_plate_bread_knife_ks uses the
         # same 0.09 offset for plate-on-rack placement).
         rack_p = self.dishrack.get_pose().p
-        drop_x = float(rack_p[0]) # - 0.085 * side_sign
-        drop_y = float(rack_p[1]) - 0.20
+        drop_x = float(rack_p[0]) 
+        drop_y = float(rack_p[1]) - 0.35
 
-        # Use the robot's initial (gripper-facing-front) quaternion for the drop
-        orig = (self.robot.right_original_pose if str(arm_tag) == "right"
-                else self.robot.left_original_pose)
-        init_q = list(orig[3:7])
-        print(f"[place_plate_in_dishrack_ks] initial {arm_tag} EE quat = {init_q}")
-
-        hover_drop_pose = [drop_x, drop_y, 1.05] + init_q
+        hover_drop_pose = [drop_x, drop_y-0.20, 1.20] + self.INIT_Q
         self.move(self.move_to_pose(arm_tag, hover_drop_pose))
 
         # Rack top z ≈ table_height + 0.091 ≈ 0.831. Plate needs to hover a
         # few cm above rack top before release, so plate center z ≈ 0.88 →
         # TCP z = plate_z + TCP_OFFSET = 1.00.
         drop_tcp_z = 0.88
-        drop_pose = [drop_x, drop_y, drop_tcp_z + self.TCP_OFFSET] + init_q
+        drop_pose = [drop_x, drop_y, drop_tcp_z + self.TCP_OFFSET] + self.INIT_Q
         self.move(self.move_to_pose(arm_tag, drop_pose))
 
         self.move(self.open_gripper(arm_tag, pos=1.0))

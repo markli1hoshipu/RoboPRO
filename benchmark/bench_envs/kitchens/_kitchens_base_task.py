@@ -197,19 +197,19 @@ class KitchenS_base_task(Bench_base_task):
         if self.scene_id == 0:
             locations = {
                 "microwave": [-0.32, 0.18],
-                "dishrack": [0.05, 0.15],
+                "dishrack": [0.05, 0.17],
                 "sink": [0.42, 0.08],
             }
         elif self.scene_id == 1:
             locations = {
                 "microwave": [-0.32, 0.18],
-                "dishrack": [0.42, 0.15],
+                "dishrack": [0.42, 0.17],
                 "sink": [0.10, 0.08],
             }
         elif self.scene_id == 2:
             locations = {
                 "microwave": [0.10, 0.18],
-                "dishrack": [-0.32, 0.15],
+                "dishrack": [-0.32, 0.17],
                 "sink": [0.42, 0.08],
             }
         else:
@@ -660,7 +660,7 @@ class KitchenS_base_task(Bench_base_task):
         # wrist target (plate_z + TCP_OFFSET) ≈ 1.08 is past the IK envelope
         # at the rack's depth on the counter. Scaling the rack to 0.4
         # lowers the plate target to ≈ 0.90 → wrist ≈ 1.02 (sink-equivalent).
-        _rack_scale = _rd["scale"][0]
+        _rack_scale = _rd["scale"][0] * 1.1
         _rack_mesh = trimesh.load(f"{rack_asset_dir}/base0.glb", force="mesh")
         _y_min = float(_rack_mesh.bounds[0][1])
         rack_z = table_height - _y_min * _rack_scale
@@ -703,6 +703,39 @@ class KitchenS_base_task(Bench_base_task):
             "actor": self.dishrack,
             "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/135_dish-rack/collision/base0.glb",
         })
+
+        # The convex decomp from the rack glb has thin walls that plates can
+        # tunnel through. Add an explicit containment tray (floor + 4 walls)
+        # sitting on top of the rack so the plate can be reliably caught.
+        rack_top_z = table_height + (_my_max - _my_min)
+        rack_hx = 0.5 * (_rack_x1 - _rack_x0)  # world-x half extent
+        rack_hy = 0.5 * (_rack_y1 - _rack_y0)  # world-y half extent
+        _inset = 0.005
+        _wall_hx = rack_hx - _inset
+        _wall_hy = rack_hy - _inset
+        _wall_hz = 0.015
+        _wall_t = 0.0015
+        _floor_t = 0.002
+
+        _walls_builder = self.scene.create_actor_builder()
+        _walls_builder.set_physx_body_type("static")
+        # Floor (base) — top surface at rack_top_z
+        _walls_builder.add_box_collision(
+            pose=sapien.Pose([x, y, rack_top_z - _floor_t]),
+            half_size=[_wall_hx, _wall_hy, _floor_t],
+        )
+        # N/S/E/W side walls — bottoms at rack_top_z, extending up
+        for _wx, _wy, _whx, _why in [
+            ( _wall_hx, 0, _wall_t, _wall_hy),
+            (-_wall_hx, 0, _wall_t, _wall_hy),
+            (0,  _wall_hy, _wall_hx, _wall_t),
+            (0, -_wall_hy, _wall_hx, _wall_t),
+        ]:
+            _walls_builder.add_box_collision(
+                pose=sapien.Pose([x + _wx, y + _wy, rack_top_z + _wall_hz]),
+                half_size=[_whx, _why, _wall_hz],
+            )
+        _walls_entity = _walls_builder.build(name="dishrack_walls")
 
     def _load_sink(self, table_height, table_xy_bias):
         sink_geom = self.kitchens_info["sink_geom"]
