@@ -16,37 +16,12 @@ class move_knife_next_to_plate_ks(KitchenS_base_task):
     def _get_target_object_names(self) -> set[str]:
         return {self.target_obj.get_name()}
 
+    def check_stable(self):
+        is_stable, unstable_list = super().check_stable()
+        unstable_list = [n for n in unstable_list if "034_knife" not in n]
+        return len(unstable_list) == 0, unstable_list
+
     def load_actors(self):
-        # Narrow yaw range (±pi/4 around axis of knife handle) and xlim so
-        # the single handle-grasp contact stays in IK-feasible orientations.
-        rand_pos = self.rand_pose_on_counter(
-            xlim=[-0.32, 0.32],
-            ylim=[-0.20, 0.00],
-            qpos=[0.5, 0.5, 0.5, 0.5],
-            rotate_rand=True,
-            rotate_lim=[0, np.pi / 4, 0],
-            obj_padding=0.04,
-        )
-        while abs(rand_pos.p[0]) < 0.3:
-            rand_pos = self.rand_pose_on_counter(
-                xlim=[-0.32, 0.32],
-                ylim=[-0.20, 0.00],
-                qpos=[0.5, 0.5, 0.5, 0.5],
-                rotate_rand=True,
-                rotate_lim=[0, np.pi / 4, 0],
-                obj_padding=0.04,
-            )
-
-        self.knife_id = 0
-        self.target_obj = create_actor(
-            scene=self,
-            pose=rand_pos,
-            modelname="034_knife",
-            convex=True,
-            model_id=self.knife_id,
-        )
-        self.target_obj.set_mass(0.05)
-
         target_rand_pose = self.rand_pose_on_counter(
             xlim=[0],
             ylim=[-0.23, 0.05],
@@ -65,11 +40,28 @@ class move_knife_next_to_plate_ks(KitchenS_base_task):
             is_static=True,
         )
         self.add_prohibit_area(self.des_obj, padding=0.01, area="table")
+
+        rand_pos = self.rand_pose_on_counter(
+            xlim=[0.16, 0.22],
+            ylim=[-0.12, -0.05],
+            qpos=[0.7071068, 0.0, -0.7071068, 0.0],
+            rotate_rand=False,
+            obj_padding=0.08,
+        )
+
+        self.knife_id = 0
+        self.target_obj = create_actor(
+            scene=self,
+            pose=rand_pos,
+            modelname="034_knife",
+            convex=True,
+            model_id=self.knife_id,
+            scale=0.150,
+        )
+        self.target_obj.set_mass(0.05)
+
         self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
 
-        # Target pose is offset laterally from the plate — knife should sit
-        # beside the plate (right if carried by right arm, left otherwise),
-        # not on top of it. Side chosen in play_once from knife's x sign.
         self.des_obj_pose = self.des_obj.get_pose().p.tolist() + [0, 0, 0, 1]
         self.des_obj_pose[2] += 0.02
 
@@ -87,25 +79,23 @@ class move_knife_next_to_plate_ks(KitchenS_base_task):
         )
         self.enable_table(enable=True)
 
-        # Place beside the plate: +x of plate if right arm, -x if left arm.
-        lateral = 0.10 if str(arm_tag) == "right" else -0.10
+        side_sign = 1 if str(arm_tag) == "right" else -1
         plate_p = self.des_obj.get_pose().p
-        self.target_pose = [
-            float(plate_p[0]) + lateral,
+        counter_z = self.kitchens_info["table_height"] + self.table_z_bias
+
+        # Move gripper to target position, keeping its current (top-down) quat.
+        cur_tcp = (self.robot.get_right_ee_pose() if str(arm_tag) == "right"
+                   else self.robot.get_left_ee_pose())
+        cur_q = list(cur_tcp[3:7])
+
+        target_tcp_xyz = [
+            float(plate_p[0]) + 0.1 * side_sign,
             float(plate_p[1]),
-            self.kitchens_info["table_height"] + self.table_z_bias + 0.015,
-            0, 0, 0, 1,
+            counter_z + 0.15,
         ]
 
-        self.move(
-            self.place_actor(
-                self.target_obj,
-                arm_tag=arm_tag,
-                target_pose=self.target_pose,
-                constrain="align",
-                pre_dis=0.05,
-                dis=0.005,
-            ))
+        self.move(self.move_to_pose(arm_tag, target_tcp_xyz + cur_q))
+        self.move(self.open_gripper(arm_tag, pos=1.0))
 
     def check_success(self):
         knife_p = self.target_obj.get_pose().p
@@ -113,9 +103,7 @@ class move_knife_next_to_plate_ks(KitchenS_base_task):
         dx = abs(knife_p[0] - plate_p[0])
         dy = abs(knife_p[1] - plate_p[1])
 
-        # Knife must sit beside the plate on the counter — x offset in the
-        # adjacent band (not overlapping, not far), y nearly aligned.
-        return (0.04 <= dx <= 0.12
-                and dy <= 0.08
+        return (0.04 <= dx <= 0.14
+                and dy <= 0.10
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

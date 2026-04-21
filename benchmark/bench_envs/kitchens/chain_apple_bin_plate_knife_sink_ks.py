@@ -15,19 +15,13 @@ class chain_apple_bin_plate_knife_sink_ks(KitchenS_base_task):
         return {self.apple.get_name(), self.plate.get_name(), self.knife.get_name()}
 
     def load_actors(self):
-        # 1) Bin (static destination for apple) — spawn first with restricted x band
-        #    so it's clearly on one side
+        # 1) Bin (static destination for apple) — spawn on the LEFT side so
+        #    apple+bin live on the left and knife can live on the right.
         bin_pose = self.rand_pose_on_counter(
-            xlim=[-0.32, 0.32], ylim=[-0.23, 0.0],
+            xlim=[-0.32, -0.25], ylim=[-0.23, 0.0],
             qpos=[0.5, 0.5, 0.5, 0.5], rotate_rand=True, rotate_lim=[0, np.pi/4, 0],
             obj_padding=0.12,
         )
-        while abs(bin_pose.p[0]) < 0.25:
-            bin_pose = self.rand_pose_on_counter(
-                xlim=[-0.4, 0.4], ylim=[-0.23, 0.0],
-                qpos=[0.5, 0.5, 0.5, 0.5], rotate_rand=True, rotate_lim=[0, np.pi/4, 0],
-                obj_padding=0.12,
-            )
         self.bin_id = int(np.random.choice([0, 6]))
         self.bin = create_actor(
             scene=self, pose=bin_pose, modelname="063_tabletrashbin",
@@ -37,9 +31,10 @@ class chain_apple_bin_plate_knife_sink_ks(KitchenS_base_task):
         self.bin.set_name("bin")
         self.add_prohibit_area(self.bin, padding=0.02, area="table")
 
-        # 2) Apple on counter (must grasp → drop in bin)
+        # 2) Apple on counter (must grasp → drop in bin).
+        #    Bin is on the left, so apple lives on the left too.
         apple_pose = self.rand_pose_on_counter(
-            xlim=[-0.32, 0.32], ylim=[-0.15, 0.05],
+            xlim=[-0.30, -0.05], ylim=[-0.15, 0.05],
             qpos=[0.5, 0.5, 0.5, 0.5], rotate_rand=True, rotate_lim=[0, np.pi, 0],
             obj_padding=0.05,
         )
@@ -51,9 +46,10 @@ class chain_apple_bin_plate_knife_sink_ks(KitchenS_base_task):
         self.apple.set_mass(0.05)
         self.add_prohibit_area(self.apple, padding=0.02, area="table")
 
-        # 3) Plate on counter (→ sink)
+        # 3) Plate on counter (→ sink) — keep in center/left band so it doesn't
+        #    crowd the knife's right-side band
         plate_pose = self.rand_pose_on_counter(
-            xlim=[-0.32, 0.32], ylim=[-0.15, 0.05],
+            xlim=[-0.15, 0.0], ylim=[-0.15, 0.05],
             qpos=[0.5, 0.5, 0.5, 0.5], rotate_rand=True, rotate_lim=[0, np.pi, 0],
             obj_padding=0.08,
         )
@@ -64,15 +60,15 @@ class chain_apple_bin_plate_knife_sink_ks(KitchenS_base_task):
         self.plate.set_mass(0.1)
         self.add_prohibit_area(self.plate, padding=0.02, area="table")
 
-        # 4) Knife on counter (→ sink)
+        # 4) Knife on counter (→ sink) — spawn on the RIGHT side, opposite the bin
         knife_pose = self.rand_pose_on_counter(
-            xlim=[-0.32, 0.32], ylim=[-0.15, 0.05],
-            qpos=[0.5, 0.5, 0.5, 0.5], rotate_rand=True, rotate_lim=[0, np.pi, 0],
-            obj_padding=0.05,
+            xlim=[0.05, 0.30], ylim=[-0.15, 0.05],
+            qpos=[0.7071068, 0.0, -0.7071068, 0.0], rotate_rand=False,
+            obj_padding=0.08,
         )
         self.knife = create_actor(
             scene=self, pose=knife_pose, modelname="034_knife",
-            convex=True, model_id=0,
+            convex=True, model_id=0, scale=0.155,
         )
         self.knife.set_mass(0.05)
         self.add_prohibit_area(self.knife, padding=0.02, area="table")
