@@ -203,19 +203,19 @@ class KitchenS_base_task(Bench_base_task):
         if self.scene_id == 0:
             locations = {
                 "microwave": [-0.32, 0.18],
-                "dishrack": [0.22, 0.15],
+                "dishrack": [0.05, 0.17],
                 "sink": [0.42, 0.08],
             }
         elif self.scene_id == 1:
             locations = {
                 "microwave": [-0.32, 0.18],
-                "dishrack": [0.42, 0.15],
+                "dishrack": [0.42, 0.17],
                 "sink": [0.10, 0.08],
             }
         elif self.scene_id == 2:
             locations = {
                 "microwave": [0.10, 0.18],
-                "dishrack": [-0.32, 0.15],
+                "dishrack": [-0.32, 0.17],
                 "sink": [0.42, 0.08],
             }
         else:
@@ -617,7 +617,7 @@ class KitchenS_base_task(Bench_base_task):
         # Geometry scales uniformly, so the base-below-root offset scales too.
         mw_scale_mult = 1.5
         mw_scale = 0.15 * mw_scale_mult
-        z = table_height + 0.06 * mw_scale_mult
+        z = table_height + 0.02 * mw_scale_mult
 
         quat = euler2quat(0, 0, np.pi / 2, axes='sxyz')
         pose = sapien.Pose([x, y, z], [quat[0], quat[1], quat[2], quat[3]])
@@ -667,7 +667,7 @@ class KitchenS_base_task(Bench_base_task):
         # wrist target (plate_z + TCP_OFFSET) ≈ 1.08 is past the IK envelope
         # at the rack's depth on the counter. Scaling the rack to 0.4
         # lowers the plate target to ≈ 0.90 → wrist ≈ 1.02 (sink-equivalent).
-        _rack_scale = 0.4
+        _rack_scale = _rd["scale"][0] * 1.1
         _rack_mesh = trimesh.load(f"{rack_asset_dir}/base0.glb", force="mesh")
         _y_min = float(_rack_mesh.bounds[0][1])
         rack_z = table_height - _y_min * _rack_scale
@@ -680,19 +680,25 @@ class KitchenS_base_task(Bench_base_task):
         _rack_builder.add_visual_from_file(
             filename=f"{rack_asset_dir}/base0.glb", scale=_rack_scale_xyz)
         _rack_entity = _rack_builder.build()
-        _rack_entity.set_pose(sapien.Pose(p=[x, y, rack_z], q=rack_q.tolist()))
+        # Mesh origin is outside the mesh body (mesh-x bounds asym, mesh-z entirely
+        # positive). After +90° x-rotation, mesh-x → world-x and mesh-z → world -y,
+        # so without compensation the rack sits offset in world XY from the spawn
+        # coord. Shift the entity pose by -(mesh_center_scaled_in_world) so the
+        # rack's actual AABB center lands at (x, y).
+        _mx_min, _my_min, _mz_min = _rack_mesh.bounds[0] * _rack_scale
+        _mx_max, _my_max, _mz_max = _rack_mesh.bounds[1] * _rack_scale
+        _cx_off = 0.5 * (_mx_min + _mx_max)         # world-x offset of mesh center
+        _cy_off = -0.5 * (_mz_min + _mz_max)        # world-y offset (mesh-z → -world-y)
+        rack_pose_x = x - _cx_off
+        rack_pose_y = y - _cy_off
+        _rack_entity.set_pose(sapien.Pose(p=[rack_pose_x, rack_pose_y, rack_z], q=rack_q.tolist()))
         _rack_entity.set_name("135_dish-rack")
         self.dishrack = Simple_Actor(_rack_entity, scale=_rack_scale_xyz)
         self.dishrack.set_name("dishrack")
-        # add_prohibit_area assumes the mesh is origin-centered, but the
-        # dish-rack mesh is offset in mesh-y (~-0.13 m). After +90° x-rot
-        # that becomes a world-z offset, but mesh z also maps to world -y,
-        # so the footprint on the counter is NOT centered at the actor
-        # pose. Compute the true AABB from the scaled visual mesh.
-        _mx_min, _my_min, _mz_min = _rack_mesh.bounds[0] * _rack_scale
-        _mx_max, _my_max, _mz_max = _rack_mesh.bounds[1] * _rack_scale
-        _rack_x0, _rack_x1 = _mx_min, _mx_max
-        _rack_y0, _rack_y1 = -_mz_max, -_mz_min
+        # Prohibit-area footprint in world AABB, centered on the spawn coord now
+        # that the rack pose is compensated.
+        _rack_x0, _rack_x1 = _mx_min - _cx_off, _mx_max - _cx_off
+        _rack_y0, _rack_y1 = -_mz_max - _cy_off, -_mz_min - _cy_off
         _rack_pad = 0.04
         self.prohibited_area["table"].append([
             x + _rack_x0 - _rack_pad,
@@ -704,6 +710,39 @@ class KitchenS_base_task(Bench_base_task):
             "actor": self.dishrack,
             "collision_path": f"{os.environ['BENCH_ROOT']}/bench_assets/135_dish-rack/collision/base0.glb",
         })
+
+        # The convex decomp from the rack glb has thin walls that plates can
+        # tunnel through. Add an explicit containment tray (floor + 4 walls)
+        # sitting on top of the rack so the plate can be reliably caught.
+        rack_top_z = table_height + (_my_max - _my_min)
+        rack_hx = 0.5 * (_rack_x1 - _rack_x0)  # world-x half extent
+        rack_hy = 0.5 * (_rack_y1 - _rack_y0)  # world-y half extent
+        _inset = 0.005
+        _wall_hx = rack_hx - _inset
+        _wall_hy = rack_hy - _inset
+        _wall_hz = 0.015
+        _wall_t = 0.0015
+        _floor_t = 0.002
+
+        _walls_builder = self.scene.create_actor_builder()
+        _walls_builder.set_physx_body_type("static")
+        # Floor (base) — top surface at rack_top_z
+        _walls_builder.add_box_collision(
+            pose=sapien.Pose([x, y, rack_top_z - _floor_t]),
+            half_size=[_wall_hx, _wall_hy, _floor_t],
+        )
+        # N/S/E/W side walls — bottoms at rack_top_z, extending up
+        for _wx, _wy, _whx, _why in [
+            ( _wall_hx, 0, _wall_t, _wall_hy),
+            (-_wall_hx, 0, _wall_t, _wall_hy),
+            (0,  _wall_hy, _wall_hx, _wall_t),
+            (0, -_wall_hy, _wall_hx, _wall_t),
+        ]:
+            _walls_builder.add_box_collision(
+                pose=sapien.Pose([x + _wx, y + _wy, rack_top_z + _wall_hz]),
+                half_size=[_whx, _why, _wall_hz],
+            )
+        _walls_entity = _walls_builder.build(name="dishrack_walls")
 
     def _load_sink(self, table_height, table_xy_bias):
         sink_geom = self.kitchens_info["sink_geom"]

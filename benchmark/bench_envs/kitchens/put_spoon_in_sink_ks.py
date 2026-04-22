@@ -46,7 +46,10 @@ class put_spoon_in_sink_ks(KitchenS_base_task):
     def play_once(self):
         arm_tag = ArmTag("right")
 
-        self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.1)
+        self.grasp_actor_from_table(
+            self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.1,
+            contact_point_id=[0,2],
+        )
 
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
 

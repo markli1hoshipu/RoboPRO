@@ -17,24 +17,24 @@ class move_hamburger_onto_plate_ks(KitchenS_base_task):
         return {self.target_obj.get_name()}
 
     def load_actors(self):
+        # Plate and hamburger on the SAME arm side (pattern mirrors
+        # put_bread_on_board_ks: tight prohibit padding 0.01, separate x
+        # bands so the two samplers don't compete). Plate is NOT static —
+        # a real physics object that can shift if bumped.
+        side_sign = int(np.random.choice([-1, 1]))
+        # Hamburger on the outer half, plate closer to midline — both same side.
+        hx_range = [0.22, 0.40] if side_sign > 0 else [-0.40, -0.22]
+        px_range = [0.05, 0.18] if side_sign > 0 else [-0.18, -0.05]
+
+        # Sample hamburger first (wider outer band).
         rand_pos = self.rand_pose_on_counter(
-            xlim=[-0.45, 0.45],
+            xlim=hx_range,
             ylim=[-0.23, 0.05],
             qpos=[0.5, 0.5, 0.5, 0.5],
             rotate_rand=True,
             rotate_lim=[0, 3.14, 0],
             obj_padding=0.05,
         )
-        while abs(rand_pos.p[0]) < 0.3:
-            rand_pos = self.rand_pose_on_counter(
-                xlim=[-0.45, 0.45],
-                ylim=[-0.23, 0.05],
-                qpos=[0.5, 0.5, 0.5, 0.5],
-                rotate_rand=True,
-                rotate_lim=[0, 3.14, 0],
-                obj_padding=0.05,
-            )
-
         self.hamburger_id = int(np.random.choice([0, 1, 2]))
         self.target_obj = create_actor(
             scene=self,
@@ -44,15 +44,16 @@ class move_hamburger_onto_plate_ks(KitchenS_base_task):
             model_id=self.hamburger_id,
         )
         self.target_obj.set_mass(0.05)
+        self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
 
+        # Plate in the inner band.
         target_rand_pose = self.rand_pose_on_counter(
-            xlim=[0],
+            xlim=px_range,
             ylim=[-0.23, 0.05],
             qpos=[0.5, 0.5, 0.5, 0.5],
             rotate_rand=False,
             obj_padding=0.08,
         )
-
         self.plate_id = 0
         self.des_obj = create_actor(
             scene=self,
@@ -60,13 +61,12 @@ class move_hamburger_onto_plate_ks(KitchenS_base_task):
             modelname="003_plate",
             convex=True,
             model_id=self.plate_id,
-            is_static=True,
         )
+        self.des_obj.set_mass(0.15)
         self.add_prohibit_area(self.des_obj, padding=0.01, area="table")
-        self.add_prohibit_area(self.target_obj, padding=0.02, area="table")
 
         self.des_obj_pose = self.des_obj.get_pose().p.tolist() + [0, 0, 0, 1]
-        self.des_obj_pose[2] += 0.02
+        self.des_obj_pose[2] += 0.03
 
     def play_once(self):
         arm_tag = ArmTag("right" if self.target_obj.get_pose().p[0] > 0 else "left")

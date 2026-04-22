@@ -84,7 +84,7 @@ class drop_apple_in_bin_ks(KitchenS_base_task):
 
         self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.07)
 
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.10))
 
         self.attach_object(
             self.target_obj,

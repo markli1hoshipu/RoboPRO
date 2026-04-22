@@ -2,24 +2,21 @@ from bench_envs.kitchens._kitchens_base_task import KitchenS_base_task
 from envs.utils import *
 import sapien
 import math
+import os
 from envs._GLOBAL_CONFIGS import *
 from copy import deepcopy
 import glob
 
 
-class pick_apple_from_sink_ks(KitchenS_base_task):
+class pick_apple_from_bowl_ks(KitchenS_base_task):
 
-    # Scripted top-down grasp. The apple's labeled contacts all encode
-    # side-grasp orientations, which have no IK in the sink basin. A
-    # scripted top-down descent bypasses that.
-    # For aloha (delta_matrix=identity, gripper_bias=0.12), the quat passed
-    # to move_to_pose maps directly to the end-link orientation, and the
-    # input position IS the end-link position (the 0.12 - gripper_bias
-    # offset cancels). With this quat, link +x points in world -z.
+    # Scripted top-down grasp. 035_apple's labeled contacts all encode
+    # side-grasp orientations; inside a bowl cavity those IK solutions
+    # are narrow/infeasible. A scripted top-down descent bypasses that.
+    # For aloha: input pose maps directly to end-link (gripper_bias=0.12,
+    # delta_matrix=identity). This quat makes link +x point in world -z.
     TOP_DOWN_Q = [-0.5, 0.5, -0.5, -0.5]
-    # TCP sits 0.12 m ahead of the link along link +x. For a top-down
-    # wrist, link +x = world -z, so TCP = link_pos + [0, 0, -0.12].
-    # To place TCP at desired z, set link_z = desired_tcp_z + 0.12.
+    # TCP = link_pos + link_x * 0.12; for top-down wrist, link_z = tcp_z + 0.12.
     TCP_OFFSET = 0.12
 
     def setup_demo(self, is_test=False, **kwargs):
@@ -30,36 +27,66 @@ class pick_apple_from_sink_ks(KitchenS_base_task):
         return {self.target_obj.get_name()}
 
     def load_actors(self):
-        sink_p = self.sink.get_pose().p
-        sg = self.kitchens_info["sink_geom"]
+        bowl_pose = self.rand_pose_on_counter(
+            xlim=[-0.32, 0.32],
+            ylim=[-0.23, 0.05],
+            qpos=[0.5, 0.5, 0.5, 0.5],
+            rotate_rand=True,
+            rotate_lim=[0, np.pi / 4, 0],
+            obj_padding=0.12,
+        )
+        # Force the bowl off-center so one arm is the obvious picker.
+        while abs(bowl_pose.p[0]) < 0.3:
+            bowl_pose = self.rand_pose_on_counter(
+                xlim=[-0.32, 0.32],
+                ylim=[-0.23, 0.05],
+                qpos=[0.5, 0.5, 0.5, 0.5],
+                rotate_rand=True,
+                rotate_lim=[0, np.pi / 4, 0],
+                obj_padding=0.12,
+            )
 
-        # Apple spawn: near middle of the sink in x (tight band around
-        # sink center) and restricted to the FRONT 1/3 of the basin
-        # (closest to the robot — most IK-reachable for top-down descent).
-        bx = sink_p[0] + np.random.uniform(-sg["inner_hx"] * 0.25, sg["inner_hx"] * 0.25)
-        by = sink_p[1] + np.random.uniform(-sg["inner_hy"] * 0.9, -sg["inner_hy"] / 3)
-        bz = sink_p[2] - 0.01
-        rand_pos = sapien.Pose([bx, by, bz], [0.5, 0.5, 0.5, 0.5])
+        # 002_bowl variants 3/4/5 are the large ones (~17 cm diameter,
+        # 5–7 cm tall). Shallow rim + wide opening gives the gripper
+        # plenty of clearance around a ~6.6 cm apple.
+        self.bowl_id = int(np.random.choice([3, 4, 5]))
+        self.bowl = create_actor(
+            scene=self,
+            pose=bowl_pose,
+            modelname="002_bowl",
+            convex=True,
+            model_id=self.bowl_id,
+            is_static=True,
+        )
+        self.bowl.set_name("bowl")
+        self.add_prohibit_area(self.bowl, padding=0.02, area="table")
+
+        bp = self.bowl.get_pose().p
+        ax = bp[0] + np.random.uniform(-0.03, 0.03)
+        ay = bp[1] + np.random.uniform(-0.03, 0.03)
+        # Apple center just above the bowl rim — gravity settles it in.
+        az = bp[2] + 0.05
+        apple_pose = sapien.Pose([ax, ay, az], [0.5, 0.5, 0.5, 0.5])
 
         self.apple_id = int(np.random.choice([0, 1]))
         self.target_obj = create_actor(
             scene=self,
-            pose=rand_pos,
+            pose=apple_pose,
             modelname="035_apple",
             convex=True,
             model_id=self.apple_id,
         )
         self.target_obj.set_mass(0.05)
 
-        # Arm choice is driven by the sampled apple x.
-        self.arm_tag = ArmTag("right" if bx > 0 else "left")
-        self.lift_z = sink_p[2] + 0.25
+        self.arm_tag = ArmTag("right" if bp[0] > 0 else "left")
+        self.lift_z = bp[2] + 0.30
 
-        # Pre-compute a clear counter pose on the same arm side to place the
-        # apple after retrieving it from the sink.
+        # Counter drop pose on the SAME arm side as the bowl, but in the
+        # inner half of that side (bowl occupies |x|>=0.3, so [0.05, 0.22]
+        # is clear and reachable by the same arm).
         side_sign = 1 if self.arm_tag == "right" else -1
         target_rand_pose = self.rand_pose_on_counter(
-            xlim=[0.05 * side_sign, 0.32 * side_sign] if side_sign > 0 else [-0.32, -0.05],
+            xlim=[0.05, 0.22] if side_sign > 0 else [-0.22, -0.05],
             ylim=[-0.20, 0.00],
             qpos=[0.5, 0.5, 0.5, 0.5],
             rotate_rand=False,
@@ -71,18 +98,17 @@ class pick_apple_from_sink_ks(KitchenS_base_task):
     def play_once(self):
         arm_tag = self.arm_tag
 
-        # Table/counter cuboid must be out of the Curobo world so the wrist
-        # can dip below the rim. Sink walls are not in the Curobo world.
+        # Counter cuboid must be out of the Curobo world so the wrist can
+        # drop to apple height inside the bowl.
         self.enable_table(enable=False)
 
-        # --- scripted top-down grasp ---
         self.move(self.open_gripper(arm_tag, pos=1.0))
 
         apple_p = self.target_obj.get_pose().p
-        sink_p = self.sink.get_pose().p
+        bp = self.bowl.get_pose().p
 
-        # Hover: TCP ~8 cm above counter rim, centered over apple.
-        hover_tcp_z = float(sink_p[2]) + 0.08
+        # Hover above the bowl rim, centered over the apple.
+        hover_tcp_z = float(bp[2]) + 0.12
         hover_pose = [
             float(apple_p[0]),
             float(apple_p[1]),
@@ -90,7 +116,7 @@ class pick_apple_from_sink_ks(KitchenS_base_task):
         ] + self.TOP_DOWN_Q
         self.move(self.move_to_pose(arm_tag, hover_pose))
 
-        # Descend: TCP at apple's center (fingers straddle the apple).
+        # Descend to apple.
         grasp_tcp_z = float(apple_p[2]) + 0.005
         grasp_pose = [
             float(apple_p[0]),
@@ -99,14 +125,12 @@ class pick_apple_from_sink_ks(KitchenS_base_task):
         ] + self.TOP_DOWN_Q
         self.move(self.move_to_pose(arm_tag, grasp_pose))
 
-        # Close and lift clear of the rim.
         self.move(self.close_gripper(arm_tag, pos=0.0))
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.10))
 
         # Place on counter. place_actor recomputes pre-place from the
         # scripted top-down attach frame and fails IK; use explicit
-        # move_to_pose + open_gripper, keeping the top-down wrist
-        # (same pattern as pick_apple_from_bowl_ks).
+        # move_to_pose + open_gripper, keeping the top-down wrist.
         self.attach_object(
             self.target_obj,
             f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/035_apple/collision/base{self.apple_id}.glb",
@@ -124,12 +148,10 @@ class pick_apple_from_sink_ks(KitchenS_base_task):
     def check_success(self):
         tp = self.target_obj.get_pose().p
         table_top_z = self.kitchens_info["table_height"] + self.table_z_bias
-        sink_p = self.sink.get_pose().p
-        sg = self.kitchens_info["sink_geom"]
+        bp = self.bowl.get_pose().p
         on_counter_z = abs(tp[2] - table_top_z) < 0.08
-        outside_sink = (abs(tp[0] - sink_p[0]) > sg["hole_hx"]
-                        or abs(tp[1] - sink_p[1]) > sg["hole_hy"])
+        outside_bowl = (abs(tp[0] - bp[0]) > 0.12 or abs(tp[1] - bp[1]) > 0.12)
         return (on_counter_z
-                and outside_sink
+                and outside_bowl
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
