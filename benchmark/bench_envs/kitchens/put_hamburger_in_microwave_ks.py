@@ -2,6 +2,8 @@ from bench_envs.kitchens._kitchens_base_task import KitchenS_base_task
 from envs.utils import *
 import sapien
 import math
+import os
+import transforms3d as t3d
 from envs._GLOBAL_CONFIGS import *
 from copy import deepcopy
 import glob
@@ -60,6 +62,19 @@ class put_hamburger_in_microwave_ks(KitchenS_base_task):
         mw_y = float(mw_p[1])
         mw_z = float(mw_p[2])
 
+        # ---- PROBE: microwave geometry ----
+        try:
+            from bench_envs.utils.scene_gen_utils import get_actor_boundingbox_urdf
+            bb = get_actor_boundingbox_urdf(self.microwave)
+            print(f"[MW_PROBE] pose=({mw_x:.3f},{mw_y:.3f},{mw_z:.3f}) bb_min={bb[0]} bb_max={bb[1]}")
+        except Exception as e:
+            print(f"[MW_PROBE] bb query failed: {e}")
+        try:
+            table_top_z = self.kitchens_info["table_height"] + self.table_z_bias
+            print(f"[MW_PROBE] table_top_z={table_top_z:.3f}  mw_z_rel_table={mw_z - table_top_z:.3f}")
+        except Exception as e:
+            print(f"[MW_PROBE] table z query failed: {e}")
+
         # Grasp with the same-side arm (guaranteed by spawn band).
         arm_tag = ArmTag("right" if mw_x > 0 else "left")
 
@@ -91,60 +106,38 @@ class put_hamburger_in_microwave_ks(KitchenS_base_task):
         self.update_world()
 
         # -------------------------------------------------------------
-        # 3) Move the gripper horizontally toward the microwave in small
-        #    world-frame +y steps. This is friendlier to IK than jumping
-        #    to a far-away hover pose in one shot. Between steps, we also
-        #    sweep x toward mw_x so the final insertion is centered.
+        # 3) Reorient wrist to forward-facing tilted-down (INIT_Q rotated
+        #    -20° about world +x), same orientation proven in
+        #    pick_hamburger_from_microwave_ks.py. The microwave mouth
+        #    faces world -y (toward the robot), so we approach from -y.
         # -------------------------------------------------------------
-        if arm_tag == "left":
-            cur_ee = np.asarray(self.robot.get_left_ee_pose(), dtype=np.float64)
-        else:
-            cur_ee = np.asarray(self.robot.get_right_ee_pose(), dtype=np.float64)
-        cur_x, cur_y, cur_z = float(cur_ee[0]), float(cur_ee[1]), float(cur_ee[2])
+        base_q = np.array([0.707, 0.0, 0.0, 0.707])
+        tilt_rad = -math.pi / 9
+        tilt_q = np.array([math.cos(tilt_rad / 2), math.sin(tilt_rad / 2), 0.0, 0.0])
+        grasp_q = list(t3d.quaternions.qmult(tilt_q, base_q))
 
-        # Target wrist xy: centered in x on the microwave, y just at/in
-        # front of the mouth plane, z at current lift height. We
-        # intentionally keep z low (near the counter top + 0.15) since
-        # the microwave interior floor is right there and the task's
-        # success check covers the whole mw bounding volume.
-        target_wrist_x = mw_x
-        target_wrist_y = mw_y      # microwave center line
-        target_wrist_z = cur_z     # keep current post-lift height
-        quat = cur_ee[3:].tolist()
-
-        # Interpolate in N small steps; each is a fresh IK solve, so if a
-        # pose is unreachable the sequence gracefully stops early.
-        n_steps = 4
-        for i in range(1, n_steps + 1):
-            alpha = i / n_steps
-            wp = [
-                cur_x + (target_wrist_x - cur_x) * alpha,
-                cur_y + (target_wrist_y - cur_y) * alpha,
-                cur_z + (target_wrist_z - cur_z) * alpha,
-            ] + quat
-            self.move(self.move_to_pose(arm_tag, wp))
-            if not self.plan_success:
-                # Recover and stop stepping.
-                self.plan_success = True
-                break
-
-        # -------------------------------------------------------------
-        # 4) Final push: small world-frame displacement in +y to nudge
-        #    the hamburger just past the mouth plane. If this fails we
-        #    settle for whatever position was reached.
-        # -------------------------------------------------------------
-        self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.05))
+        # Hover outside the mouth on the robot side, at cavity height.
+        hover_pose = [mw_x, mw_y - 0.25, mw_z + 0.17] + grasp_q
+        self.move(self.move_to_pose(arm_tag, hover_pose))
         if not self.plan_success:
             self.plan_success = True
 
         # -------------------------------------------------------------
-        # 5) Release the hamburger and retreat.
+        # 4) Insert: push the hamburger into the cavity (forward in +y).
+        # -------------------------------------------------------------
+        insert_pose = [mw_x, mw_y - 0.08, mw_z] + grasp_q
+        self.move(self.move_to_pose(arm_tag, insert_pose))
+        if not self.plan_success:
+            self.plan_success = True
+
+        # -------------------------------------------------------------
+        # 5) Release the hamburger and retreat out of the mouth.
         # -------------------------------------------------------------
         self.move(self.open_gripper(arm_tag, pos=1.0))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.10))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.18))
         if not self.plan_success:
             self.plan_success = True
-        self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.12))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.10))
 
     def check_success(self):
         tp = self.target_obj.get_pose().p

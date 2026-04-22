@@ -2,7 +2,9 @@ from bench_envs.kitchens._kitchens_base_task import KitchenS_base_task
 from envs.utils import *
 import sapien
 import math
+import os
 import numpy as np
+import transforms3d as t3d
 from envs._GLOBAL_CONFIGS import *
 from copy import deepcopy
 import glob
@@ -57,8 +59,8 @@ class pick_hamburger_from_microwave_ks(KitchenS_base_task):
         # to reach deep into the cavity (poor IK inside the enclosure).
         self.hamburger_id = int(np.random.choice([0, 1, 2]))
         spawn_x = mw_x + float(np.random.uniform(-0.02, 0.02))
-        spawn_y = mw_y + float(np.random.uniform(0.08, 0.12))
-        spawn_z = mw_z + 0.01  # just above the microwave floor surface
+        spawn_y = mw_y + float(np.random.uniform(0.0, 0.05))
+        spawn_z = mw_z - 0.02
 
         hpose = sapien.Pose(
             [spawn_x, spawn_y, spawn_z],
@@ -90,58 +92,53 @@ class pick_hamburger_from_microwave_ks(KitchenS_base_task):
 
     def play_once(self):
         arm_tag = self.arm_tag
-        mw_p = self.microwave.get_pose().p
-        mw_y = float(mw_p[1])
-        mw_z = float(mw_p[2])
 
         # Pop the microwave from the Curobo collision world so the arm can
-        # plan into the mouth to reach the hamburger. The arm is small
-        # relative to the cavity at 1.5× scale, so no real collision risk
-        # given the jittered spawn sits just inside the mouth plane.
+        # plan into the mouth; table disabled so the wrist can dip low.
         self._disable_microwave_obstacle()
+        self.enable_table(enable=False)
+        self.move(self.open_gripper(arm_tag, pos=1.0))
 
-        # Use the base-class helper, which also disables the table during
-        # the grasp — already validated by move_hamburger_onto_plate_ks
-        # (100/100) and put_hamburger_in_microwave_ks.
-        self.grasp_actor_from_table(
-            self.target_obj,
-            arm_tag=arm_tag,
-            pre_grasp_dis=0.06,
-        )
+        # Forward-facing wrist (INIT_Q = 90° about z → TCP points world +y,
+        # i.e. into the microwave from the robot side) tilted a bit down so
+        # the TCP dives into the cavity. Top-down/side grasps have no IK
+        # inside this enclosure.
+        base_q = np.array([0.707, 0.0, 0.0, 0.707])
+        # Rotate -20° about world +x: TCP direction (world +y) → toward -z.
+        tilt_rad = -math.pi / 9
+        tilt_q = np.array([math.cos(tilt_rad / 2), math.sin(tilt_rad / 2), 0.0, 0.0])
+        grasp_q = list(t3d.quaternions.qmult(tilt_q, base_q))
 
-        if not self.plan_success:
-            return
+        h_p = self.target_obj.get_pose().p
+        hx, hy, hz = float(h_p[0]), float(h_p[1]), float(h_p[2])
 
-        # Attach the hamburger for Curobo so the retreat plan accounts
-        # for it being held.
+        # Hover in front of the mouth (robot side), level with hamburger.
+        hover_pose = [hx, hy - 0.15, hz + 0.04] + grasp_q
+        self.move(self.move_to_pose(arm_tag, hover_pose))
+
+        # Dive into cavity and close onto hamburger.
+        grasp_pose = [hx, hy, hz + 0.01] + grasp_q
+        self.move(self.move_to_pose(arm_tag, grasp_pose))
+        self.move(self.close_gripper(arm_tag, pos=0.0))
+
         self.attach_object(
             self.target_obj,
             f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/006_hamburg/collision/base{self.hamburger_id}.glb",
             str(arm_tag),
         )
 
-        # Lift slightly first to clear the microwave floor, then retreat
-        # in +y (mouth direction → toward the robot) to clear the
-        # microwave interior, then raise up above the counter.
-        # Splitting the motion keeps Curobo from having to solve a long
-        # diagonal path from inside the enclosure.
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.05))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, y=0.20))
-
-        # Safe to re-enable table now that we have left the microwave.
+        # Retreat toward the robot (-y), then lift clear of the mouth.
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.20))
         self.enable_table(enable=True)
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.10))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
 
-        # Place on counter.
-        self.move(
-            self.place_actor(
-                self.target_obj,
-                arm_tag=arm_tag,
-                target_pose=self.des_obj_pose,
-                constrain="free",
-                pre_dis=0.07,
-                dis=0.005,
-            ))
+        # Place on counter with the same wrist orientation.
+        tgt_x, tgt_y, tgt_z = self.des_obj_pose[:3]
+        hover_drop = [tgt_x, tgt_y, tgt_z + 0.20] + grasp_q
+        self.move(self.move_to_pose(arm_tag, hover_drop))
+        drop_pose = [tgt_x, tgt_y, tgt_z + 0.06] + grasp_q
+        self.move(self.move_to_pose(arm_tag, drop_pose))
+        self.move(self.open_gripper(arm_tag, pos=1.0))
 
     def check_success(self):
         tp = self.target_obj.get_pose().p
@@ -149,7 +146,8 @@ class pick_hamburger_from_microwave_ks(KitchenS_base_task):
         mw_y = float(mw_p[1])
         table_top_z = self.kitchens_info["table_height"] + self.table_z_bias
         on_counter_z = abs(tp[2] - table_top_z) < 0.08
-        outside_mw = tp[1] > mw_y + 0.18
+        # Robot side of microwave = -y; "outside" for this task = past mouth plane.
+        outside_mw = tp[1] < mw_y - 0.18
         return (on_counter_z
                 and outside_mw
                 and self.robot.is_left_gripper_open()
