@@ -27,6 +27,18 @@ class close_microwave_ks(KitchenS_base_task):
         # Grasp the door handle
         self.move(self.grasp_actor(self.microwave, arm_tag=arm_tag, pre_grasp_dis=0.08, contact_point_id=0))
 
+        # Random pre-close waypoints (mirrors put_can_close_cabinet's sweep
+        # of intermediate moves before the commit) — gives the planner a
+        # varied approach and the policy non-trivial pre-commit trajectory.
+        for _ in range(3):
+            dx = float(np.random.uniform(-0.03, 0.03))
+            dy = float(np.random.uniform(-0.02, 0.02))
+            dz = float(np.random.uniform(-0.02, 0.03))
+            self.move(self.move_by_displacement(arm_tag=arm_tag, x=dx, y=dy, z=dz))
+            if not self.plan_success:
+                self.plan_success = True  # don't abort; these are exploratory
+                break
+
         limits = self.microwave.get_qlimits()
         start_qpos = self.microwave.get_qpos()[0]
 

@@ -58,22 +58,23 @@ class put_bowl_in_sink_ks(KitchenS_base_task):
         )
         self.enable_table(enable=True)
 
+        # place_actor(constrain="free") offsets pre_dis along bowl's LOCAL
+        # approach axis — for a side-grasped bowl that tilts into the sink
+        # walls and trips INVALID_PARTIAL_POSE_COST_METRIC. Use the working
+        # dishrack recipe: two-stage move_to_pose with INIT_Q (front-facing
+        # home quat, IK-reachable from side-grasp config) then open gripper.
+        INIT_Q = [0.707, 0, 0, 0.707]
         sink_p = self.sink.get_pose().p
-        sink_target = [
-            float(sink_p[0]) - 0.05,
-            float(sink_p[1]),
-            float(sink_p[2]) + 0.06,
-            0, 0, 0, 1,
-        ]
-        self.move(
-            self.place_actor(
-                self.target_obj,
-                arm_tag=arm_tag,
-                target_pose=sink_target,
-                constrain="free",
-                pre_dis=0.07,
-                dis=0.005,
-            ))
+        sg = self.kitchens_info["sink_geom"]
+        # Drop toward the outer (robot-side) half of the sink basin.
+        # Robot is at y<0, so "closer to robot" = negative y offset.
+        drop_x = float(sink_p[0]) + 0.02
+        drop_y = float(sink_p[1]) - 1.15 * sg["hole_hy"]
+        hover_pose = [drop_x, drop_y, float(sink_p[2]) + 0.25] + INIT_Q
+        self.move(self.move_to_pose(arm_tag, hover_pose))
+        drop_pose = [drop_x, drop_y, float(sink_p[2]) + 0.10] + INIT_Q
+        self.move(self.move_to_pose(arm_tag, drop_pose))
+        self.move(self.open_gripper(arm_tag, pos=1.0))
 
     def check_success(self):
         sink_p = self.sink.get_pose().p

@@ -76,6 +76,18 @@ class pick_hamburger_from_microwave_ks(KitchenS_base_task):
         # Pick the arm on the microwave's side. mw at x=-0.32 → left arm.
         self.arm_tag = ArmTag("right" if mw_x > 0 else "left")
 
+        # Counter drop pose on the opposite half from the microwave.
+        side_sign = 1 if self.arm_tag == "right" else -1
+        target_rand_pose = self.rand_pose_on_counter(
+            xlim=[0.05, 0.25] if side_sign > 0 else [-0.25, -0.05],
+            ylim=[-0.20, 0.00],
+            qpos=[0.5, 0.5, 0.5, 0.5],
+            rotate_rand=False,
+            obj_padding=0.05,
+        )
+        self.des_obj_pose = target_rand_pose.p.tolist() + [0, 0, 0, 1]
+        self.des_obj_pose[2] += 0.04
+
     def play_once(self):
         arm_tag = self.arm_tag
         mw_p = self.microwave.get_pose().p
@@ -120,21 +132,25 @@ class pick_hamburger_from_microwave_ks(KitchenS_base_task):
         self.enable_table(enable=True)
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.10))
 
+        # Place on counter.
+        self.move(
+            self.place_actor(
+                self.target_obj,
+                arm_tag=arm_tag,
+                target_pose=self.des_obj_pose,
+                constrain="free",
+                pre_dis=0.07,
+                dis=0.005,
+            ))
+
     def check_success(self):
         tp = self.target_obj.get_pose().p
         mw_p = self.microwave.get_pose().p
         mw_y = float(mw_p[1])
         table_top_z = self.kitchens_info["table_height"] + self.table_z_bias
-        gripper_closed = (
-            (not self.robot.is_left_gripper_open())
-            if self.arm_tag == "left"
-            else (not self.robot.is_right_gripper_open())
-        )
-        # Success: hamburger lifted above the counter, gripper still
-        # holding it, and the hamburger has been drawn past the mouth
-        # plane (mw_y + 0.18) out of the interior in +y.
-        return (
-            tp[2] > table_top_z + 0.08
-            and gripper_closed
-            and tp[1] > mw_y + 0.18
-        )
+        on_counter_z = abs(tp[2] - table_top_z) < 0.08
+        outside_mw = tp[1] > mw_y + 0.18
+        return (on_counter_z
+                and outside_mw
+                and self.robot.is_left_gripper_open()
+                and self.robot.is_right_gripper_open())
