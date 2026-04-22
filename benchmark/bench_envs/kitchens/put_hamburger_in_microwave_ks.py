@@ -73,7 +73,7 @@ class put_hamburger_in_microwave_ks(KitchenS_base_task):
             return
 
         # Lift clear of the counter.
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.10))
 
         self.attach_object(
             self.target_obj,
@@ -132,7 +132,7 @@ class put_hamburger_in_microwave_ks(KitchenS_base_task):
         self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.20))
         if not self.plan_success:
             self.plan_success = True
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.10))
 
     def check_success(self):
         tp = self.target_obj.get_pose().p

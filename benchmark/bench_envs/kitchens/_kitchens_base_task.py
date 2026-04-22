@@ -612,7 +612,7 @@ class KitchenS_base_task(Bench_base_task):
         # Geometry scales uniformly, so the base-below-root offset scales too.
         mw_scale_mult = 1.5
         mw_scale = 0.15 * mw_scale_mult
-        z = table_height + 0.01 * mw_scale_mult
+        z = table_height + 0.02 * mw_scale_mult
 
         quat = euler2quat(0, 0, np.pi / 2, axes='sxyz')
         pose = sapien.Pose([x, y, z], [quat[0], quat[1], quat[2], quat[3]])

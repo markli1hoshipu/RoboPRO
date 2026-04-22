@@ -60,7 +60,7 @@ class put_spoon_in_dishrack_ks(KitchenS_base_task):
         arm_tag = self.arm_tag
 
         self.grasp_actor_from_table(self.target_obj, arm_tag=arm_tag, pre_grasp_dis=0.10)
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.20))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.10))
         self.attach_object(
             self.target_obj,
             f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/134_spoon/collision/base{self.spoon_id}.glb",

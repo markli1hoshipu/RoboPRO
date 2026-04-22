@@ -81,7 +81,7 @@ class put_plate_in_sink_ks(KitchenS_base_task):
 
         self.move(self.close_gripper(arm_tag, pos=0.0))
 
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.25))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.10))
 
         self.attach_object(
             self.target_obj,

@@ -132,11 +132,7 @@ class pick_hamburger_from_microwave_ks(KitchenS_base_task):
             f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/006_hamburg/collision/base{self.hamburger_id}.glb",
             str(arm_tag),
         )
-
-        # Retreat toward the robot (-y), then lift clear of the mouth.
-        self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.20))
-        self.enable_table(enable=True)
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.10))
 
         # Place on counter with the same wrist orientation.
         tgt_x, tgt_y, tgt_z = self.des_obj_pose[:3]

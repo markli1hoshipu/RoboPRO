@@ -126,7 +126,7 @@ class pick_apple_from_bowl_ks(KitchenS_base_task):
         self.move(self.move_to_pose(arm_tag, grasp_pose))
 
         self.move(self.close_gripper(arm_tag, pos=0.0))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.25))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.10))
 
         # Place on counter. place_actor recomputes pre-place from the
         # scripted top-down attach frame and fails IK; use explicit
