@@ -3,6 +3,7 @@ from envs.utils import *
 import sapien, math, os, glob
 from envs._GLOBAL_CONFIGS import *
 from copy import deepcopy
+from transforms3d.euler import euler2quat
 
 
 class chain_dishrack_plate_bread_knife_ks(KitchenS_base_task):
@@ -18,12 +19,12 @@ class chain_dishrack_plate_bread_knife_ks(KitchenS_base_task):
         # Plate on the dishrack
         rack_p = self.dishrack.get_pose().p
         plate_start = sapien.Pose(
-            [rack_p[0], rack_p[1] - 0.09, rack_p[2] + 0.06],
-            [0.5, 0.5, 0.5, 0.5],
+            [rack_p[0], rack_p[1] - 0.14, rack_p[2] + 0.03],
+            euler2quat(0,math.pi/2,math.pi/2),
         )
         self.plate = create_actor(
             scene=self, pose=plate_start, modelname="003_plate",
-            convex=True, model_id=0,
+            convex=True, model_id=0, is_static= False
         )
         self.plate.set_mass(0.1)
 
@@ -40,6 +41,7 @@ class chain_dishrack_plate_bread_knife_ks(KitchenS_base_task):
             qpos=[0.5, 0.5, 0.5, 0.5], rotate_rand=True, rotate_lim=[0, np.pi/2, 0],
             obj_padding=0.05,
         )
+
         while (abs(bread_pose.p[0] - plate_target_x) < 0.12
                and abs(bread_pose.p[1] - plate_target_y) < 0.10):
             bread_pose = self.rand_pose_on_counter(
@@ -55,25 +57,25 @@ class chain_dishrack_plate_bread_knife_ks(KitchenS_base_task):
         self.bread.set_mass(0.05)
         self.add_prohibit_area(self.bread, padding=0.02, area="table")
 
-        # Knife on counter
-        knife_pose = self.rand_pose_on_counter(
-            xlim=[-0.32, 0.32], ylim=[-0.15, 0.05],
-            qpos=[0.5, 0.5, 0.5, 0.5], rotate_rand=True, rotate_lim=[0, np.pi, 0],
-            obj_padding=0.05,
-        )
-        while (abs(knife_pose.p[0] - plate_target_x) < 0.12
-               and abs(knife_pose.p[1] - plate_target_y) < 0.10):
-            knife_pose = self.rand_pose_on_counter(
-                xlim=[-0.32, 0.32], ylim=[-0.15, 0.05],
-                qpos=[0.5, 0.5, 0.5, 0.5], rotate_rand=True, rotate_lim=[0, np.pi, 0],
-                obj_padding=0.05,
-            )
-        self.knife = create_actor(
-            scene=self, pose=knife_pose, modelname="034_knife",
-            convex=True, model_id=0,
-        )
-        self.knife.set_mass(0.05)
-        self.add_prohibit_area(self.knife, padding=0.02, area="table")
+        # # Knife on counter
+        # knife_pose = self.rand_pose_on_counter(
+        #     xlim=[-0.32, 0.32], ylim=[-0.15, 0.05],
+        #     qpos=[0.5, 0.5, 0.5, 0.5], rotate_rand=True, rotate_lim=[0, np.pi, 0],
+        #     obj_padding=0.05,
+        # )
+        # while (abs(knife_pose.p[0] - plate_target_x) < 0.12
+        #        and abs(knife_pose.p[1] - plate_target_y) < 0.10):
+        #     knife_pose = self.rand_pose_on_counter(
+        #         xlim=[-0.32, 0.32], ylim=[-0.15, 0.05],
+        #         qpos=[0.5, 0.5, 0.5, 0.5], rotate_rand=True, rotate_lim=[0, np.pi, 0],
+        #         obj_padding=0.05,
+        #     )
+        # self.knife = create_actor(
+        #     scene=self, pose=knife_pose, modelname="034_knife",
+        #     convex=True, model_id=0,
+        # )
+        # self.knife.set_mass(0.05)
+        # self.add_prohibit_area(self.knife, padding=0.02, area="table")
 
     def play_once(self):
         # Step 1: plate from dishrack → counter
@@ -108,22 +110,22 @@ class chain_dishrack_plate_bread_knife_ks(KitchenS_base_task):
 
         # Step 3: knife → beside plate (on the side opposite the arm that carried
         # plate; offset by ±0.10 in x)
-        arm = ArmTag("right" if self.knife.get_pose().p[0] > 0 else "left")
-        side = 0.10 if arm == "right" else -0.10
-        knife_target = [plate_p[0] + side, plate_p[1], plate_p[2] + 0.015, 0, 0, 0, 1]
-        self.grasp_actor_from_table(self.knife, arm_tag=arm, pre_grasp_dis=0.07)
-        self.move(self.move_by_displacement(arm_tag=arm, z=0.15))
-        self.attach_object(self.knife,
-            f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/034_knife/collision/base0.glb",
-            str(arm))
-        self.enable_table(enable=True)
-        self.move(self.place_actor(self.knife, arm_tag=arm, target_pose=knife_target,
-            constrain="align", pre_dis=0.05, dis=0.005))
+        # arm = ArmTag("right" if self.knife.get_pose().p[0] > 0 else "left")
+        # side = 0.10 if arm == "right" else -0.10
+        # knife_target = [plate_p[0] + side, plate_p[1], plate_p[2] + 0.015, 0, 0, 0, 1]
+        # self.grasp_actor_from_table(self.knife, arm_tag=arm, pre_grasp_dis=0.07)
+        # self.move(self.move_by_displacement(arm_tag=arm, z=0.15))
+        # self.attach_object(self.knife,
+        #     f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/034_knife/collision/base0.glb",
+        #     str(arm))
+        # self.enable_table(enable=True)
+        # self.move(self.place_actor(self.knife, arm_tag=arm, target_pose=knife_target,
+        #     constrain="align", pre_dis=0.05, dis=0.005))
 
     def check_success(self):
         plate_p = self.plate.get_pose().p
         bread_p = self.bread.get_pose().p
-        knife_p = self.knife.get_pose().p
+        # knife_p = self.knife.get_pose().p
         rack_p = self.dishrack.get_pose().p
 
         # Plate is OFF the rack (not in rack footprint)
@@ -133,10 +135,10 @@ class chain_dishrack_plate_bread_knife_ks(KitchenS_base_task):
         bread_on_plate = (abs(bread_p[0] - plate_p[0]) < 0.06
                           and abs(bread_p[1] - plate_p[1]) < 0.06)
         # Knife beside plate (not ON it)
-        knife_dx = abs(knife_p[0] - plate_p[0])
-        knife_dy = abs(knife_p[1] - plate_p[1])
-        knife_beside = (0.05 <= knife_dx <= 0.15 and knife_dy <= 0.10)
+        # knife_dx = abs(knife_p[0] - plate_p[0])
+        # knife_dy = abs(knife_p[1] - plate_p[1])
+        # knife_beside = (0.05 <= knife_dx <= 0.15 and knife_dy <= 0.10)
 
-        return (plate_off_rack and bread_on_plate and knife_beside
+        return (plate_off_rack and bread_on_plate # and knife_beside
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())

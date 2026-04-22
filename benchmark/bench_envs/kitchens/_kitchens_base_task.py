@@ -47,11 +47,17 @@ class KitchenS_base_task(Bench_base_task):
     def _init_task_env_(self, table_xy_bias=[0, 0], table_height_bias=0, **kwags):
         super().__init__()
         ta.setup_logging("CRITICAL")
-        np.random.seed(kwags.get("seed", 0))
-        torch.manual_seed(kwags.get("seed", 0))
+        
         self.seed = kwags.get("seed", 0)
+
+        np.random.seed(self.seed)
+        torch.manual_seed(self.seed)
+        random.seed(self.seed)
         print_c(f"#### Seed value {self.seed} ####", "YELLOW")
 
+        self.scene_id = kwags.get("scene_id") if kwags.get("scene_id") is not None else np.random.randint(0, 3)
+        print_c(f"KitchenS scene {self.scene_id} selected", "YELLOW")
+        
         self.FRAME_IDX = 0
         self.task_name = kwags.get("task_name")
         self.save_dir = kwags.get("save_path", "data")
@@ -110,8 +116,7 @@ class KitchenS_base_task(Bench_base_task):
         self.eval_success = False
         self.table_z_bias = 0
 
-        self.scene_id = kwags.get("scene_id") if kwags.get("scene_id") is not None else np.random.randint(0, 3)
-        print_c(f"KitchenS scene {self.scene_id} selected", "YELLOW")
+
 
         self.kitchens_info = {
             "table_height": 0.74,

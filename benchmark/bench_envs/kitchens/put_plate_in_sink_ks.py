@@ -57,7 +57,7 @@ class put_plate_in_sink_ks(KitchenS_base_task):
 
     def play_once(self):
         arm_tag = self.arm_tag
-        side_sign = 1 if arm_tag == "right" else -1
+        side_sign = 1 if arm_tag == "left" else -1
 
         # Counter cuboid must be out of the Curobo world so the wrist can
         # dip below rim z when placing plate into the sink basin.

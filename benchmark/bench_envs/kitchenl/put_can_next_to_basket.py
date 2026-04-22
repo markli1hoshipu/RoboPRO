@@ -29,14 +29,15 @@ class put_can_next_to_basket(Kitchen_base_large):
     RETREAT_DELTA = dict(y=-0.07, z=0.02)
     GRASP_PRE_DIS = 0.07
     GRASP_DIS = 0.01
-    GRASP_CLOSE_POS = 0.0
+    GRASP_CLOSE_POS = 0.0,
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.can_modelname = "071_can"
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
         self.can_model_ids = task_objs["objects"]["kitchenl"]["targets"][self.can_modelname]
-        kwargs["scene_id"] = np.random.choice([0,1])
+        np.random.seed(kwargs.get("seed", 0))
+        kwargs["scene_id"] = 0 #np.random.choice([0,1])
         kwargs["include_collision"] = True
         self.can_box_spawn_rot_deg = [0.45, 0.0, 90.0]
         kwargs["jitter_basket"] = False
@@ -48,9 +49,9 @@ class put_can_next_to_basket(Kitchen_base_large):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
         if self.scene_id == 0:
-            xlim = [-0.15, 0]
+            xlim = [-0.1, 0]
         else:
-            xlim = [-0.45, -0.20]
+            xlim = [-0.45, -0.35]
         self.can, self.can_model_id, self.target_pose = \
         place_actor(self.can_modelname, self, col_thr=0.15, xlim=xlim, ylim=[-0.05], 
                     qpos=(90,0,0), object_bounds={}, task_objs=task_objs,
@@ -58,16 +59,19 @@ class put_can_next_to_basket(Kitchen_base_large):
 
         self.add_prohibit_area(self.can, padding=0.04, area="table")
         bb_box = get_actor_boundingbox(self.basket_right.actor)      
+        x_place = bb_box[0][0] + np.random.uniform(low=-0.02, high=0.02)
+
         if self.scene_id == 0:
             y_place = np.random.uniform(low=bb_box[0][1]-0.1, high=bb_box[0][1]-0.05)
         else:
-            y_place = np.random.uniform(low=bb_box[0][1]-0.15, high=bb_box[0][1]-0.1)
+            y_place = np.random.uniform(low=bb_box[0][1]-0.1, high=bb_box[0][1]-0.05)
+            # x_place = bb_box[0][0] + np.random.uniform(low=-0.02, high=0.02)
 
     
-        self.des_obj_pose = [np.random.uniform(low=bb_box[0][0]+0.02, high=bb_box[1][0]),
-             y_place, 0.75] + [1,0,0,0]
+        # dest_x = min(0, self.basket_right.get_pose().p[0] + np.random.uniform(low=-0.02, high=0.02))
+        self.des_obj_pose = [x_place, y_place, 0.74] + [1,0,0,0]
         
-        self.add_prohibit_area(self.des_obj_pose, padding=0.0, area="table")
+        self.add_prohibit_area(self.des_obj_pose, padding=0.03, area="table")
 
         print_c(f"Placement destination pose {self.des_obj_pose}", "RED")
         
@@ -85,15 +89,19 @@ class put_can_next_to_basket(Kitchen_base_large):
             )
         )
         self.attach_object(self.can, f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{self.can_modelname}/collision/base{self.can_model_id}.glb", str(arm_tag))
-
+        lift = 0.15
+        if self.scene == 0:
+            self.move(self.move_by_displacement(arm_tag, z = lift, y= -lift, x= lift))
+        else:
+            self.move(self.move_by_displacement(arm_tag, z = lift, y= -lift, x = -lift))
         self.move(
             self.place_actor(
                 self.can,
                 arm_tag=arm_tag,
                 target_pose= self.des_obj_pose,
                 constrain= "auto",
-                pre_dis=0.01,
-                dis=0.002,
+                pre_dis=0.02,
+                dis=0.003,
             ))
         self.move(self.move_by_displacement(arm_tag, z = 0.04))
         self.info["info"] = {
