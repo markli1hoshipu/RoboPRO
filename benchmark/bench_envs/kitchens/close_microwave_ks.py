@@ -2,6 +2,7 @@ from bench_envs.kitchens._kitchens_base_task import KitchenS_base_task
 from envs.utils import *
 import sapien
 import math
+import transforms3d as t3d
 from envs._GLOBAL_CONFIGS import *
 from copy import deepcopy
 import glob
@@ -24,12 +25,22 @@ class close_microwave_ks(KitchenS_base_task):
     def play_once(self):
         arm_tag = ArmTag("left")
 
-        # Grasp the door handle
-        self.move(self.grasp_actor(self.microwave, arm_tag=arm_tag, pre_grasp_dis=0.08, contact_point_id=0))
+        # Same tilted forward-facing wrist as pick/put_hamburger_in_microwave:
+        # INIT_Q (90° about z, TCP toward world +y) rotated -20° about world +x,
+        # so the TCP points into the microwave with a slight downward tilt.
+        base_q = np.array([0.707, 0.0, 0.0, 0.707])
+        tilt_rad = -math.pi / 4
+        tilt_q = np.array([math.cos(tilt_rad / 2), math.sin(tilt_rad / 2), 0.0, 0.0])
+        grasp_q = list(t3d.quaternions.qmult(tilt_q, base_q))
+        cp_mat = self.microwave.get_contact_point(0, "matrix")
+        hx, hy, hz = float(cp_mat[0, 3]), float(cp_mat[1, 3]), float(cp_mat[2, 3])
 
-        # Random pre-close waypoints (mirrors put_can_close_cabinet's sweep
-        # of intermediate moves before the commit) — gives the planner a
-        # varied approach and the policy non-trivial pre-commit trajectory.
+        # Close the gripper up front — we don't need to grasp the handle,
+        # we just push against it with a closed fist.
+        self.move(self.close_gripper(arm_tag, pos=0.0))
+
+        # Random pre-approach jitter (before hover) — diversify the
+        # trajectory out of INIT_Q before committing to the approach.
         for _ in range(3):
             dx = float(np.random.uniform(-0.03, 0.03))
             dy = float(np.random.uniform(-0.02, 0.02))
@@ -39,14 +50,20 @@ class close_microwave_ks(KitchenS_base_task):
                 self.plan_success = True  # don't abort; these are exploratory
                 break
 
+        # Hover a bit left of and in front of the handle (robot side = -y)
+        # so the straight-line descent to the handle doesn't graze the door.
+        hover_pose = [hx - 0.10, hy - 0.15, hz + 0.10] + grasp_q
+        self.move(self.move_to_pose(arm_tag, hover_pose))
+
+        push_pose = [hx - 0.10, hy - 0.15, hz ] + grasp_q
+        self.move(self.move_to_pose(arm_tag, push_pose))
+
         limits = self.microwave.get_qlimits()
         start_qpos = self.microwave.get_qpos()[0]
 
-        # Push the handle toward the microwave body to close the door.
-        # The exact direction depends on hinge orientation; +x pushes the
-        # handle inward when the microwave opens to the left in world frame.
-        for _ in range(15):
-            self.move(self.move_by_displacement(arm_tag=arm_tag, x=0.02))
+        # Push the handle diagonally toward the microwave body to close it.
+        for _ in range(3):
+            self.move(self.move_by_displacement(arm_tag=arm_tag, x=0.10, y=0.00))
 
             new_qpos = self.microwave.get_qpos()[0]
             if not self.plan_success:
@@ -57,6 +74,22 @@ class close_microwave_ks(KitchenS_base_task):
             if abs(new_qpos - start_qpos) <= 0.001 and _ > 2:
                 break
             start_qpos = new_qpos
+        # Push the handle diagonally toward the microwave body to close it.
+        for _ in range(3):
+            self.move(self.move_by_displacement(arm_tag=arm_tag, x=0.00, y=0.10, z=-0.01))
+
+            new_qpos = self.microwave.get_qpos()[0]
+            if not self.plan_success:
+                break
+            if self.check_success(target=0.1):
+                break
+            # If nothing is happening, bail out early.
+            if abs(new_qpos - start_qpos) <= 0.001 and _ > 2:
+                break
+            start_qpos = new_qpos
+
+
+
 
     def check_success(self, target=0.1):
         limits = self.microwave.get_qlimits()
