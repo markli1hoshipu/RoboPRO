@@ -62,19 +62,6 @@ class put_hamburger_in_microwave_ks(KitchenS_base_task):
         mw_y = float(mw_p[1])
         mw_z = float(mw_p[2])
 
-        # ---- PROBE: microwave geometry ----
-        try:
-            from bench_envs.utils.scene_gen_utils import get_actor_boundingbox_urdf
-            bb = get_actor_boundingbox_urdf(self.microwave)
-            print(f"[MW_PROBE] pose=({mw_x:.3f},{mw_y:.3f},{mw_z:.3f}) bb_min={bb[0]} bb_max={bb[1]}")
-        except Exception as e:
-            print(f"[MW_PROBE] bb query failed: {e}")
-        try:
-            table_top_z = self.kitchens_info["table_height"] + self.table_z_bias
-            print(f"[MW_PROBE] table_top_z={table_top_z:.3f}  mw_z_rel_table={mw_z - table_top_z:.3f}")
-        except Exception as e:
-            print(f"[MW_PROBE] table z query failed: {e}")
-
         # Grasp with the same-side arm (guaranteed by spawn band).
         arm_tag = ArmTag("right" if mw_x > 0 else "left")
 
@@ -116,16 +103,24 @@ class put_hamburger_in_microwave_ks(KitchenS_base_task):
         tilt_q = np.array([math.cos(tilt_rad / 2), math.sin(tilt_rad / 2), 0.0, 0.0])
         grasp_q = list(t3d.quaternions.qmult(tilt_q, base_q))
 
-        # Hover outside the mouth on the robot side, at cavity height.
-        hover_pose = [mw_x, mw_y - 0.25, mw_z + 0.17] + grasp_q
+        # Target pose inside the cavity — same band the pick task uses to
+        # spawn the hamburger (interior is asymmetric: true cavity is in
+        # world -x half and mw_y + [-0.17, 0]).
+        tgt_x = mw_x + float(np.random.uniform(-0.08, -0.03))
+        tgt_y = mw_y + float(np.random.uniform(-0.10, -0.04))
+        tgt_z = mw_z + 0.02
+
+        # Hover outside the mouth on the robot side, level with target.
+        # With tilt -20°, TCP = link + (0, 0.11, -0.04), so link z ~ tgt_z.
+        hover_pose = [tgt_x, tgt_y - 0.15, tgt_z] + grasp_q
         self.move(self.move_to_pose(arm_tag, hover_pose))
         if not self.plan_success:
             self.plan_success = True
 
         # -------------------------------------------------------------
-        # 4) Insert: push the hamburger into the cavity (forward in +y).
+        # 4) Insert: dive into the cavity and stop above the release point.
         # -------------------------------------------------------------
-        insert_pose = [mw_x, mw_y - 0.08, mw_z] + grasp_q
+        insert_pose = [tgt_x, tgt_y, tgt_z - 0.02] + grasp_q
         self.move(self.move_to_pose(arm_tag, insert_pose))
         if not self.plan_success:
             self.plan_success = True
@@ -134,10 +129,10 @@ class put_hamburger_in_microwave_ks(KitchenS_base_task):
         # 5) Release the hamburger and retreat out of the mouth.
         # -------------------------------------------------------------
         self.move(self.open_gripper(arm_tag, pos=1.0))
-        self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.18))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, y=-0.20))
         if not self.plan_success:
             self.plan_success = True
-        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.10))
+        self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.15))
 
     def check_success(self):
         tp = self.target_obj.get_pose().p

@@ -58,9 +58,12 @@ class pick_hamburger_from_microwave_ks(KitchenS_base_task):
         # Spawn hamburger just inside the mouth so the arm does not have
         # to reach deep into the cavity (poor IK inside the enclosure).
         self.hamburger_id = int(np.random.choice([0, 1, 2]))
-        spawn_x = mw_x + float(np.random.uniform(-0.02, 0.02))
-        spawn_y = mw_y + float(np.random.uniform(0.0, 0.05))
-        spawn_z = mw_z - 0.02
+        # Cavity is asymmetric: mesh +x half (world +y) is the solid
+        # electronics compartment; true hollow cavity spans mw_y + [-0.17, 0]
+        # in world y and sits slightly to -x in world x.
+        spawn_x = mw_x + float(np.random.uniform(-0.08, -0.03))
+        spawn_y = mw_y + float(np.random.uniform(-0.10, -0.04))
+        spawn_z = mw_z + 0.02
 
         hpose = sapien.Pose(
             [spawn_x, spawn_y, spawn_z],
@@ -113,11 +116,14 @@ class pick_hamburger_from_microwave_ks(KitchenS_base_task):
         hx, hy, hz = float(h_p[0]), float(h_p[1]), float(h_p[2])
 
         # Hover in front of the mouth (robot side), level with hamburger.
-        hover_pose = [hx, hy - 0.15, hz + 0.04] + grasp_q
+        # With tilt -20°, TCP sits 4 cm below link; lift link ~4 cm above
+        # hamburger so TCP lines up with the hamburger's height.
+        hover_pose = [hx, hy - 0.15, hz ] + grasp_q
         self.move(self.move_to_pose(arm_tag, hover_pose))
 
-        # Dive into cavity and close onto hamburger.
-        grasp_pose = [hx, hy, hz + 0.01] + grasp_q
+        # Dive into cavity and close onto hamburger. Link z picked so the
+        # tilted TCP (link_z - 0.04) lands just below the hamburger center.
+        grasp_pose = [hx, hy, hz - 0.02] + grasp_q
         self.move(self.move_to_pose(arm_tag, grasp_pose))
         self.move(self.close_gripper(arm_tag, pos=0.0))
 
