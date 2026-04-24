@@ -1,4 +1,5 @@
 __pycache__/
 benchmark/assets/objects_bench
 benchmark_data/
+benchmark/collision_test/
 presentation_material/

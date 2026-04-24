@@ -233,9 +233,8 @@ class Office_base_task(Bench_base_task):
             self.update_world()
             print(f"\033[93m{self.task_name} curobo planner consider obstacles\033[0m")
         else:
-            # self.robot.update_world()
-            self.robot.update_world({"mesh": {}, "cuboid": {}})  # clear obstacles so eval IK is obstacle-free
-            print(f"\033[38;5;208m{self.task_name} curobo planner ignore obstacles, clear environment\033[0m")
+            self.update_world(exclude_obstacles=True)  # add furniture/targets but skip clutter obstacles
+            print(f"\033[38;5;208m{self.task_name} curobo planner ignore obstacles, only structural objects in curobo world\033[0m")
         
         if self.eval_mode:
             with open(os.path.join(os.environ["BENCH_ROOT"], "bench_task_config", "_bench_eval_step_limit.yml"), "r") as f:
@@ -557,6 +556,7 @@ class Office_base_task(Bench_base_task):
                 self.collision_list.append({
                     "actor": self.plant,
                     "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/120_plant/collision/base{plant_id}.glb",
+                    "is_obstacle": True,
                 })
     
     def get_cluttered_surfaces(self):

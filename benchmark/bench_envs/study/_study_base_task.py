@@ -175,7 +175,7 @@ class Study_base_task(Bench_base_task):
             print(f"\033[93m{self.task_name} curobo planner consider obstacles\033[0m")
         else:
             self.robot.update_world({"mesh": {}, "cuboid": {}})  # clear obstacles so eval IK is obstacle-free
-            print(f"\033[38;5;208m{self.task_name} curobo planner ignore obstacles, clear environment\033[0m")
+            print(f"\033[38;5;208m{self.task_name} curobo planner ignore obstacles, clear curobo environment\033[0m")
 
         if self.eval_mode:
             with open(os.path.join(os.environ["BENCH_ROOT"], "bench_task_config", "_bench_eval_step_limit.yml"), "r") as f:

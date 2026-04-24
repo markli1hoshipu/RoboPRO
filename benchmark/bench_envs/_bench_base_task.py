@@ -520,6 +520,7 @@ class Bench_base_task(Base_Task):
             self.collision_list.append({
                 "actor": self.cluttered_obj,
                 "collision_path": path,
+                "is_obstacle": True,
             })
 
             # # for viewing radius estimation
@@ -644,6 +645,7 @@ class Bench_base_task(Base_Task):
             self.collision_list.append({
                 "actor": self.cluttered_obj,
                 "collision_path": path,
+                "is_obstacle": True,
             })
 
         if success_count < obstacle_count:
@@ -668,12 +670,13 @@ class Bench_base_task(Base_Task):
         self.target_object_names: set[str] = set()
         self.collision_metrics = {
             "robot_to_furniture": 0,
+            "robot_to_furniture_steps": 0,
             "robot_to_static_object": 0,
             "target_to_static_object": 0,
-            "robot_to_furniture_steps": 0,
-            "robot_to_static_object_steps": 0,
-            "target_to_static_object_steps": 0,
         }
+        # Track which static objects have already been counted (once per episode)
+        self._counted_robot_static_objects: set[str] = set()
+        self._counted_target_static_objects: set[str] = set()
         self.filtered_contacts_for_log = []
 
     def _get_target_object_names(self) -> set[str]:
@@ -749,8 +752,6 @@ class Bench_base_task(Base_Task):
         self.filtered_contacts_for_log = []
 
         step_has_furniture = False
-        step_has_static = False
-        step_has_target_static = False
 
         for contact in contacts:
             name0 = contact.bodies[0].entity.name
@@ -783,19 +784,21 @@ class Bench_base_task(Base_Task):
                     step_has_furniture = True
                     count_furniture = True
 
-            # Static objects: only check pose change (e.g. object knocked over / fallen); exclude gripper links
+            # Static objects: count each unique object at most once per episode; exclude gripper links
             if ((is_robot_0 and is_static_1 and not is_gripper_0) or (is_robot_1 and is_static_0 and not is_gripper_1)):
                 static_name = name1 if is_static_1 else name0
-                if self._static_object_has_significant_pose_change(static_name):
+                if (static_name not in self._counted_robot_static_objects
+                        and self._static_object_has_significant_pose_change(static_name)):
                     self.collision_metrics["robot_to_static_object"] += 1
-                    step_has_static = True
+                    self._counted_robot_static_objects.add(static_name)
                     count_static = True
 
             if (is_target_0 and is_static_1) or (is_target_1 and is_static_0):
                 static_name = name1 if is_static_1 else name0
-                if self._static_object_has_significant_pose_change(static_name):
+                if (static_name not in self._counted_target_static_objects
+                        and self._static_object_has_significant_pose_change(static_name)):
                     self.collision_metrics["target_to_static_object"] += 1
-                    step_has_target_static = True
+                    self._counted_target_static_objects.add(static_name)
                     count_target_static = True
 
             if count_furniture or count_static or count_target_static:
@@ -819,10 +822,6 @@ class Bench_base_task(Base_Task):
 
         if step_has_furniture:
             self.collision_metrics["robot_to_furniture_steps"] += 1
-        if step_has_static:
-            self.collision_metrics["robot_to_static_object_steps"] += 1
-        if step_has_target_static:
-            self.collision_metrics["target_to_static_object_steps"] += 1
 
         # Update previous-step poses for next iteration (step-to-step pose change detection)
         for entity in self.scene.get_all_actors():
@@ -1344,11 +1343,13 @@ class Bench_base_task(Base_Task):
     
     # =========================================================== Extra Curobo Utils ===========================================================
 
-    def update_world(self):
+    def update_world(self, exclude_obstacles: bool = False):
         """Updates CuRobo Collision World Model with new collision objects"""
         collision_dict = {"mesh": {}, "cuboid": {}}
         if self.collision_list:
             for info in self.collision_list:
+                if exclude_obstacles and info.get("is_obstacle", False):
+                    continue
                     actor = info["actor"]
                     collision_path = info["collision_path"]
                     if os.path.isdir(collision_path): # if actor is made from multiple obj files
