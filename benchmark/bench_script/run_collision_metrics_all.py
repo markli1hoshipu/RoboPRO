@@ -11,7 +11,7 @@ EXAMPLES:
     python $BENCH_ROOT/bench_script/run_collision_metrics_all.py
     python $BENCH_ROOT/bench_script/run_collision_metrics_all.py --output-dir ./col_results --seed 0
     python $BENCH_ROOT/bench_script/run_collision_metrics_all.py --tasks mouse_on_pad move_cup
-    python $BENCH_ROOT/bench_script/run_collision_metrics_all.py --subdir office
+    python $BENCH_ROOT/bench_script/run_collision_metrics_all.py --subdir office --output-dir ./collision_test
     # Kitchen tasks with randomized config, 5 instances each:
     python $BENCH_ROOT/bench_script/run_collision_metrics_all.py --subdir kitchenl --num-instances 5
     python $BENCH_ROOT/bench_script/run_collision_metrics_all.py --subdir kitchenl --num-instances 3 --task-config bench_demo_randomized
@@ -25,10 +25,10 @@ from pathlib import Path
 
 # ── task registry ──────────────────────────────────────────────────────────────
 KITCHEN_TASKS = [
-    "close_cabinet",
-    "close_fridge",
-    "open_cabinet",
-    "open_fridge",
+    "move_bottle_from_fridge_next_to_can",
+    "move_bottle",
+    "move_can_from_cabinet_to_basket",
+    "move_milk_close_fridge",
     "pick_bottle_from_fridge",
     "pick_boxdrink_from_basket",
     "pick_can_from_basket",
@@ -37,45 +37,60 @@ KITCHEN_TASKS = [
     "pick_sauce_can_from_cabinet",
     "put_bottle_in_basket",
     "put_bottle_in_fridge",
+    "put_can_close_cabinet",
     "put_can_in_cabinet",
+    "put_can_infront_of_microwave",
+    "put_can_next_to_basket",
     "put_milk_box_in_fridge",
-    "put_milk_box_next_to_basket",
+    "put_sauce_can_in_basket",
     "put_sauce_can_in_cabinet",
+    "switch_can_with_bottle_in_basket",
 ]
 
 OFFICE_TASKS = [
-    "grab_battery",
-    "grab_book",
-    "items_to_shelf",
-    "milktea_to_laptop",
-    "milktea_to_shelf",
-    "mouse_on_pad",
-    "pencup_on_pad",
-    "place_phone_desk",
-    "place_phone_holder",
-    "stack_book",
+    "close_drawer",
+    "move_items_around",
+    "open_drawer",
+    "organize_table",
+    "put_book_in_fileholder",
+    "put_book_on_book",
+    "put_milktea_next_to_laptop",
+    "put_milktea_on_shelf",
+    "put_mouse_next_to_stapler",
+    "put_mouse_on_pad",
+    "put_phone_next_to_cube",
+    "put_phone_on_holder",
+    "put_rubikscube_in_drawer",
+    "put_rubikscube_next_to_milktea",
+    "put_stapler_in_drawer",
+    "put_stapler_next_to_mouse",
+    "put_stapler_on_book",
+    "set_up_table",
+    "store_rubikscube_on_shelf",
+    "store_stapler_in_drawer",
 ]
 
 STUDY_TASKS = [
     "empty_box",
-    "lift_cup_from_book",
-    "lift_cup_from_box",
-    "lift_pen_from_pencup",
+    "move_book_onto_table",
     "move_cup_next_to_book",
+    "move_cup_onto_table",
     "move_cup_put_pen_in_cup",
     "move_cup",
     "move_cups_into_box",
+    "move_pen_to_box",
     "move_seal_cup_next_to_box",
     "move_seal_next_to_box",
+    "move_seal_next_to_pencup",
     "move_seal_onto_book",
     "move_seal_onto_table",
     "put_cup_in_box",
     "put_cup_on_coaster",
+    "put_cup_on_table",
     "put_glue_in_box",
     "put_pen_in_box",
     "put_pen_in_pencup",
     "put_seal_in_box",
-    "take_book_from_bookcase",
 ]
 
 # task_name -> bench_subdir
