@@ -1336,43 +1336,43 @@ class Bench_base_task(Base_Task):
             for info in self.collision_list:
                 if exclude_obstacles and info.get("is_obstacle", False):
                     continue
-                    actor = info["actor"]
-                    collision_path = info["collision_path"]
-                    if os.path.isdir(collision_path): # if actor is made from multiple obj files
-                        name_prefix = actor.get_name()
-                        if "link" in info:
-                            if isinstance(info["link"], list):
-                                pose = sapien.Pose()
-                                pose.p = actor.get_link_pose(info["link"][0]).p
-                                pose.q = actor.get_link_pose(info["link"][1]).q
-                            else:
-                                pose = actor.get_link_pose(info["link"])
-                        elif "pose" in info:
-                            pose = info["pose"]
+                actor = info["actor"]
+                collision_path = info["collision_path"]
+                if os.path.isdir(collision_path): # if actor is made from multiple obj files
+                    name_prefix = actor.get_name()
+                    if "link" in info:
+                        if isinstance(info["link"], list):
+                            pose = sapien.Pose()
+                            pose.p = actor.get_link_pose(info["link"][0]).p
+                            pose.q = actor.get_link_pose(info["link"][1]).q
                         else:
-                            pose = actor.get_pose()
-                        np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                        convex_collision_dict = self.collision_dict_from_convex_obj_dir(
-                            collision_path,
-                            pose=np_pose,
-                            scale=actor.scale,
-                            name_prefix = name_prefix,
-                            files = info.get("files", None)
-                        )
-                        collision_dict["mesh"] = (
-                            collision_dict["mesh"] | convex_collision_dict["mesh"]
-                        )
+                            pose = actor.get_link_pose(info["link"])
+                    elif "pose" in info:
+                        pose = info["pose"]
                     else:
-                        if "pose" in info:
-                            pose = info["pose"]
-                        else:
-                            pose = actor.get_pose()
-                        np_pose = np.concatenate([pose.p, pose.q]).tolist()
-                        collision_dict["mesh"][f"{actor.get_name()}_{np_pose}_{self.seed}"] = {
-                                "file_path": collision_path,
-                                "pose": np_pose,
-                                "scale": actor.scale,
-                            }
+                        pose = actor.get_pose()
+                    np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                    convex_collision_dict = self.collision_dict_from_convex_obj_dir(
+                        collision_path,
+                        pose=np_pose,
+                        scale=actor.scale,
+                        name_prefix = name_prefix,
+                        files = info.get("files", None)
+                    )
+                    collision_dict["mesh"] = (
+                        collision_dict["mesh"] | convex_collision_dict["mesh"]
+                    )
+                else:
+                    if "pose" in info:
+                        pose = info["pose"]
+                    else:
+                        pose = actor.get_pose()
+                    np_pose = np.concatenate([pose.p, pose.q]).tolist()
+                    collision_dict["mesh"][f"{actor.get_name()}_{np_pose}_{self.seed}"] = {
+                            "file_path": collision_path,
+                            "pose": np_pose,
+                            "scale": actor.scale,
+                        }
 
         if self.cuboid_collision_list:
             for info in self.cuboid_collision_list:

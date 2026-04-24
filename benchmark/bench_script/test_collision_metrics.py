@@ -345,7 +345,6 @@ def main():
 
     cfg["left_embodiment_config"] = get_embodiment_config(cfg["left_robot_file"])
     cfg["right_embodiment_config"] = get_embodiment_config(cfg["right_robot_file"])
-    cfg["curobo_ignore_obstacles"] = True
     cfg["enable_collision_metrics"] = True
 
     # Build env

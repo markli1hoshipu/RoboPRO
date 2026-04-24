@@ -129,20 +129,20 @@ def run_task(task_name: str, subdir: str, task_config: str, seed: int,
     print(f"  output → {task_output}")
     print(f"  cmd: {' '.join(cmd[2:])}\n")
 
+    run_prefix = f"{task_name}_{task_config}"
     log_file = task_output / "run.log"
     result = {"task": task_name, "subdir": subdir, "instance": instance_idx,
               "seed": seed, "status": "unknown", "output_dir": str(task_output)}
 
     try:
-        with open(log_file, "w") as lf:
-            proc = subprocess.run(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                timeout=timeout,
-                env=os.environ.copy(),
-            )
+        proc = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=timeout,
+            env=os.environ.copy(),
+        )
         # stream output to console AND write to log
         print(proc.stdout)
         log_file.write_text(proc.stdout)
@@ -155,10 +155,22 @@ def run_task(task_name: str, subdir: str, task_config: str, seed: int,
             result["returncode"] = proc.returncode
             print(_col("RED", f"  ✗ {task_name} exited with code {proc.returncode}"))
 
-        # parse metrics json if present
-        metrics_path = task_output / "collision_metrics.json"
+        # parse metrics json if present (named {task}_{config}_collision_metrics.json by test script)
+        metrics_path = task_output / f"{run_prefix}_collision_metrics.json"
         if metrics_path.exists():
             result["metrics"] = json.loads(metrics_path.read_text())
+            result["metrics_path"] = str(metrics_path)
+
+        collision_log_path = task_output / f"{run_prefix}_collision_log.json"
+        if collision_log_path.exists():
+            result["collision_log_path"] = str(collision_log_path)
+
+        video_path = task_output / f"{run_prefix}.mp4"
+        if video_path.exists():
+            result["video_path"] = str(video_path)
+            print(f"  video  → {video_path}")
+        if metrics_path.exists():
+            print(f"  metrics → {metrics_path}")
 
     except subprocess.TimeoutExpired:
         result["status"] = "timeout"
