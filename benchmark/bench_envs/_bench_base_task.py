@@ -670,13 +670,13 @@ class Bench_base_task(Base_Task):
         self.target_object_names: set[str] = set()
         self.collision_metrics = {
             "robot_to_furniture": 0,
-            "robot_to_furniture_steps": 0,
             "robot_to_static_object": 0,
             "target_to_static_object": 0,
         }
         # Track which static objects have already been counted (once per episode)
         self._counted_robot_static_objects: set[str] = set()
         self._counted_target_static_objects: set[str] = set()
+        self._hit_furniture_names: set[str] = set()
         self.filtered_contacts_for_log = []
 
     def _get_target_object_names(self) -> set[str]:
@@ -705,17 +705,6 @@ class Bench_base_task(Base_Task):
         }
         
         self.static_object_names = all_actor_names - (self.furniture_names | self.target_object_names)
-
-        # Store previous-step poses for static objects (used to filter collisions by step-to-step pose change)
-        self.static_object_pose_prev = {}
-        for entity in self.scene.get_all_actors():
-            name = entity.get_name()
-            if name in self.static_object_names:
-                pose = entity.get_pose()
-                self.static_object_pose_prev[name] = (
-                    np.array(pose.p, dtype=np.float64),
-                    np.array(pose.q, dtype=np.float64),
-                )
 
     def _static_object_has_significant_pose_change(self, name: str) -> bool:
         """Return True if the static object has moved/rotated beyond thresholds since the previous step."""
@@ -751,8 +740,6 @@ class Bench_base_task(Base_Task):
         contacts = self.scene.get_contacts()
         self.filtered_contacts_for_log = []
 
-        step_has_furniture = False
-
         for contact in contacts:
             name0 = contact.bodies[0].entity.name
             name1 = contact.bodies[1].entity.name
@@ -777,26 +764,32 @@ class Bench_base_task(Base_Task):
             count_static = False
             count_target_static = False
 
+
             # Furniture: require impulse (actual force exchange); exclude gripper links (expected contact)
             if ((is_robot_0 and is_furniture_1 and not is_gripper_0) or (is_robot_1 and is_furniture_0 and not is_gripper_1)):
                 if has_impulse:
+                    robot_link = name0 if is_robot_0 else name1
+                    furniture_name = name1 if is_furniture_1 else name0
+                    print(f"[Collision] robot_to_furniture: {robot_link} -> {furniture_name}")
                     self.collision_metrics["robot_to_furniture"] += 1
-                    step_has_furniture = True
                     count_furniture = True
+                    self._hit_furniture_names.add(furniture_name)
 
             # Static objects: count each unique object at most once per episode; exclude gripper links
             if ((is_robot_0 and is_static_1 and not is_gripper_0) or (is_robot_1 and is_static_0 and not is_gripper_1)):
                 static_name = name1 if is_static_1 else name0
-                if (static_name not in self._counted_robot_static_objects
-                        and self._static_object_has_significant_pose_change(static_name)):
+                if static_name not in self._counted_robot_static_objects:
+                    robot_link = name0 if is_robot_0 else name1
+                    print(f"[Collision] robot_to_static_object: {robot_link} -> {static_name}")
                     self.collision_metrics["robot_to_static_object"] += 1
                     self._counted_robot_static_objects.add(static_name)
                     count_static = True
 
             if (is_target_0 and is_static_1) or (is_target_1 and is_static_0):
                 static_name = name1 if is_static_1 else name0
-                if (static_name not in self._counted_target_static_objects
-                        and self._static_object_has_significant_pose_change(static_name)):
+                if static_name not in self._counted_target_static_objects:
+                    target_name = name0 if is_target_0 else name1
+                    print(f"[Collision] target_to_static_object: {target_name} -> {static_name}")
                     self.collision_metrics["target_to_static_object"] += 1
                     self._counted_target_static_objects.add(static_name)
                     count_target_static = True
@@ -820,22 +813,15 @@ class Bench_base_task(Base_Task):
                             "position": [float(x) for x in pt.position],
                         })
 
-        if step_has_furniture:
-            self.collision_metrics["robot_to_furniture_steps"] += 1
-
-        # Update previous-step poses for next iteration (step-to-step pose change detection)
-        for entity in self.scene.get_all_actors():
-            name = entity.get_name()
-            if name in self.static_object_names:
-                pose = entity.get_pose()
-                self.static_object_pose_prev[name] = (
-                    np.array(pose.p, dtype=np.float64),
-                    np.array(pose.q, dtype=np.float64),
-                )
 
     def get_collision_metrics(self):
         """Return a copy of current collision metrics dict."""
-        return dict(self.collision_metrics)
+        return {
+            **self.collision_metrics,
+            "robot_to_furniture_names": sorted(self._hit_furniture_names),
+            "robot_to_static_object_names": sorted(self._counted_robot_static_objects),
+            "target_to_static_object_names": sorted(self._counted_target_static_objects),
+        }
 
     # =========================================================== Camera ===========================================================
 

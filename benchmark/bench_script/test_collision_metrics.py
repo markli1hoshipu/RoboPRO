@@ -22,7 +22,7 @@ EXAMPLES:
 OUTPUTS (default dir: benchmark/collision_test/):
     - <task>_<config>.mp4                       : Video of demo_camera view
     - <task>_<config>_collision_log.json        : Per-step raw contact details for debug
-    - <task>_<config>_collision_metrics.json    : Summary metrics (robot_to_furniture, etc.)
+    - <task>_<config>_collision_metrics.json    : Summary metrics (robot_to_furniture, robot_to_static_object, etc.)
     - <task>_<config>_contact_step_*.png        : Debug images for first contact every N steps (default: 50)
 """
 import sys
@@ -398,8 +398,13 @@ def main():
         json.dump(metrics, f, indent=2)
     print(f"Saved metrics: {metrics_path}")
     print("\n=== Collision Metrics Summary ===")
+    max_key = max(len(k) for k in metrics)
     for k, v in metrics.items():
-        print(f"  {k}: {v}")
+        if isinstance(v, list):
+            names_str = ", ".join(v) if v else "(none)"
+            print(f"  {k:<{max_key}} : {names_str}")
+        else:
+            print(f"  {k:<{max_key}} : {v}")
 
     # Save video
     video_path = output_dir / f"{run_prefix}.mp4"
