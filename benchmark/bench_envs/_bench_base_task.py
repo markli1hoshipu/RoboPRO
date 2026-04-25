@@ -770,7 +770,7 @@ class Bench_base_task(Base_Task):
                 if has_impulse:
                     robot_link = name0 if is_robot_0 else name1
                     furniture_name = name1 if is_furniture_1 else name0
-                    print(f"[Collision] robot_to_furniture: {robot_link} -> {furniture_name}")
+                    # print(f"[Collision] robot_to_furniture: {robot_link} -> {furniture_name}")
                     self.collision_metrics["robot_to_furniture"] += 1
                     count_furniture = True
                     self._hit_furniture_names.add(furniture_name)
@@ -780,7 +780,7 @@ class Bench_base_task(Base_Task):
                 static_name = name1 if is_static_1 else name0
                 if static_name not in self._counted_robot_static_objects:
                     robot_link = name0 if is_robot_0 else name1
-                    print(f"[Collision] robot_to_static_object: {robot_link} -> {static_name}")
+                    # print(f"[Collision] robot_to_static_object: {robot_link} -> {static_name}")
                     self.collision_metrics["robot_to_static_object"] += 1
                     self._counted_robot_static_objects.add(static_name)
                     count_static = True
@@ -789,7 +789,7 @@ class Bench_base_task(Base_Task):
                 static_name = name1 if is_static_1 else name0
                 if static_name not in self._counted_target_static_objects:
                     target_name = name0 if is_target_0 else name1
-                    print(f"[Collision] target_to_static_object: {target_name} -> {static_name}")
+                    # print(f"[Collision] target_to_static_object: {target_name} -> {static_name}")
                     self.collision_metrics["target_to_static_object"] += 1
                     self._counted_target_static_objects.add(static_name)
                     count_target_static = True

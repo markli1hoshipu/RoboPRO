@@ -108,7 +108,7 @@ def run_task(task_name: str, subdir: str, task_config: str, seed: int,
              base_output: Path, capture_every: int, contact_image_every: int,
              timeout: int, instance_idx: int = 0) -> dict:
     """Run test_collision_metrics.py for one task instance. Returns a result summary dict."""
-    task_output = base_output / task_name / f"instance_{instance_idx}"
+    task_output = (base_output / task_name / f"instance_{instance_idx}").resolve()
     task_output.mkdir(parents=True, exist_ok=True)
 
     script = Path(__file__).parent / "test_collision_metrics.py"
