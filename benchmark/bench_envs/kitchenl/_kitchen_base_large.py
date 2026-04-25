@@ -249,6 +249,7 @@ class Kitchen_base_large(Bench_base_task):
         self.dual_arm = kwags.get("dual_arm", True)
         self.eval_mode = kwags.get("eval_mode", False)
         self.sample_d = kwags.get("sample_d", "objects")
+        self.enable_collision_metrics = kwags.get("enable_collision_metrics", False) or self.eval_mode
 
         self.cuboid_collision_list = [] # list of cuboid collision objects for curobo planner
         self.cluttered_objs = list()
@@ -368,7 +369,12 @@ class Kitchen_base_large(Bench_base_task):
             raise UnStableError(
                 f'Objects is unstable in seed({kwags.get("seed", 0)}), unstable objects: {", ".join(unstable_list)}')
 
-        self.update_world()
+        if not self.enable_collision_metrics:
+            self.update_world()
+            print(f"\033[93m{self.task_name} curobo planner consider obstacles\033[0m")
+        else:
+            self.update_world(exclude_obstacles=True)  # skip clutter in eval/collision-metrics mode
+            print(f"\033[38;5;208m{self.task_name} curobo planner skips clutter obstacles\033[0m")
 
         if self.eval_mode:
             with open(os.path.join(os.environ["BENCH_ROOT"], "bench_task_config", "_bench_eval_step_limit.yml"), "r") as f:
