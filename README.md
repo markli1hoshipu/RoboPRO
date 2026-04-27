@@ -53,6 +53,12 @@ python script/bench_script/visualize_task_scene.py mouse_on_pad bench_demo_clean
 export ROBOTWIN_LOG_MOVE="1"
 ```
 
+> **Collision Metrics (Evaluation Only):** Disabled by default. To enable during evaluation, set `cfg["enable_collision_metrics"] = True` **before** calling `setup_demo()`:
+> ```python
+> cfg["enable_collision_metrics"] = True  # must be set before setup_demo()
+> env.setup_demo(**cfg)
+> metrics = env.get_collision_metrics()   # retrieve after episode ends
+> ```
 
 ## Data collection example
 ```bash
@@ -67,6 +73,7 @@ bash collect_data.sh pencup_on_pad bench_demo_randomized 1
 bash collect_data.sh place_phone_shelf bench_demo_clean 0
 bash collect_data.sh place_phone_shelf bench_demo_randomized 1
 ```
+
 
 ## For Creating New Benchmark Tasks
 These are required steps to follow in addiion to creating a new task file.
