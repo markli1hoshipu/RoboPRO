@@ -27,6 +27,9 @@ class put_can_infront_of_microwave(Kitchen_base_large):
     GRASP_DIS = 0.01
     GRASP_CLOSE_POS = 0.0
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.target_obj.get_name()}  # place_actor("071_can") → name = "071_can"
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         kwargs["include_collision"] = True
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}

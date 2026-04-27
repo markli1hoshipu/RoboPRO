@@ -45,6 +45,9 @@ class move_bottle_from_fridge_next_to_can(Kitchen_base_large):
         except Exception:
             pass
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.bottle.get_name()}  # bottle: set_name("task_bottle"); can is a reference object
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         self.bottle_modelname = "001_bottle"
         self.bottle_model_ids = [1, 11, 14, 16]

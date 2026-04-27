@@ -30,6 +30,9 @@ class put_can_close_cabinet(Kitchen_base_large):
     RETREAT_DELTA = dict(y=-0.15)
     GRASP_CONTACT_POINT_ID = 0
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.can.get_name()}  # create_actor("071_can") → name = "071_can"
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         kwargs["include_collision"] = True
         # Match collision-cache usage from other benchmark tasks
