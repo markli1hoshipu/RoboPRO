@@ -53,12 +53,12 @@ python script/bench_script/visualize_task_scene.py mouse_on_pad bench_demo_clean
 export ROBOTWIN_LOG_MOVE="1"
 ```
 
-> **Collision Metrics (Evaluation Only):** Disabled by default. To enable during evaluation, set `cfg["enable_collision_metrics"] = True` **before** calling `setup_demo()`:
-> ```python
-> cfg["enable_collision_metrics"] = True  # must be set before setup_demo()
-> env.setup_demo(**cfg)
-> metrics = env.get_collision_metrics()   # retrieve after episode ends
-> ```
+## Collision Metrics (Evaluation Only):## Disabled by default. To enable during evaluation, set `cfg["enable_collision_metrics"] = True` **before** calling `setup_demo()`:
+```python
+cfg["enable_collision_metrics"] = True  # must be set before setup_demo()
+env.setup_demo(**cfg)
+metrics = env.get_collision_metrics()   # retrieve after episode ends
+```
 
 ## Data collection example
 ```bash
