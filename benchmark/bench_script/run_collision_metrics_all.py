@@ -1,6 +1,6 @@
 """
-Batch runner: runs test_collision_metrics.py for every office/study/kitchenl task,
-saves video + collision data under <output_dir>/<task_name>/<instance_N>/.
+Batch runner: runs test_collision_metrics.py for every office/study/kitchenl/kitchens task,
+saves video + collision data under <output_dir>/<subdir>/tasks/<task_name>/<instance_N>/.
 
 USAGE:
     cd customized_robotwin
@@ -93,10 +93,34 @@ STUDY_TASKS = [
     "put_seal_in_box",
 ]
 
+KITCHENS_TASKS = [
+    "chain_apple_bin_bowl_rack_spoon_sink_ks",
+    "chain_apple_sink_plate_bread_board_ks",
+    "chain_bowl_rack_apple_sink_ks",
+    "chain_heat_hamburger_ks",
+    "chain_serve_hamburger_ks",
+    "close_microwave_ks",
+    "drop_apple_in_bin_ks",
+    "move_hamburger_onto_plate_ks",
+    "pick_apple_from_bowl_ks",
+    "pick_apple_from_sink_ks",
+    "pick_fork_from_sink_ks",
+    "pick_hamburger_from_microwave_ks",
+    "place_bowl_in_dishrack_ks",
+    "put_bowl_in_sink_ks",
+    "put_bread_on_board_ks",
+    "put_hamburger_in_microwave_ks",
+    "put_plate_in_sink_ks",
+    "put_spoon_in_dishrack_ks",
+    "put_spoon_in_sink_ks",
+    "put_spoon_on_plate_ks",
+]
+
 # task_name -> bench_subdir
 TASK_SUBDIR: dict[str, str] = {t: "office" for t in OFFICE_TASKS}
 TASK_SUBDIR.update({t: "study" for t in STUDY_TASKS})
 TASK_SUBDIR.update({t: "kitchenl" for t in KITCHEN_TASKS})
+TASK_SUBDIR.update({t: "kitchens" for t in KITCHENS_TASKS})
 
 
 def _col(code: str, text: str) -> str:
@@ -108,7 +132,7 @@ def run_task(task_name: str, subdir: str, task_config: str, seed: int,
              base_output: Path, capture_every: int, contact_image_every: int,
              timeout: int, instance_idx: int = 0) -> dict:
     """Run test_collision_metrics.py for one task instance. Returns a result summary dict."""
-    task_output = (base_output / task_name / f"instance_{instance_idx}").resolve()
+    task_output = (base_output / subdir / task_name / f"instance_{instance_idx}").resolve()
     task_output.mkdir(parents=True, exist_ok=True)
 
     script = Path(__file__).parent / "test_collision_metrics.py"
@@ -189,7 +213,7 @@ def main():
     )
     parser.add_argument("--tasks", nargs="*", default=None,
                         help="Subset of task names to run (default: all)")
-    parser.add_argument("--subdir", choices=["office", "study", "kitchenl"], default=None,
+    parser.add_argument("--subdir", choices=["office", "study", "kitchenl", "kitchens"], default=None,
                         help="Only run tasks from this subdir")
     parser.add_argument("--task-config", default="bench_demo_clean",
                         help="Task config name (default: bench_demo_clean)")

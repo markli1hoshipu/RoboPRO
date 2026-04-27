@@ -65,6 +65,9 @@ class move_milk_close_fridge(Kitchen_base_large):
         except Exception:
             pass
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.milk_box.get_name()}  # rand_create_cluttered_actor("038_milk-box") → name = "038_milk-box"
+
     def setup_demo(self, is_test: bool = False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)

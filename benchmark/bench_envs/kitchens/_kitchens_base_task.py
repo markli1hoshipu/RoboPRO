@@ -39,7 +39,14 @@ parent_directory = os.path.dirname(current_file_path)
 
 class KitchenS_base_task(Bench_base_task):
 
-    FURNITURE_NAMES = {"table", "wall", "ground"}
+    FURNITURE_NAMES = {
+        "table", "wall", "ground",
+        # sink basin (has box collision) + chrome rim pieces (create_box, static)
+        "sink",
+        "sink_rim_front", "sink_rim_back", "sink_rim_left", "sink_rim_right",
+        # dish rack body (collision mesh) + invisible containment walls (box collision)
+        "dishrack", "dishrack_walls",
+    }
 
     def __init__(self):
         pass
@@ -68,7 +75,7 @@ class KitchenS_base_task(Bench_base_task):
         self.dual_arm = kwags.get("dual_arm", True)
         self.eval_mode = kwags.get("eval_mode", False)
         self.sample_d = kwags.get("sample_d", "objects")
-        self.enable_collision_metrics = kwags.get("enable_collision_metrics", False) or self.eval_mode
+        self.enable_collision_metrics = kwags.get("enable_collision_metrics", False)
 
         self.need_topp = True
 

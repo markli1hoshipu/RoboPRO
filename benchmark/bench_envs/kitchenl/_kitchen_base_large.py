@@ -38,6 +38,17 @@ parent_directory = os.path.dirname(current_file_path)
 
 
 class Kitchen_base_large(Bench_base_task):
+
+    FURNITURE_NAMES = {
+        "table", "wall", "ground",
+        # structural container on the countertop (create_actor static, always present)
+        "basket_right",
+        # filler box between cabinet URDF and wall (create_box static)
+        "cabinet_wall_filler",
+        # fridge / microwave / cabinet are URDF articulations — their links do NOT
+        # appear in scene.get_all_actors(), so no entry needed here.
+    }
+
     def __init__(self):
         pass
 
@@ -249,7 +260,7 @@ class Kitchen_base_large(Bench_base_task):
         self.dual_arm = kwags.get("dual_arm", True)
         self.eval_mode = kwags.get("eval_mode", False)
         self.sample_d = kwags.get("sample_d", "objects")
-        self.enable_collision_metrics = kwags.get("enable_collision_metrics", False) or self.eval_mode
+        self.enable_collision_metrics = kwags.get("enable_collision_metrics", False)
 
         self.cuboid_collision_list = [] # list of cuboid collision objects for curobo planner
         self.cluttered_objs = list()
@@ -337,6 +348,7 @@ class Kitchen_base_large(Bench_base_task):
         self.instruction = None  # for Eval
 
         self.collision_list = [] # list of collision objects for curobo planner
+        self._init_collision_metrics()
 
         # Map semantic appliance roles to underlying assets
         self.kitchen_appliance_assets = {
@@ -361,6 +373,9 @@ class Kitchen_base_large(Bench_base_task):
         # self.load_basic_kitchen_items()
         if self.cluttered_table:
             self.get_cluttered_surfaces()
+
+        if self.enable_collision_metrics:
+            self._build_collision_name_sets()
 
         # Even for a minimal scene, ensure that articulated objects like the drawer
         # are placed in a stable configuration.
@@ -1231,7 +1246,7 @@ class Kitchen_base_large(Bench_base_task):
             actor_name = entity.get_name()
             if actor_name == "":
                 continue
-            if actor_name in ["table", "wall", "ground"]:
+            if actor_name in self.FURNITURE_NAMES:
                 continue
             task_objects_list.append(actor_name)
         # print_c(f"Existing objects in the scene: {task_objects_list}", "YELLOW")

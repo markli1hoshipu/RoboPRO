@@ -82,7 +82,7 @@ class Study_base_task(Bench_base_task):
         self.dual_arm = kwags.get("dual_arm", True)
         self.eval_mode = kwags.get("eval_mode", False)
         self.sample_d = kwags.get("sample_d", "objects")
-        self.enable_collision_metrics = kwags.get("enable_collision_metrics", False) or self.eval_mode
+        self.enable_collision_metrics = kwags.get("enable_collision_metrics", False)
         self.scene_objs = []
         self.scene_obj_info = []
 

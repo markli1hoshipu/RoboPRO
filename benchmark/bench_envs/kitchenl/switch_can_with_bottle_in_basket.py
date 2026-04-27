@@ -50,7 +50,7 @@ class switch_can_with_bottle_in_basket(Kitchen_base_large):
         cfg["contact_points_mask"] = [True]
 
     def _get_target_object_names(self) -> set[str]:
-        return {self.can.get_name()}
+        return {self.can.get_name(), self.bottle.get_name()}  # both objects are manipulated
 
     def setup_demo(self, is_test: bool = False, **kwargs):
         kwargs["scene_id"] = 0 # Only use scene 0 for this task, to ensure the cabinet is in the same location and the same door is open across all demos.

@@ -85,6 +85,7 @@ class put_can_in_cabinet(Kitchen_base_large):
             scale=None,
         )
         self.can.set_mass(self.CAN_MASS)
+        self.can.set_name("task_can")
 
         self.add_prohibit_area(self.can, padding=0.04, area="table")
 
