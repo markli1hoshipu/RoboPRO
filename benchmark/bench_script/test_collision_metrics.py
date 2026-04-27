@@ -229,8 +229,8 @@ def make_patched_take_dense_action(env, collision_log, frame_list, capture_every
                     env._update_render()
                     env.cameras.update_picture()
                     rgb_dict = env.cameras.get_rgb()
-                    cam_name = "demo_camera" if "demo_camera" in rgb_dict else "head_camera"
-                    if cam_name in rgb_dict:
+                    cam_name = next((c for c in ("countertop_camera", "demo_camera", "head_camera") if c in rgb_dict), None)
+                    if cam_name is not None:
                         img = rgb_dict[cam_name]["rgb"].copy()
                         if img.dtype != np.uint8:
                             img = (img * 255).clip(0, 255).astype(np.uint8)
@@ -250,8 +250,8 @@ def make_patched_take_dense_action(env, collision_log, frame_list, capture_every
                 env._update_render()
                 env.cameras.update_picture()
                 rgb_dict = env.cameras.get_rgb()
-                cam_name = "demo_camera" if "demo_camera" in rgb_dict else "head_camera"
-                if cam_name in rgb_dict:
+                cam_name = next((c for c in ("countertop_camera", "demo_camera", "head_camera") if c in rgb_dict), None)
+                if cam_name is not None:
                     img = rgb_dict[cam_name]["rgb"].copy()
                     if img.dtype != np.uint8:
                         img = (img * 255).clip(0, 255).astype(np.uint8)
