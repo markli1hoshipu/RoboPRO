@@ -17,7 +17,7 @@ class put_book_on_book(Office_base_task):
         super()._init_task_env_(**kwargs)
     
     def _get_target_object_names(self) -> set[str]:
-        return set()
+        return {self.target_obj.get_name()}
 
     def load_actors(self):
         ylim = [self.file_holder.get_pose().p[1]]
@@ -57,6 +57,7 @@ class put_book_on_book(Office_base_task):
             is_static=False,
             scale = self.item_info['scales']['043_book'][f'{model_id2}']
         )
+        self.des_obj.set_name("043_book_ref")
         self.des_obj.set_mass(0.3)
         self.add_prohibit_area(self.des_obj, padding=0.05)
         self.des_obj_pose = self.des_obj.get_pose().p.tolist() + euler2quat(np.pi, np.pi/6, np.pi/2, axes='sxyz').tolist()

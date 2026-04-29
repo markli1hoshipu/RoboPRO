@@ -39,7 +39,7 @@ parent_directory = os.path.dirname(current_file_path)
 
 class Office_base_task(Bench_base_task):
 
-    FURNITURE_NAMES = {"table", "wall", "shelf", "ground"}
+    FURNITURE_NAMES = {"table", "wall", "121_wall-shelf", "122_file-holder", "ground"}
 
     def __init__(self):
         pass

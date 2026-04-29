@@ -17,7 +17,7 @@ class store_rubikscube_on_shelf(Office_base_task):
         super()._init_task_env_(**kwargs)
     
     def _get_target_object_names(self) -> set[str]:
-        return set()
+        return {self.target_obj.get_name()}
 
     def load_actors(self):
         

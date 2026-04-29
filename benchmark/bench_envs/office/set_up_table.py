@@ -17,7 +17,7 @@ class set_up_table(Office_base_task):
         super()._init_task_env_(**kwargs)
     
     def _get_target_object_names(self) -> set[str]:
-        return set()
+        return {self.target_obj_1.get_name(), self.target_obj_2.get_name()}
 
     def load_actors(self):
 

@@ -17,7 +17,7 @@ class put_stapler_in_drawer(Office_base_task):
         super()._init_task_env_(**kwargs)
     
     def _get_target_object_names(self) -> set[str]:
-        return set()
+        return {self.target_obj.get_name()}
 
     def load_actors(self):
         self.side =  "left" if self.arr_v == 2 else "right"

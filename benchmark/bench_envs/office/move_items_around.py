@@ -17,7 +17,7 @@ class move_items_around(Office_base_task):
         super()._init_task_env_(**kwargs)
     
     def _get_target_object_names(self) -> set[str]:
-        return set()
+        return {self.target_obj_1.get_name(), self.target_obj_2.get_name(), self.target_obj_3.get_name()}
 
     def load_actors(self):
         # target_obj_1 ------------------------------------------------------------
@@ -142,6 +142,7 @@ class move_items_around(Office_base_task):
         )
         if not success:
             raise RuntimeError("Failed to load des_obj_3")
+        self.des_obj_3.set_name("043_book_ref")
         self.des_obj_3.set_mass(0.1)
         self.add_prohibit_area(self.des_obj_3, padding=0.01, area="table")
         self.add_operating_area(self.des_obj_3.get_pose().p)

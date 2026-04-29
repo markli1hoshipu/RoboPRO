@@ -17,7 +17,7 @@ class put_book_in_fileholder(Office_base_task):
         super()._init_task_env_(**kwargs)
     
     def _get_target_object_names(self) -> set[str]:
-        return set()
+        return {self.target_obj.get_name()}
 
     def load_actors(self):
         holder_pose = self.file_holder.get_pose().p
