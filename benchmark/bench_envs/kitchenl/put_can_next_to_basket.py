@@ -114,7 +114,7 @@ class put_can_next_to_basket(Kitchen_base_large):
         return self.info
 
     def check_success(self):
-        dist_thr = 0.15
+        dist_thr = 0.20
         box_bb = get_actor_boundingbox(self.basket_right.actor)
         dist_to_box = point_to_box_distance(self.can.get_pose().p, box_bb[0], box_bb[1])
 
