@@ -47,8 +47,8 @@ class Bench_base_task(Base_Task):
     COLLISION_FORCE_THRESHOLD_N = 10.0
     # Static object pose thresholds: only count robot/target-to-static collisions when
     # the static object has moved beyond these from the previous step.
-    STATIC_OBJECT_POSITION_THRESHOLD_M = 0.01   # 1 cm
-    STATIC_OBJECT_ORIENTATION_THRESHOLD_RAD = 0.1  # ~5.7 deg
+    STATIC_OBJECT_POSITION_THRESHOLD_M = 0.02   # 2 cm
+    STATIC_OBJECT_ORIENTATION_THRESHOLD_RAD = 0.2  # ~11.5 deg
 
     def __init__(self):
         pass
@@ -676,6 +676,7 @@ class Bench_base_task(Base_Task):
         # Track which static objects have already been counted (once per episode)
         self._counted_robot_static_objects: set[str] = set()
         self._counted_target_static_objects: set[str] = set()
+        self._counted_furniture_names: set[str] = set()
         self._hit_furniture_names: set[str] = set()
         self.filtered_contacts_for_log = []
 
@@ -765,15 +766,18 @@ class Bench_base_task(Base_Task):
             count_target_static = False
 
 
-            # Furniture: require impulse (actual force exchange); exclude gripper links (expected contact)
+            # Furniture: require impulse (actual force exchange); exclude gripper links (expected contact);
+            # count each furniture piece at most once per episode.
             if ((is_robot_0 and is_furniture_1 and not is_gripper_0) or (is_robot_1 and is_furniture_0 and not is_gripper_1)):
                 if has_impulse:
                     robot_link = name0 if is_robot_0 else name1
                     furniture_name = name1 if is_furniture_1 else name0
-                    # print(f"[Collision] robot_to_furniture: {robot_link} -> {furniture_name}")
-                    self.collision_metrics["robot_to_furniture"] += 1
-                    count_furniture = True
                     self._hit_furniture_names.add(furniture_name)
+                    if furniture_name not in self._counted_furniture_names:
+                        # print(f"[Collision] robot_to_furniture: {robot_link} -> {furniture_name}")
+                        self.collision_metrics["robot_to_furniture"] += 1
+                        self._counted_furniture_names.add(furniture_name)
+                    count_furniture = True
 
             # Static objects: count each unique object at most once per episode; exclude gripper links
             if ((is_robot_0 and is_static_1 and not is_gripper_0) or (is_robot_1 and is_static_0 and not is_gripper_1)):
@@ -816,8 +820,15 @@ class Bench_base_task(Base_Task):
 
     def get_collision_metrics(self):
         """Return a copy of current collision metrics dict."""
+        total = (
+            self.collision_metrics["robot_to_furniture"]
+            + self.collision_metrics["robot_to_static_object"]
+            + self.collision_metrics["target_to_static_object"]
+        )
         return {
             **self.collision_metrics,
+            "is_collision": total > 0,
+            "total_collision_count": total,
             "robot_to_furniture_names": sorted(self._hit_furniture_names),
             "robot_to_static_object_names": sorted(self._counted_robot_static_objects),
             "target_to_static_object_names": sorted(self._counted_target_static_objects),

@@ -17,7 +17,7 @@ class move_items_around(Office_base_task):
         super()._init_task_env_(**kwargs)
     
     def _get_target_object_names(self) -> set[str]:
-        return {self.target_obj_1.get_name(), self.target_obj_2.get_name(), self.target_obj_3.get_name()}
+        return {self.target_obj_1.get_name(), self.target_obj_2.get_name(), self.target_obj_3.get_name(), self.des_obj_1.get_name(), self.des_obj_3.get_name()}
 
     def load_actors(self):
         # target_obj_1 ------------------------------------------------------------

@@ -17,7 +17,7 @@ class put_book_on_book(Office_base_task):
         super()._init_task_env_(**kwargs)
     
     def _get_target_object_names(self) -> set[str]:
-        return {self.target_obj.get_name()}
+        return {self.target_obj.get_name(), self.des_obj.get_name()}
 
     def load_actors(self):
         ylim = [self.file_holder.get_pose().p[1]]
