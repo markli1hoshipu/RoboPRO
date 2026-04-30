@@ -28,7 +28,7 @@ class put_stapler_next_to_mouse(Office_base_task):
             rotate_lim=[0, np.pi/6, 0],
         )
 
-        self.mouse_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["047_mouse"])
+        self.mouse_id = np.random.choice(self._target_ids("office", "047_mouse"))
         self.mouse = create_actor(
             scene=self,
             pose=rand_pos,
@@ -63,7 +63,7 @@ class put_stapler_next_to_mouse(Office_base_task):
             xlim = [self.office_info["table_lims"][0]+0.04, 0.1]
         else:
             xlim = [-0.1, self.office_info["table_lims"][2]-0.04]
-        self.stapler_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["048_stapler"])
+        self.stapler_id = np.random.choice(self._target_ids("office", "048_stapler"))
         success, self.target_obj = rand_create_cluttered_actor(
             scene=self.scene,
             xlim=xlim,

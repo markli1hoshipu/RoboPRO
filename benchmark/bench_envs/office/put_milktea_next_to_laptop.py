@@ -22,7 +22,7 @@ class put_milktea_next_to_laptop(Office_base_task):
         self.side = np.random.choice(["left", "right"])
         # laptop_id = np.random.choice([9748,9912,9960,9968,9992,9996,10040,10098,10101,10125,10211])
         laptop_id = 9912
-        self.target_obj_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["101_milk-tea"])
+        self.target_obj_id = np.random.choice(self._target_ids("office", "101_milk-tea"))
 
         if self.side == "left":
             xlim1 = [self.office_info["table_lims"][0]+0.08, 0]

@@ -105,7 +105,7 @@ class pick_bottle_from_fridge(Kitchen_base_large):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
 
-        self.bottle_model_id = np.random.choice(task_objs['objects']['kitchenl']['targets'][self.bottle_modelname])
+        self.bottle_model_id = np.random.choice(self._target_ids("kitchenl", self.bottle_modelname))
 
         spawn_pose = self._fridge_inside_spawn_pose()
 

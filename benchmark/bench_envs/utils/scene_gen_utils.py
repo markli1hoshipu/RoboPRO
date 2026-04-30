@@ -549,7 +549,11 @@ def place_actor(obj_name, scene, task_objs, col_thr=0.15, object_bounds=None,
     if isinstance(obj_pose, list):
         obj_pose = sapien.Pose(obj_pose[0],
                     euler2quat(*[np.deg2rad(d) for d in obj_pose[1]]))
-    obj_id = obj_id if obj_id is not None else np.random.choice(task_objs['objects'][scene_name]['targets'][obj_name])
+    if obj_id is None:
+        dist = getattr(scene, 'target_distribution', 'objects')
+        ood_ids = (task_objs.get(dist) or {}).get(scene_name, {}).get('targets', {}).get(obj_name)
+        ids = ood_ids or task_objs['objects'][scene_name]['targets'][obj_name]
+        obj_id = np.random.choice(ids)
     
     print_c(f"Generating {obj_name} with id {obj_id} at position {obj_pose}", "BLUE")
     obj = create_actor(

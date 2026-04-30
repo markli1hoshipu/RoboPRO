@@ -34,7 +34,7 @@ class put_mouse_on_pad(Office_base_task):
             rotate_lim=[0, 3.14, 0],
         )
 
-        self.mouse_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["047_mouse"])
+        self.mouse_id = np.random.choice(self._target_ids("office", "047_mouse"))
         self.target_obj = create_actor(
             scene=self,
             pose=rand_pos,

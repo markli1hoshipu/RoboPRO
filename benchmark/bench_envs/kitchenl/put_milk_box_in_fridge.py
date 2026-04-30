@@ -65,7 +65,7 @@ class put_milk_box_in_fridge(Kitchen_base_large):
         kwargs["include_collision"] = True
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
-        self.milk_box_model_ids = task_objs['objects']['kitchenl']['targets'][self.milk_box_modelname]
+        self.milk_box_model_ids = self._target_ids("kitchenl", self.milk_box_modelname)
 
         # Same Euler convention used in bottle tasks: [roll, pitch, yaw] in degrees.
         self.milk_box_spawn_rot_deg = [0.0, 0.0, 90.0]

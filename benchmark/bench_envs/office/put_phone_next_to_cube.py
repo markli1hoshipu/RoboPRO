@@ -31,7 +31,7 @@ class put_phone_next_to_cube(Office_base_task):
         ylim2 = [self.office_info["table_lims"][1]+0.07, self.office_info["shelf_lims"][1]-0.15]
 
         # des_obj
-        self.cube_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["073_rubikscube"])
+        self.cube_id = np.random.choice(self._target_ids("office", "073_rubikscube"))
         self.rubikscube = rand_create_actor(
             self,
             xlim=xlim1,
@@ -71,7 +71,7 @@ class put_phone_next_to_cube(Office_base_task):
             [0.5, -0.5, 0.5, -0.5],
         ]
 
-        self.phone_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["077_phone"])
+        self.phone_id = np.random.choice(self._target_ids("office", "077_phone"))
         phone_pose = rand_pose(
             xlim = xlim2,
             ylim=ylim2,

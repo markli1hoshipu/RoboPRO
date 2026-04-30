@@ -40,7 +40,7 @@ class put_bottle_in_basket(Kitchen_base_large):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
 
-        self.bottle_model_ids =  task_objs['objects']['kitchenl']['targets'][self.bottle_modelname]
+        self.bottle_model_ids =  self._target_ids("kitchenl", self.bottle_modelname)
         self.bottle_spawn_rot_deg = [-45.0, 0.0, 90.0]
 
         rot_cfg = kwargs.pop("bottle_spawn_rot_deg", None)

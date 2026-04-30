@@ -28,7 +28,7 @@ class put_phone_on_holder(Office_base_task):
             [0.5, -0.5, 0.5, -0.5],
         ]
 
-        self.phone_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["077_phone"])
+        self.phone_id = np.random.choice(self._target_ids("office", "077_phone"))
         phone_pose = rand_pose(
             xlim = [0,0.1],
             # xlim = [0,0.35],

@@ -101,6 +101,9 @@ class Study_base_task(Bench_base_task):
         self.random_embodiment = random_setting.get("random_embodiment", False)  # TODO
         self.obstacle_height = random_setting.get("obstacle_height", "short")
         self.obstacle_density = random_setting.get("obstacle_density", 3)
+
+        self._parse_perturbations(random_setting)
+
         self.col_temp = os.environ['ROBOTWIN_ROOT'] + "/assets/objects/{object}/collision/base{object_id}.glb"
         self.file_path = []
         self.plan_success = True
@@ -159,6 +162,13 @@ class Study_base_task(Bench_base_task):
         
         if self.cluttered_table:
             self.get_cluttered_surfaces()
+
+        self._apply_specular_ood()
+        self._furniture_texture_targets = [
+            ("bookcase", "bookcase"),
+            ("box", "box"),
+        ]
+        self._apply_furniture_texture_ood()
 
         if self.enable_collision_metrics:
             self._build_collision_name_sets()
@@ -336,7 +346,7 @@ class Study_base_task(Bench_base_task):
             task_objects_list.append(actor_name)
 
         cluttered_item_info, obj_names_short, obj_names_tall = get_obstacle_objects_subset(
-            "study", self.sample_d, task_objects_list
+            "study", self.obstacle_distribution, task_objects_list
         )
         self.clutter_surface_split(xlim, ylim, zlim, self.prohibited_area["table"], self.obstacle_density, cluttered_item_info, obj_names_short, obj_names_tall)
 

@@ -24,7 +24,7 @@ class put_book_in_fileholder(Office_base_task):
         holder_pose[1]-= 0.19  
         self.prohibited_area["table"].append([holder_pose[0]-0.11, holder_pose[1]-0.1, holder_pose[0]+0.11, holder_pose[1]+0.1])
 
-        model_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["043_book"])
+        model_id = np.random.choice(self._target_ids("office", "043_book"))
         
         # target_obj ------------------------------------------------------------
         ylim = [self.shelf.get_pose().p[1]-0.07]
