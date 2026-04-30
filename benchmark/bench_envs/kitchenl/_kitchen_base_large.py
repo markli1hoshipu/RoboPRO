@@ -280,6 +280,9 @@ class Kitchen_base_large(Bench_base_task):
         self.cluttered_table = random_setting.get("cluttered_table", False)
         self.obstacle_height = random_setting.get("obstacle_height", "short")
         self.obstacle_density =   random_setting.get("obstacle_density", 3)
+
+        self._parse_perturbations(random_setting)
+
         self.file_path = []
         self.plan_success = True
         self.step_lim = None
@@ -373,6 +376,15 @@ class Kitchen_base_large(Bench_base_task):
         # self.load_basic_kitchen_items()
         if self.cluttered_table:
             self.get_cluttered_surfaces()
+
+        self._apply_specular_ood()
+        self._furniture_texture_targets = [
+            ("fridge_left", "fridge"),
+            ("microwave_left", "microwave"),
+            ("basket_right", "basket"),
+            ("cabinet", "shelf"),
+        ]
+        self._apply_furniture_texture_ood()
 
         if self.enable_collision_metrics:
             self._build_collision_name_sets()
@@ -537,11 +549,6 @@ class Kitchen_base_large(Bench_base_task):
         self._load_basket_on_table(table_height, table_xy_bias)
         self._load_cabinet_on_table(table_height, table_xy_bias)
 
-        # change_object_texture(self, self.basket_right, str(np.random.randint(0, 3)),"basket" ,refresh_render=True)
-        # change_object_texture(self, self.microwave_left, str(np.random.randint(0, 3)),"microwave" ,refresh_render=True)
-        # change_object_texture(self, self.cabinet, str(np.random.randint(0, 3)),"shelf" ,refresh_render=True)
-        # change_object_texture(self, self.fridge_left, str(np.random.randint(0, 3)),"fridge" ,refresh_render=True)
-
         self._add_cabinet_wall_filler()
         if self.incl_collision:
             self.add_collision()
@@ -572,8 +579,6 @@ class Kitchen_base_large(Bench_base_task):
         if self.fridge_left is not None:
             self.fridge_left.set_name("fridge_left")
             self.add_prohibit_area(self.fridge_left, padding=0.05, area="table")
-
-        change_object_texture(self, self.fridge_left, "3","fridge" ,refresh_render=True)
 
     def _get_scene_obj_locations(self, object_name="microwave"):
         if self.scene_id == 0: 
@@ -1251,7 +1256,7 @@ class Kitchen_base_large(Bench_base_task):
             task_objects_list.append(actor_name)
         # print_c(f"Existing objects in the scene: {task_objects_list}", "YELLOW")
         cluttered_item_info, obj_names_short, obj_names_tall = get_obstacle_objects_subset(
-            "kitchenl", self.sample_d, task_objects_list
+            "kitchenl", self.obstacle_distribution, task_objects_list
         )
         self.clutter_surface_split(xlim, ylim, zlim, self.prohibited_area["table"], self.obstacle_density, cluttered_item_info, obj_names_short, obj_names_tall)
 

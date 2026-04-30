@@ -21,7 +21,7 @@ class move_items_around(Office_base_task):
 
     def load_actors(self):
         # target_obj_1 ------------------------------------------------------------
-        self.milktea_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["101_milk-tea"])
+        self.milktea_id = np.random.choice(self._target_ids("office", "101_milk-tea"))
         self.target_obj_1 = rand_create_actor(
             self,
             xlim=[self.office_info["shelf_lims"][0]+self.office_info["shelf_padding"], self.office_info["shelf_lims"][2]-self.office_info["shelf_padding"]],
@@ -88,7 +88,7 @@ class move_items_around(Office_base_task):
         else:
             xlim = [-0.1, self.office_info["table_lims"][2]-0.04]
 
-        self.rubikscube_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["073_rubikscube"])
+        self.rubikscube_id = np.random.choice(self._target_ids("office", "073_rubikscube"))
         success, self.target_obj_2 = rand_create_cluttered_actor(
             scene=self.scene,
             xlim=xlim,

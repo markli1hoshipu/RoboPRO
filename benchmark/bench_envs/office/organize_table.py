@@ -54,7 +54,7 @@ class organize_table(Office_base_task):
             rotate_rand=True,
             rotate_lim=[0, 3.14, 0],
         )
-        self.mouse_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["047_mouse"])
+        self.mouse_id = np.random.choice(self._target_ids("office", "047_mouse"))
         self.target_obj_1 = create_actor(
             scene=self,
             pose=rand_pos,
@@ -136,7 +136,7 @@ class organize_table(Office_base_task):
             xlim = [-0.1,self.office_info["table_lims"][2]-0.05]
         else:
             xlim = [self.office_info["table_lims"][0]+0.05, 0.1]
-        self.phone_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["077_phone"])
+        self.phone_id = np.random.choice(self._target_ids("office", "077_phone"))
         success, self.target_obj_2 = rand_create_cluttered_actor(
             scene=self.scene,
             xlim=xlim,
@@ -162,7 +162,7 @@ class organize_table(Office_base_task):
         self.add_prohibit_area(self.target_obj_2, padding=0.01, area="table")
 
         # target_obj_3 ------------------------------------------------------------
-        self.milktea_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["101_milk-tea"])
+        self.milktea_id = np.random.choice(self._target_ids("office", "101_milk-tea"))
         if self.des_obj_3.get_pose().p[0] < 0:
             xlim1 = [self.office_info["table_lims"][0]+self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"], 0.1]
         else:

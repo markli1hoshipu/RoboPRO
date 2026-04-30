@@ -39,7 +39,7 @@ class put_milktea_on_shelf(Office_base_task):
         self.des_obj_pose[2] += 0.02 # raise des_obj 0.02 meters
         self.add_prohibit_area(self.des_obj, padding=0.05, area=f"shelf0")
 
-        self.milktea_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["101_milk-tea"])
+        self.milktea_id = np.random.choice(self._target_ids("office", "101_milk-tea"))
         self.side = "right" if self.des_obj.get_pose().p[0] > 0 else "left"
         if self.side == "left":
             xlim1 = [self.office_info["table_lims"][0]+self.target_objects_info["101_milk-tea"]["params"][f"{self.milktea_id}"]["radius"], 0.08]

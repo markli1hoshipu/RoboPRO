@@ -31,7 +31,7 @@ class set_up_table(Office_base_task):
         holder_pose[1]-= 0.19  
         self.prohibited_area["table"].append([holder_pose[0]-0.11, holder_pose[1]-0.1, holder_pose[0]+0.11, holder_pose[1]+0.1])
         
-        model_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["043_book"])
+        model_id = np.random.choice(self._target_ids("office", "043_book"))
         
         # target_obj_2 ------------------------------------------------------------
         ylim = [self.shelf.get_pose().p[1]-0.07]
@@ -74,7 +74,7 @@ class set_up_table(Office_base_task):
         self.add_operating_area(self.target[:3])
 
         # target_obj_1 ------------------------------------------------------------
-        self.mouse_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["047_mouse"])
+        self.mouse_id = np.random.choice(self._target_ids("office", "047_mouse"))
         pose = self.cabinet.get_pose().p
         pose[1]-= 0.2
         pose[2] = self.office_info["table_height"]+0.03

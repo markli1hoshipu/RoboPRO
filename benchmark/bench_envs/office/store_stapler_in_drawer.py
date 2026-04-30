@@ -26,7 +26,7 @@ class store_stapler_in_drawer(Office_base_task):
         self.add_cabinet_collision()
 
         # set up target_obj --------------------------------------------------
-        self.stapler_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["048_stapler"])
+        self.stapler_id = np.random.choice(self._target_ids("office", "048_stapler"))
         if self.side == "left":
             xlim = [self.office_info["table_lims"][0]+0.03, 0.1]
         else:

@@ -28,7 +28,7 @@ class put_mouse_next_to_stapler(Office_base_task):
         self.cabinet.set_qpos([limit[1],0,0])
 
         # set up stapler --------------------------------------------------
-        self.mouse_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["047_mouse"])
+        self.mouse_id = np.random.choice(self._target_ids("office", "047_mouse"))
         pose = self.cabinet.get_pose().p
         pose[1]-= 0.2
         pose[2] = self.office_info["table_height"]+0.03
@@ -53,7 +53,7 @@ class put_mouse_next_to_stapler(Office_base_task):
             xlim = [self.office_info["table_lims"][0]+0.04, 0]
         else:
             xlim = [-0.2, self.office_info["table_lims"][2]-0.14]
-        self.stapler_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["048_stapler"])
+        self.stapler_id = np.random.choice(self._target_ids("office", "048_stapler"))
         self.stapler = rand_create_actor(
             scene=self,
             xlim = xlim,

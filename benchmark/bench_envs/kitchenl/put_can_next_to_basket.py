@@ -38,7 +38,7 @@ class put_can_next_to_basket(Kitchen_base_large):
         self.can_modelname = "071_can"
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
-        self.can_model_ids = task_objs["objects"]["kitchenl"]["targets"][self.can_modelname]
+        self.can_model_ids = self._target_ids("kitchenl", self.can_modelname)
         np.random.seed(kwargs.get("seed", 0))
         kwargs["scene_id"] = 0 #np.random.choice([0,1])
         kwargs["include_collision"] = True

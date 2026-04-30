@@ -62,7 +62,7 @@ class pick_sauce_can_from_cabinet(Kitchen_base_large):
             task_objs = yaml.safe_load(f)
 
 
-        self.sauce_can_model_ids =  task_objs['objects']['kitchenl']['targets'][self.sauce_can_modelname]
+        self.sauce_can_model_ids =  self._target_ids("kitchenl", self.sauce_can_modelname)
         self.sauce_can_spawn_rot_deg = [90.0, 0.0, 90.0]
 
         rot_cfg = kwargs.pop("sauce_can_spawn_rot_deg", None)

@@ -93,6 +93,8 @@ class KitchenS_base_task(Bench_base_task):
         self.obstacle_height = random_setting.get("obstacle_height", "short")
         self.obstacle_density = random_setting.get("obstacle_density", 3)
 
+        self._parse_perturbations(random_setting)
+
         self.file_path = []
         self.plan_success = True
         self.step_lim = None
@@ -133,6 +135,8 @@ class KitchenS_base_task(Bench_base_task):
 
         self.item_info = get_task_objects_config()
         self.target_objects_info = get_target_objects_subset("kitchens", self.sample_d)
+        if getattr(self, "unseen_targets", False):
+            self._merge_ood_target_info("kitchens")
 
         self.instruction = None
         self.collision_list = []
@@ -161,6 +165,13 @@ class KitchenS_base_task(Bench_base_task):
 
         if self.cluttered_table:
             self.get_cluttered_surfaces()
+
+        self._apply_specular_ood()
+        self._furniture_texture_targets = [
+            ("microwave", "microwave"),
+            ("sink", "sink"),
+        ]
+        self._apply_furniture_texture_ood()
 
         if self.enable_collision_metrics:
             self._build_collision_name_sets()
@@ -893,7 +904,7 @@ class KitchenS_base_task(Bench_base_task):
             task_objects_list.append(actor_name)
 
         cluttered_item_info, obj_names_short, obj_names_tall = get_obstacle_objects_subset(
-            "kitchens", self.sample_d, task_objects_list
+            "kitchens", self.obstacle_distribution, task_objects_list
         )
 
         self.clutter_surface_split(

@@ -25,7 +25,7 @@ class store_rubikscube_on_shelf(Office_base_task):
         self.add_cabinet_collision()
 
         # rubikscube --------------------------------------------------
-        self.cube_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["073_rubikscube"])
+        self.cube_id = np.random.choice(self._target_ids("office", "073_rubikscube"))
         center = self.cabinet.get_pose().p
         center[1] -= 0.02
         center[2] = self.office_info["table_height"]+0.03

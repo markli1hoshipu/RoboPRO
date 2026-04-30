@@ -73,7 +73,7 @@ class pick_milk_box_from_fridge(Kitchen_base_large):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
 
-        self.milk_box_model_ids = task_objs['objects']['kitchenl']['targets'][self.milk_box_modelname]
+        self.milk_box_model_ids = self._target_ids("kitchenl", self.milk_box_modelname)
         self.milk_box_spawn_rot_deg = [0.0, 0.0, 90.0]
 
         rot_cfg = kwargs.pop("milk_box_spawn_rot_deg", None)

@@ -112,7 +112,7 @@ class move_bottle_from_fridge_next_to_can(Kitchen_base_large):
         with open(os.path.join(os.environ["BENCH_ROOT"],'bench_task_config', 'task_objects.yml'), "r", encoding="utf-8") as f:
             task_objs = yaml.safe_load(f)
         
-        self.bottle_model_id = np.random.choice(task_objs["objects"]["kitchenl"]["targets"]["001_bottle"])
+        self.bottle_model_id = np.random.choice(self._target_ids("kitchenl", "001_bottle"))
         spawn_pose = self._fridge_inside_spawn_pose()
 
         intrinsic_scale = self._get_asset_model_scale_create_actor(
@@ -142,7 +142,7 @@ class move_bottle_from_fridge_next_to_can(Kitchen_base_large):
         bias = 0.15
 
 
-        self.can_id = np.random.choice(task_objs["objects"]["kitchenl"]["targets"]["071_can"])
+        self.can_id = np.random.choice(self._target_ids("kitchenl", "071_can"))
         success, self.can = rand_create_cluttered_actor(
             scene=self.scene,
             xlim=xlim,

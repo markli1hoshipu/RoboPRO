@@ -21,7 +21,7 @@ class put_rubikscube_next_to_milktea(Office_base_task):
 
     def load_actors(self):
         level = np.random.choice([0,1])
-        self.cube_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["073_rubikscube"])
+        self.cube_id = np.random.choice(self._target_ids("office", "073_rubikscube"))
         xlim = [self.office_info["shelf_lims"][0] + self.office_info["shelf_padding"], self.office_info["shelf_lims"][2] - self.office_info["shelf_padding"]]
         self.target_obj = rand_create_actor(
             self,
@@ -42,7 +42,7 @@ class put_rubikscube_next_to_milktea(Office_base_task):
         else:
             xlim = [0.15, self.office_info["table_lims"][2] - 0.04]
         
-        self.milktea_id = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["101_milk-tea"])
+        self.milktea_id = np.random.choice(self._target_ids("office", "101_milk-tea"))
         self.milktea = rand_create_actor(
             self,
             xlim=xlim,

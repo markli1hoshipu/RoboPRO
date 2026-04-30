@@ -23,7 +23,7 @@ class put_book_on_book(Office_base_task):
         ylim = [self.file_holder.get_pose().p[1]]
         zlim = [self.office_info["file_holder_heights"][1]+0.1]
         xlim = [self.office_info["file_holder_lims"][0]+0.08, self.office_info["file_holder_lims"][2]-0.08]
-        model_id1 = np.random.choice(self.item_info[self.sample_d]["office"]["targets"]["043_book"])
+        model_id1 = np.random.choice(self._target_ids("office", "043_book"))
         model_id2 = 1
         self.target_obj = rand_create_actor(
             self,

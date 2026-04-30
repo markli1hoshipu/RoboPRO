@@ -105,19 +105,17 @@ class Bench_base_task(Base_Task):
 
         apply_lighting_ablation = getattr(self, "apply_lighting_ablation", False)
         if apply_lighting_ablation:
-            # Per-episode L1/L2/L3/L4 toggles mirror robotwin-plus. L3 (specular)
-            # is applied later once actors exist; here we only set lights.
-            apply_l1 = getattr(self, "_l1_enabled", True)
-            apply_l4 = getattr(self, "_l4_enabled", True) and (np.random.rand() < 0.5)
-            apply_l2 = getattr(self, "_l2_enabled", True) and apply_l4
-            l1_range = getattr(self, "_l1_range", [0.4, 1.8])
+            apply_color = getattr(self, "_lighting_color_enabled", True)
+            apply_shadow = getattr(self, "_lighting_shadow_enabled", True) and (np.random.rand() < 0.5)
+            apply_direction = getattr(self, "_lighting_direction_enabled", True)
+            color_range = getattr(self, "_lighting_color_range", [0.4, 1.8])
 
             self.direction_light_lst = []
             for direction_light in direction_lights:
                 direction, color = list(direction_light[0]), list(direction_light[1])
-                if apply_l1:
-                    color = [float(np.random.uniform(l1_range[0], l1_range[1])) for _ in range(3)]
-                if apply_l2:
+                if apply_color:
+                    color = [float(np.random.uniform(color_range[0], color_range[1])) for _ in range(3)]
+                if apply_direction:
                     theta = np.random.uniform(np.deg2rad(8), np.deg2rad(82))
                     phi = np.random.uniform(0, 2 * np.pi)
                     direction = [
@@ -126,15 +124,15 @@ class Bench_base_task(Base_Task):
                         float(np.cos(theta)),
                     ]
                 self.direction_light_lst.append(
-                    self.scene.add_directional_light(direction, color, shadow=apply_l4))
+                    self.scene.add_directional_light(direction, color, shadow=apply_shadow))
 
             self.point_light_lst = []
             for point_light in point_lights:
                 pos, color = list(point_light[0]), list(point_light[1])
-                if apply_l1:
-                    color = [float(np.random.uniform(l1_range[0], l1_range[1])) for _ in range(3)]
-                self.point_light_lst.append(self.scene.add_point_light(pos, color, shadow=apply_l4))
-            print(f"[Lighting] L1={apply_l1} L2={apply_l2} L3=(deferred) L4={apply_l4}")
+                if apply_color:
+                    color = [float(np.random.uniform(color_range[0], color_range[1])) for _ in range(3)]
+                self.point_light_lst.append(self.scene.add_point_light(pos, color, shadow=apply_shadow))
+            print(f"[Lighting] color={apply_color} direction={apply_direction} shadow={apply_shadow}")
         else:
             self.direction_light_lst = []
             for direction_light in direction_lights:
@@ -173,48 +171,32 @@ class Bench_base_task(Base_Task):
     # ==================================================================
     # Perturbation parsing + application helpers.
     # Called by subclasses (Office/Study/Kitchen base tasks) from their
-    # own _init_task_env_ so vision / object / language / background_plus
+    # own _init_task_env_ so vision / ood / object / language
     # flags get wired uniformly.
     # ==================================================================
     def _parse_perturbations(self, random_setting):
         random_setting = random_setting or {}
-        noise_types = ['motion', 'gaussian', 'zoom', 'fog', 'glass']
 
-        # Vision — lighting
+        # Vision — lighting (color tint, direction, shadow toggle). Specular
+        # moved to ood_perturbation.specular below.
         vision = random_setting.get("vision_perturbation", {}) or {}
         lighting = vision.get("lighting", {}) or {}
         self.apply_lighting_ablation = bool(lighting.get("enabled", False))
-        self._l1_enabled = bool(lighting.get("l1", True))
-        self._l2_enabled = bool(lighting.get("l2", True))
-        self._l3_enabled = bool(lighting.get("l3", True))
-        self._l4_enabled = bool(lighting.get("l4", True))
-        self._l1_range = lighting.get("l1_range", [0.4, 1.8])
+        self._lighting_color_enabled = bool(lighting.get("color", True))
+        self._lighting_direction_enabled = bool(lighting.get("direction", True))
+        self._lighting_shadow_enabled = bool(lighting.get("shadow", True))
+        self._lighting_color_range = lighting.get("color_range", [0.4, 1.8])
 
-        # Vision — blur (per-episode noise type; per-frame CV ops applied
-        # in envs/_base_task.py:get_obs).
+        # Vision — gaussian blur (per-frame, applied in envs/_base_task.py:get_obs).
+        # σ = ((severity-1)/4) * 10 * strength;  severity 2 + strength 1.0 → σ=2.5.
         blur = vision.get("blur", {}) or {}
-        if bool(blur.get("enabled", False)):
-            self.blur_perturb_enabled = True
-            forced = blur.get("force_type")
-            if forced and forced in noise_types:
-                self.current_noise_type = forced
-            else:
-                self.current_noise_type = noise_types[self.ep_num % len(noise_types)]
-            # Severity 2/5 gives s=0.25 which is visually meaningful but not
-            # destructive; overall scaled by YAML `strength`.
-            self.current_severity = 2
-            self.current_s = (self.current_severity - 1) / 4.0
+        self.blur_perturb_enabled = bool(blur.get("enabled", False))
+        if self.blur_perturb_enabled:
+            severity = int(blur.get("severity", 2))
+            severity = max(1, min(5, severity))
             self.blur_strength = float(blur.get("strength", 1.0))
-            if self.current_noise_type == 'zoom':
-                zoom_min = 1.00
-                zoom_max = 1.1 + self.current_s * (1.56 - 1.11)
-                self.zoom_factor = float(np.random.uniform(zoom_min, zoom_max))
-            else:
-                self.zoom_factor = None
-            print(f"[Vision] blur={self.current_noise_type} s={self.current_s:.2f} strength={self.blur_strength}")
-        else:
-            self.blur_perturb_enabled = False
-            self.current_noise_type = None
+            self.blur_sigma = ((severity - 1) / 4.0) * 10.0 * self.blur_strength
+            print(f"[Vision] gaussian blur severity={severity} σ={self.blur_sigma:.2f}")
 
         # Vision — pixel shift (per-frame; randomized inside consumer loop).
         shift = vision.get("pixel_shift", {}) or {}
@@ -222,38 +204,40 @@ class Bench_base_task(Base_Task):
         self.pixel_shift_max = float(shift.get("max_shift", 5))
         self.pixel_shift_strength = float(shift.get("strength", 1.0))
 
-        # Object perturbation
-        obj = random_setting.get("object_perturbation", {}) or {}
-        tgt_tex = obj.get("target_texture", {}) or {}
-        self.target_texture_enabled = bool(tgt_tex.get("enabled", False))
-        self.target_texture_source = str(tgt_tex.get("texture_source", "seen"))
-        self.unseen_obstacles = bool(obj.get("unseen_obstacles", False))
+        # OOD perturbation — specular + target texture swap + surface
+        # material. Grouped here because all change material/appearance away
+        # from the training distribution, vs. lighting which only changes
+        # photometry.
+        ood = random_setting.get("ood_perturbation", {}) or {}
+        spec = ood.get("specular", {}) or {}
+        self._specular_enabled = bool(spec.get("enabled", False))
+        surf = ood.get("surface_material", {}) or {}
+        self._surface_material_enabled = bool(surf.get("enabled", False))
+        self._surface_material_metallic_range = surf.get("metallic_range", [0.0, 0.8])
+        self._surface_material_roughness_range = surf.get("roughness_range", [0.05, 0.95])
+        furn = ood.get("furniture_texture", {}) or {}
+        self._furniture_texture_enabled = bool(furn.get("enabled", False))
 
-        # Background_plus (B1+/B2) — ported from robotwin-plus.
-        bg_plus = random_setting.get("background_plus", {}) or {}
-        self.bg_plus_enabled = bool(bg_plus.get("enabled", False))
-        self.bg_plus_color_tint = bool(bg_plus.get("color_tint", True))
-        self.bg_plus_tint_range = bg_plus.get("tint_range", [0.5, 1.5])
-        self.bg_plus_surface_material = bool(bg_plus.get("surface_material", True))
-        self.bg_plus_metallic_range = bg_plus.get("metallic_range", [0.0, 0.8])
-        self.bg_plus_roughness_range = bg_plus.get("roughness_range", [0.05, 0.95])
-        self.bg_plus_floor_texture = bool(bg_plus.get("floor_texture", True))
+        # Object perturbation (non-visual: scene-level instance distributions).
+        # Obstacles and targets are independently swappable to the OOD pool
+        # (task_objects.yml:object_ood). Tasks whose target model has no OOD
+        # entry fall back to the seen distribution via _target_ids().
+        obj = random_setting.get("object_perturbation", {}) or {}
+        self.unseen_obstacles = bool(obj.get("unseen_obstacles", False))
+        self.unseen_targets = bool(obj.get("unseen_targets", False))
+        self.obstacle_distribution = "object_ood" if self.unseen_obstacles else getattr(self, "sample_d", "objects")
+        self.target_distribution = "object_ood" if self.unseen_targets else getattr(self, "sample_d", "objects")
 
         # Language
         lang = random_setting.get("language_perturbation", {}) or {}
         self.language_perturbation_enabled = bool(lang.get("enabled", False))
         self._instruction_bank_path = lang.get("instruction_bank")
 
-    def _apply_l3_specular(self):
-        """Apply L3 specular/shininess variation to all actors in the scene.
-        Must be called after load_actors. Robotwin-plus reference:
-        /shared_work/Robotwin-plus/envs/_base_task.py:478-492.
+    def _apply_specular_ood(self):
+        """Apply specular/shininess variation to all actors in the scene.
+        Must be called after load_actors. Gated on ood_perturbation.specular.
         """
-        if not getattr(self, "apply_lighting_ablation", False):
-            return
-        if not getattr(self, "_l3_enabled", True):
-            return
-        if np.random.rand() >= 0.5:
+        if not getattr(self, "_specular_enabled", False):
             return
         specular_strength = float(np.random.uniform(0.3, 6.0))
         shininess = float(np.random.uniform(10, 250))
@@ -267,60 +251,83 @@ class Bench_base_task(Base_Task):
                     mat.set_shininess(shininess)
                 except Exception:
                     pass
-        print(f"[Lighting] L3 spec={specular_strength:.2f} shine={shininess:.0f}")
+        print(f"[OOD] specular={specular_strength:.2f} shine={shininess:.0f}")
 
-    def _apply_target_texture(self):
-        """Per-episode swap of the target object's base-color texture with a
-        random background-texture PNG. Gated on object_perturbation.target_texture.
+    def _apply_furniture_texture_ood(self):
+        """Swap base-color textures of large scene furniture (shelf/cabinet/
+        fridge/bookcase/...) with random PNGs from bench_assets/backgrounds/
+        <type>/. Each scene declares the targets via self._furniture_texture_targets
+        as a list of (attr_name, object_type) pairs.
         """
-        if not getattr(self, "target_texture_enabled", False):
+        if not getattr(self, "_furniture_texture_enabled", False):
             return
-        target = getattr(self, "target_obj", None)
-        if target is None:
+        targets = getattr(self, "_furniture_texture_targets", []) or []
+        if not targets:
             return
-        src = getattr(self, "target_texture_source", "seen")
-        if src == "background":
-            src = "seen"
-        tex_dir = f"./assets/background_texture/{src}"
-        if not os.path.isdir(tex_dir):
-            return
-        pngs = [f for f in os.listdir(tex_dir) if f.endswith(".png")]
-        if not pngs:
-            return
-        tex_path = os.path.join(tex_dir, np.random.choice(pngs))
+        from bench_envs.utils.scene_gen_utils import change_object_texture
+        applied = []
+        for attr_name, obj_type in targets:
+            actor = getattr(self, attr_name, None)
+            if actor is None:
+                continue
+            try:
+                change_object_texture(self, actor, None, obj_type, refresh_render=False)
+                applied.append(attr_name)
+            except Exception as e:
+                print(f"[OOD] furniture_texture {attr_name}({obj_type}) failed: {e}")
+        if applied:
+            try:
+                self.scene.update_render()
+            except Exception:
+                pass
+            print(f"[OOD] furniture_texture applied to {applied}")
+
+    def _target_ids(self, scene, model):
+        """Return the list of target model_ids to sample from for (scene, model).
+        Honors self.target_distribution; falls back to the seen pool if the
+        chosen distribution has no entry for this model (so tasks whose target
+        has no OOD ids still run instead of KeyError'ing). Auto-loads
+        task_objects.yml on first use if self.item_info is not set."""
+        item_info = getattr(self, "item_info", None)
+        if not item_info:
+            try:
+                from bench_envs.utils.scene_gen_utils import get_task_objects_config
+                item_info = get_task_objects_config()
+            except Exception:
+                import yaml
+                with open(f"{os.environ['BENCH_ROOT']}/bench_task_config/task_objects.yml") as f:
+                    item_info = yaml.safe_load(f) or {}
+            self.item_info = item_info
+        dist = getattr(self, "target_distribution", "objects")
+        pool = (item_info.get(dist) or {}).get(scene, {}).get("targets", {}) or {}
+        ids = pool.get(model)
+        if ids:
+            return ids
+        return item_info["objects"][scene]["targets"][model]
+
+    def _merge_ood_target_info(self, scene):
+        """Merge object_ood target params into self.target_objects_info so OOD
+        ids sampled by _target_ids() have radius/extra params available."""
         try:
-            # In this codebase target_obj is the Actor wrapper; the underlying
-            # sapien.Entity lives on `.actor`. Fall back to `.entity` or the
-            # object itself for other shapes.
-            entity = (getattr(target, "actor", None)
-                      or getattr(target, "entity", None)
-                      or target)
-            rbc = entity.find_component_by_type(sapien.render.RenderBodyComponent)
-            if rbc is None:
-                return
-            tex2d = sapien.render.RenderTexture2D(tex_path)
-            for shape in rbc.render_shapes:
-                try:
-                    for part in shape.parts:
-                        mat = part.material
-                        if mat is None:
-                            continue
-                        try:
-                            mat.set_base_color_texture(tex2d)
-                            mat.set_base_color([1, 1, 1, 1])
-                        except Exception:
-                            pass
-                except AttributeError:
-                    try:
-                        mat = shape.material
-                        if mat is not None:
-                            mat.set_base_color_texture(tex2d)
-                            mat.set_base_color([1, 1, 1, 1])
-                    except Exception:
-                        pass
-            print(f"[Object] target_texture -> {os.path.basename(tex_path)}")
+            from envs.utils.rand_create_cluttered_actor import get_target_objects_subset
+        except Exception:
+            from envs.utils import get_target_objects_subset
+        try:
+            ood_info = get_target_objects_subset(scene, "object_ood") or {}
         except Exception as e:
-            print(f"[Object] target_texture failed: {e}")
+            print(f"[OOD] _merge_ood_target_info({scene}) failed: {e}")
+            return
+        seen = self.target_objects_info or {}
+        for m, info in ood_info.items():
+            if m in seen:
+                seen_ids = list(seen[m].get("ids", []))
+                ood_ids = list(info.get("ids", []))
+                seen[m]["ids"] = sorted(set(seen_ids) | set(ood_ids), key=lambda x: int(x) if str(x).isdigit() else x)
+                seen_params = seen[m].setdefault("params", {})
+                seen_params.update(info.get("params", {}) or {})
+            else:
+                seen[m] = info
+        self.target_objects_info = seen
 
     def _maybe_apply_language_perturbation(self):
         """If enabled, pick a random instruction from instruction_bank.json for
