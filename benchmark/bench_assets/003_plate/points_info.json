@@ -1,0 +1,10 @@
+{
+    "contact_points": [],
+    "functional_points": [
+        {
+            "id": 0,
+            "description": "The center of the plate top surface",
+            "usage": "Used to indicate where to place other objects on the plate."
+        }
+    ]
+}
