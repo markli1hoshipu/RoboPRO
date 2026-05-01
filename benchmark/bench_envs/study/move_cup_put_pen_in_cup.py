@@ -149,7 +149,7 @@ class move_cup_put_pen_in_cup(Study_base_task):
 
         pen_in_cup = np.all(abs(cup_pose[:2] - self.target_obj.get_pose().p[:2]) < np.array([eps, eps]))
 
-        print(cup_pose, cup_in_box, box_bb)
+        # print(cup_pose, cup_in_box, box_bb)
         return (not cup_in_box and cup_on_table and pen_in_cup
                 and self.robot.is_left_gripper_open()
                 and self.robot.is_right_gripper_open())
