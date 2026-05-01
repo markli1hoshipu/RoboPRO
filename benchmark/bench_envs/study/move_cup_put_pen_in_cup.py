@@ -16,6 +16,9 @@ from transforms3d.euler import euler2quat
 
 class move_cup_put_pen_in_cup(Study_base_task):
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.target_obj.get_name(), self.cup_obj.get_name()}
+
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)

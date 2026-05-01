@@ -14,6 +14,9 @@ from bench_envs.utils.scene_gen_utils import print_c, place_actor,get_random_pla
 
 class put_cup_on_table(Study_base_task):
 
+    def _get_target_object_names(self) -> set[str]:
+        return {self.target_obj.get_name(), self.des_obj.get_name()}
+
     def setup_demo(self, is_test=False, **kwargs):
         kwargs["collision_cache"] = {"mesh": 100, "obb": 3}
         super()._init_task_env_(**kwargs)
