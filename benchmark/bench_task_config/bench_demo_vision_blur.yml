@@ -54,4 +54,4 @@ save_path: ./data/bench_data
 clear_cache_freq: 3
 collect_data: true
 eval_video_log: true
-enable_collision_metrics: false
+enable_collision_metrics: true

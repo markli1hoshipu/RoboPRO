@@ -36,4 +36,4 @@ save_path: ./data/bench_data_smoke
 clear_cache_freq: 1
 collect_data: false
 eval_video_log: false
-enable_collision_metrics: false
+enable_collision_metrics: true

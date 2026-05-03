@@ -1159,7 +1159,11 @@ class Bench_base_task(Base_Task):
 
         eval_video_freq = 1  # fixed
         if (self.eval_video_path is not None and self.take_action_cnt % eval_video_freq == 0):
-            self.eval_video_ffmpeg.stdin.write(self.now_obs["observation"]["demo_camera"]["rgb"].tobytes())
+            obs = self.now_obs.get("observation", {})
+            for _cam in ("demo_camera", "countertop_camera", "head_camera"):
+                if _cam in obs:
+                    self.eval_video_ffmpeg.stdin.write(obs[_cam]["rgb"].tobytes())
+                    break
 
         self.take_action_cnt += 1
         print(f"step: \033[92m{self.take_action_cnt} / {self.step_lim}\033[0m", end="\r")

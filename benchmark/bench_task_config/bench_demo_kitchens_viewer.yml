@@ -37,4 +37,4 @@ clear_cache_freq: 1
 collect_data: true
 save_seed: false
 eval_video_log: true
-enable_collision_metrics: false
+enable_collision_metrics: true

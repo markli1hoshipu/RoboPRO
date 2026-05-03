@@ -15,6 +15,10 @@ domain_randomization:
   random_light: false
   crazy_random_light_rate: 0
   obstacle_density: 15
+
+  language_perturbation:
+    enabled: true
+    instruction_bank: /shared_work/markhsp/robotwin_bench/benchmark/bench_task_config/instruction_bank.json
 camera:
   head_camera_type: D435
   wrist_camera_type: D435
@@ -38,4 +42,4 @@ clear_cache_freq: 1
 collect_data: true
 eval_video_log: true
 # Data collection: no collision metrics. Set true for evaluation.
-enable_collision_metrics: false
+enable_collision_metrics: true
