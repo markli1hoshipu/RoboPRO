@@ -15,7 +15,7 @@ class put_milktea_on_shelf(Office_base_task):
         super()._init_task_env_(**kwargs)
 
     def _get_target_object_names(self) -> set[str]:
-        return {self.target_obj.get_name()}
+        return {self.target_obj.get_name(), self.des_obj.get_name()}
 
     def load_actors(self):
         target_rand_pose = rand_pose(
