@@ -25,62 +25,68 @@
   </div>
 </header>
 
-<section class="abstract">
-  <div class="container">
-    <h2>Abstract</h2>
-    <p>
-      Object manipulation in the real world requires robotic policies to be robust to contextual perturbations and capable of safe planning in cluttered scenes. However, the majority of existing robotics benchmarks contain clean tabletop environments with success rate as the sole metric, leaving two critical deployment questions unanswered: <em>does the policy manipulate safely under real conditions, and what leads to its failure?</em> Some benchmarks evaluate robustness by applying perturbations in isolation on uncluttered surfaces and relying on binary or count-based collision detection. Others provide realistic environments but omit perturbation evaluation and safety metrics entirely.
-    </p>
-    <p>
-      To this end, we present <strong>RoboPRO</strong>, a <strong>Robo</strong>tics benchmark for <strong>P</strong>erturbation-<strong>R</strong>esilient and <strong>O</strong>bstacle-aware planning, which unifies various axes of robustness in manipulation. RoboPRO comprises 80 diverse bimanual atomic and compositional tasks across four furnished indoor environments, with a total of 16,000 demonstrations and 5.6K diverse language instructions. Scenes are populated with different numbers of distractors, ranging from clean (only target objects) to densely populated, imposing both visual and operational clutter. We propose two novel metrics that detect unsafe contact between the robot and the environment or distractors. Our evaluation protocol consists of a factorial analysis of three key perturbations — visual, linguistic, object-level — at multiple distractor densities. We conduct extensive experiments on RoboPRO using state-of-the-art manipulation policies to analyze the impact of visual and operational clutter, perturbations, and instructional diversity. Our findings highlight the key challenges for manipulation in real-world conditions and motivate future research in this domain.
-    </p>
-  </div>
-</section>
-
-<section class="logo-block">
-  <div class="container">
-    <img src="logo.png" alt="RoboPRO logo — a benchmark for robotics manipulation in cluttered and diverse environments" />
-    <div class="logo-caption">A benchmark for robotics manipulation in cluttered and diverse environments</div>
-  </div>
-</section>
-
-<section class="intro">
-  <div class="container">
-    <p>
-      RoboPRO sits between two existing camps. Tabletop suites exercise clean
-      per-skill evaluation but ignore real-world clutter and only report a single
-      success metric; household-scale suites model realistic environments yet
-      contain no systematic perturbations. RoboPRO inherits the furnished,
-      multi-skill, bimanual character of household suites and applies
-      perturbations <em>within</em> cluttered scenes — letting each robustness
-      axis be measured separately and jointly with safety.
-    </p>
-    <div class="stats">
-      <div class="stat"><div class="num">80</div><div class="lbl">Tasks</div></div>
-      <div class="stat"><div class="num">16K</div><div class="lbl">Demonstrations</div></div>
-      <div class="stat"><div class="num">5.6K</div><div class="lbl">Language Instructions</div></div>
-      <div class="stat"><div class="num">4</div><div class="lbl">Indoor Scenes</div></div>
-    </div>
-  </div>
-</section>
-
 <nav class="tab-nav" aria-label="Section navigation">
   <div class="container">
     <ul class="tab-strip" role="tablist">
-      <li><a href="#tasks"      class="active" data-tab="tasks"      role="tab">Task Gallery</a></li>
-      <li><a href="#collision"                  data-tab="collision"  role="tab">Collision</a></li>
-      <li><a href="#vision"                     data-tab="vision"     role="tab">Vision</a></li>
-      <li><a href="#language"                   data-tab="language"   role="tab">Language</a></li>
-      <li><a href="#leaderboard"                data-tab="leaderboard" role="tab">Leaderboard</a></li>
-      <li><a href="#rollouts"                   data-tab="rollouts"   role="tab">Policy Rollouts</a></li>
+      <li><a href="#overview"    class="active" data-tab="overview"    role="tab">Overview</a></li>
+      <li><a href="#tasks"                       data-tab="tasks"       role="tab">Task Gallery</a></li>
+      <li><a href="#collision"                   data-tab="collision"   role="tab">Collision</a></li>
+      <li><a href="#vision"                      data-tab="vision"      role="tab">Vision</a></li>
+      <li><a href="#language"                    data-tab="language"    role="tab">Language</a></li>
+      <li><a href="#leaderboard"                 data-tab="leaderboard" role="tab">Leaderboard</a></li>
+      <li><a href="#rollouts"                    data-tab="rollouts"    role="tab">Policy Rollouts</a></li>
     </ul>
   </div>
 </nav>
 
 <main>
 
+<!-- ============ Overview (default) ============ -->
+<section id="overview" class="tab-panel active" role="tabpanel">
+
+  <section class="abstract">
+    <div class="container">
+      <h2>Abstract</h2>
+      <p>
+        Object manipulation in the real world requires robotic policies to be robust to contextual perturbations and capable of safe planning in cluttered scenes. However, the majority of existing robotics benchmarks contain clean tabletop environments with success rate as the sole metric, leaving two critical deployment questions unanswered: <em>does the policy manipulate safely under real conditions, and what leads to its failure?</em> Some benchmarks evaluate robustness by applying perturbations in isolation on uncluttered surfaces and relying on binary or count-based collision detection. Others provide realistic environments but omit perturbation evaluation and safety metrics entirely.
+      </p>
+      <p>
+        To this end, we present <strong>RoboPRO</strong>, a <strong>Robo</strong>tics benchmark for <strong>P</strong>erturbation-<strong>R</strong>esilient and <strong>O</strong>bstacle-aware planning, which unifies various axes of robustness in manipulation. RoboPRO comprises 80 diverse bimanual atomic and compositional tasks across four furnished indoor environments, with a total of 16,000 demonstrations and 5.6K diverse language instructions. Scenes are populated with different numbers of distractors, ranging from clean (only target objects) to densely populated, imposing both visual and operational clutter. We propose two novel metrics that detect unsafe contact between the robot and the environment or distractors. Our evaluation protocol consists of a factorial analysis of three key perturbations — visual, linguistic, object-level — at multiple distractor densities. We conduct extensive experiments on RoboPRO using state-of-the-art manipulation policies to analyze the impact of visual and operational clutter, perturbations, and instructional diversity. Our findings highlight the key challenges for manipulation in real-world conditions and motivate future research in this domain.
+      </p>
+    </div>
+  </section>
+
+  <section class="logo-block">
+    <div class="container">
+      <img src="logo.png" alt="RoboPRO logo — a benchmark for robotics manipulation in cluttered and diverse environments" />
+      <div class="logo-caption">A benchmark for robotics manipulation in cluttered and diverse environments</div>
+    </div>
+  </section>
+
+  <section class="intro">
+    <div class="container">
+      <p>
+        RoboPRO sits between two existing camps. Tabletop suites exercise clean
+        per-skill evaluation but ignore real-world clutter and only report a single
+        success metric; household-scale suites model realistic environments yet
+        contain no systematic perturbations. RoboPRO inherits the furnished,
+        multi-skill, bimanual character of household suites and applies
+        perturbations <em>within</em> cluttered scenes — letting each robustness
+        axis be measured separately and jointly with safety.
+      </p>
+      <div class="stats">
+        <div class="stat"><div class="num">80</div><div class="lbl">Tasks</div></div>
+        <div class="stat"><div class="num">16K</div><div class="lbl">Demonstrations</div></div>
+        <div class="stat"><div class="num">5.6K</div><div class="lbl">Language Instructions</div></div>
+        <div class="stat"><div class="num">4</div><div class="lbl">Indoor Scenes</div></div>
+      </div>
+    </div>
+  </section>
+
+</section>
+
 <!-- ============ Task Gallery ============ -->
-<section id="tasks" class="tab-panel active" role="tabpanel">
+<section id="tasks" class="tab-panel" role="tabpanel">
   <div class="container">
     <div class="panel-head">
       <h2>Task Gallery</h2>

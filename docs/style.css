@@ -221,6 +221,9 @@ h1.title .accent { color: var(--accent); }
   padding: 2.5rem 0 3rem;
   border-bottom: 1px solid var(--rule);
 }
+/* Overview wraps prose sections that already have their own padding/borders. */
+#overview.tab-panel { padding: 0; border-bottom: 0; }
+#overview > section.intro { border-bottom: 1px solid var(--rule); }
 .tab-panel.active { display: block; animation: fadeIn 220ms ease both; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 

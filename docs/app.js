@@ -1,7 +1,7 @@
 /* RoboPRO project page — vanilla JS for tab navigation and dropdown-driven viewers. */
 
 (() => {
-  const TAB_IDS = ['tasks', 'collision', 'vision', 'language', 'leaderboard', 'rollouts'];
+  const TAB_IDS = ['overview', 'tasks', 'collision', 'vision', 'language', 'leaderboard', 'rollouts'];
   let manifest = null;
 
   // ---------- Helpers ----------
@@ -51,7 +51,7 @@
   const initTabs = () => {
     const links = document.querySelectorAll('.tab-nav a[data-tab]');
     const showTab = (id) => {
-      if (!TAB_IDS.includes(id)) id = 'tasks';
+      if (!TAB_IDS.includes(id)) id = 'overview';
       links.forEach(a => a.classList.toggle('active', a.dataset.tab === id));
       TAB_IDS.forEach(t => {
         const panel = document.getElementById(t);
@@ -65,7 +65,7 @@
       showTab(id);
       window.scrollTo({ top: document.querySelector('.tab-nav').offsetTop, behavior: 'smooth' });
     }));
-    const initial = (location.hash || '').replace('#', '') || 'tasks';
+    const initial = (location.hash || '').replace('#', '') || 'overview';
     showTab(initial);
   };
 
