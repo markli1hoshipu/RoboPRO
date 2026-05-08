@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RoboPRO — Perturbation-Resilient Obstacle-awareness Benchmark</title>
+<meta name="description" content="RoboPRO extends RoboTwin with realistic office, study and kitchen scenes and a systematic language / vision / object perturbation suite for evaluating perturbation-resilient, obstacle-aware bimanual manipulation policies." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="masthead">
+  <div class="container">
+    <p class="eyebrow"><span>Vol. 01 · 2026 · a benchmark for robustness</span></p>
+    <h1 class="title">Robo<span class="amp">PRO</span>.</h1>
+    <p class="deck">
+      <em>Perturbation-Resilient Obstacle-awareness</em> — a bimanual
+      manipulation benchmark that stress-tests policies across
+      <em>language</em>, <em>vision</em>, and <em>object</em> perturbations,
+      on realistic office, study, and kitchen scenes.
+    </p>
+    <div class="toc">
+      <a href="#overview">§ 01 · Overview</a>
+      <a href="#perturbations">§ 02 · Perturbations</a>
+      <a href="#tasks">§ 03 · Tasks</a>
+      <a href="#install">§ 04 · Install</a>
+      <a href="https://anonymous.4open.science/r/RoboPRO-EDE0">↗ Code</a>
+    </div>
+    <div class="meta">
+      <span><strong>Scenes</strong>Office · Study · Kitchen</span>
+      <span><strong>Embodiment</strong>Aloha-Agilex</span>
+      <span><strong>Simulator</strong>RoboTwin / SAPIEN</span>
+      <span><strong>Tasks</strong>25+</span>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section class="section" id="overview">
+  <div class="container grid">
+    <aside class="section-num">§ 01<br>Overview</aside>
+    <div>
+      <h2 class="section-title">What is <em>RoboPRO</em>?</h2>
+      <p class="lede">
+        <span class="drop">R</span>oboPRO is a systematic testbed for
+        measuring how bimanual manipulation policies fail under realistic
+        perturbations — <em>Perturbation-Resilient Obstacle-awareness</em>,
+        by name. It builds on the RoboTwin simulator and adds richly
+        dressed office, study, and kitchen scenes with a clean,
+        per-axis perturbation API.
+      </p>
+      <div class="body">
+        <p>
+          Every perturbation is a drop-in YAML. Running
+          <code>put_mouse_on_pad</code> with <code>bench_demo_office_clean</code>
+          vs. <code>bench_demo_vision</code> yields trajectories from the
+          same success-checker, but the policy observes a shifted world —
+          new lighting, motion blur, unseen obstacles, or a paraphrased
+          instruction.
+        </p>
+        <p>
+          The result: a factored view of robustness. Language, vision, and
+          object axes are independent and composable, so a policy that
+          collapses under one can be diagnosed without confounds.
+        </p>
+      </div>
+      <blockquote class="pull">
+        Same success checker. Different world. Find the axis that breaks the policy.
+      </blockquote>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="perturbations">
+  <div class="container grid">
+    <aside class="section-num">§ 02<br>Perturbations</aside>
+    <div>
+      <h2 class="section-title">Three <em>axes</em>, independently toggleable.</h2>
+
+      <div class="axis">
+        <aside class="axis-label">
+          Axis I
+          <strong>Language</strong>
+        </aside>
+        <div class="axis-body">
+          <p>
+            On each episode, the natural-language instruction is re-sampled
+            from a curated bank of paraphrases — about 8–10 per task across
+            25 tasks, for ~276 strings in total. The selected instruction
+            is persisted to <code>scene_info.json</code> and exposed to
+            the policy through the standard instruction API.
+          </p>
+          <figure class="figure">
+            <video controls muted loop playsinline preload="metadata">
+              <source src="videos/language.mp4" type="video/mp4" />
+            </video>
+            <figcaption><span class="fignum">Fig. 1</span><span>Language — paraphrased instruction per episode</span></figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <div class="axis">
+        <aside class="axis-label">
+          Axis II
+          <strong>Vision</strong>
+        </aside>
+        <div class="axis-body">
+          <p>Three independently-toggleable sub-factors:</p>
+          <h4>Lighting</h4>
+          <ul>
+            <li><strong>L1</strong> — per-channel diffuse tint in <code>U[0.4, 1.8]</code></li>
+            <li><strong>L2</strong> — spherical light direction, <code>θ ∈ U[8°, 82°]</code>, <code>φ ∈ U[0, 2π)</code></li>
+            <li><strong>L3</strong> — 50% chance specular rewrite, <code>specular ∈ U[0.3, 6.0]</code>, <code>shininess ∈ U[10, 256]</code></li>
+            <li><strong>L4</strong> — 50% shadow toggle</li>
+          </ul>
+          <h4>Blur</h4>
+          <ul>
+            <li>Per-episode cycle through <code>motion / gaussian / zoom / fog / glass</code> at severity 2 (<code>s = 0.25</code>), strength-scaled via YAML</li>
+          </ul>
+          <h4>Pixel shake</h4>
+          <ul>
+            <li>Per-frame pixel shift <code>dx, dy ∈ U[-max·strength, +max·strength]</code> via <code>cv2.warpAffine</code></li>
+          </ul>
+          <div class="plate">
+            <figure class="figure">
+              <video controls muted loop playsinline preload="metadata"><source src="videos/vision.mp4" type="video/mp4" /></video>
+              <figcaption><span class="fignum">Fig. 2a</span><span>Combined</span></figcaption>
+            </figure>
+            <figure class="figure">
+              <video controls muted loop playsinline preload="metadata"><source src="videos/vision_lighting.mp4" type="video/mp4" /></video>
+              <figcaption><span class="fignum">Fig. 2b</span><span>Lighting only</span></figcaption>
+            </figure>
+            <figure class="figure">
+              <video controls muted loop playsinline preload="metadata"><source src="videos/vision_blur.mp4" type="video/mp4" /></video>
+              <figcaption><span class="fignum">Fig. 2c</span><span>Blur only</span></figcaption>
+            </figure>
+            <figure class="figure">
+              <video controls muted loop playsinline preload="metadata"><source src="videos/vision_shake.mp4" type="video/mp4" /></video>
+              <figcaption><span class="fignum">Fig. 2d</span><span>Pixel shake only</span></figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+
+      <div class="axis">
+        <aside class="axis-label">
+          Axis III
+          <strong>Object</strong>
+        </aside>
+        <div class="axis-body">
+          <ul>
+            <li><strong>Target texture swap</strong> — after <code>load_actors</code>, a random PNG from <code>assets/background_texture/seen/</code> is bound as the base color map of the target's render body components.</li>
+            <li><strong>Unseen obstacles</strong> — obstacle sampling switches from <code>objects.&lt;scene&gt;.obstacles</code> to the visually disjoint <code>object_ood.&lt;scene&gt;.obstacles</code> pool; targets stay in the baseline pool so the success checker is preserved.</li>
+            <li><strong>background_plus</strong> — B1+ samples a wall/floor color tint; B2 samples table <code>metallic</code> and <code>roughness</code> from configured ranges.</li>
+          </ul>
+          <figure class="figure">
+            <video controls muted loop playsinline preload="metadata">
+              <source src="videos/object.mp4" type="video/mp4" />
+            </video>
+            <figcaption><span class="fignum">Fig. 3</span><span>Object — textured target, OOD obstacles, tinted background</span></figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="tasks">
+  <div class="container grid">
+    <aside class="section-num">§ 03<br>Tasks</aside>
+    <div>
+      <h2 class="section-title">Scenes &amp; <em>representative</em> tasks.</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Scene</th><th>Representative tasks</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="scene-name">Office</span></td>
+              <td><code>put_mouse_on_pad</code>, <code>put_phone_on_holder</code>, <code>put_book_on_book</code>, <code>put_milktea_on_shelf</code>, <code>put_stapler_in_drawer</code>, <code>open_drawer</code>, <code>close_drawer</code></td>
+            </tr>
+            <tr>
+              <td><span class="scene-name">Study</span></td>
+              <td><code>put_book_on_stand</code>, <code>put_pen_in_cup</code></td>
+            </tr>
+            <tr>
+              <td><span class="scene-name">Kitchen (S)</span></td>
+              <td><code>put_dish_in_rack</code>, <code>place_in_sink</code></td>
+            </tr>
+            <tr>
+              <td><span class="scene-name">Kitchen (L)</span></td>
+              <td><code>microwave_heat</code>, <code>fridge_store</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p><small>Complete inventory under <code>benchmark/bench_envs/</code>.</small></p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="install">
+  <div class="container grid">
+    <aside class="section-num">§ 04<br>Install</aside>
+    <div>
+      <h2 class="section-title">Get running in <em>six</em> commands.</h2>
+<pre><code>git clone https://anonymous.4open.science/r/RoboPRO-EDE0
+cd RoboPRO
+# follow: robotwin-platform.github.io/doc/usage/robotwin-install.html
+
+cd customized_robotwin
+source set_env.sh
+export ROBOTWIN_BENCH_TASK="bench"
+
+bash collect_data.sh put_mouse_on_pad bench_demo_vision 0</code></pre>
+      <p>The long form — assets overlay, large-mesh fetch, and the CuRobo cache patch — lives at <a href="install.html">install.html</a>.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="container" style="display: flex; justify-content: space-between; width: 100%;">
+    <span>RoboPRO · 2026</span>
+    <span>Built atop <a href="https://robotwin-platform.github.io">RoboTwin</a></span>
+  </div>
+</footer>
+
+</body>
+</html>
