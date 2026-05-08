@@ -66,6 +66,13 @@ h1.title {
   color: var(--ink);
 }
 h1.title .accent { color: var(--accent); }
+h1.title .title-logo {
+  display: block;
+  max-height: clamp(80px, 11vw, 160px);
+  width: auto;
+  max-width: 100%;
+  height: auto;
+}
 
 .tagline {
   margin: 0.6rem 0 0;
@@ -118,8 +125,13 @@ h1.title .accent { color: var(--accent); }
   border-bottom: 1px solid var(--rule);
 }
 .logo-block img {
-  max-width: min(640px, 88%);
+  max-width: 100%;
   height: auto;
+}
+.logo-block .teaser-img {
+  max-width: min(1400px, 100%);
+  border-radius: 6px;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 18px 38px -22px rgba(0,0,0,0.18);
 }
 .logo-caption {
   font-family: var(--mono);
