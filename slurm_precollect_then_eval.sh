@@ -5,8 +5,9 @@
 #SBATCH --time=3-00:00:00
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=8
-#SBATCH --chdir=/shared_work/markhsp/robotwin_bench/customized_robotwin
-#SBATCH --output=/shared_work/markhsp/robotwin_bench/logs/%x_%j.out
+# NOTE: set --chdir and --output to your local checkout, e.g.
+#   #SBATCH --chdir=/path/to/robotwin_bench/customized_robotwin
+#   #SBATCH --output=/path/to/robotwin_bench/logs/%x_%j.out
 
 # Args: <task_name> <task_config> <train_config> <model_name> <ckpt_id> <seed> <test_num>
 TASK_NAME="${1:?}"
@@ -27,8 +28,8 @@ export ROBOTWIN_BENCH_TASK="bench"
 export XLA_PYTHON_CLIENT_MEM_FRACTION=0.4
 export PYTHONUNBUFFERED=1
 
-PYTHON=/shared_work/markhsp/miniconda3/envs/pi05/bin/python
-export PATH=/shared_work/markhsp/miniconda3/envs/pi05/bin:$PATH
+PYTHON="${PI05_PYTHON:-$(command -v python)}"
+# To pin a specific conda env: export PI05_PYTHON=/path/to/miniconda3/envs/pi05/bin/python
 export PYTHONPATH="$ROBOTWIN_ROOT/policy/pi05/src:$PYTHONPATH"
 
 # === Phase 1: pre-collect 20 eval seeds (skipped if file already has 20) ===

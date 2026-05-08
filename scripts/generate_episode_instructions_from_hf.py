@@ -23,7 +23,8 @@ from pathlib import Path
 from huggingface_hub import HfApi
 
 REPO = "Hoshipu/roboreal_data"
-LANG_DIR = Path("/shared_work/robotwin_bench/benchmark/bench_description/task_language")
+REPO_ROOT = Path(__file__).resolve().parent.parent
+LANG_DIR = REPO_ROOT / "benchmark/bench_description/task_language"
 
 
 def load_task_language():
@@ -41,7 +42,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--staging", type=str,
-                        default="/shared_work/robotwin_bench/customized_robotwin/data/bench_instructions")
+                        default=str(REPO_ROOT / "customized_robotwin/data/bench_instructions"))
     parser.add_argument("--cache", type=str, default="/tmp/hf_episode_inventory.json")
     parser.add_argument("--refresh", action="store_true",
                         help="Force refresh of HF file listing.")

@@ -4,7 +4,7 @@ from huggingface_hub import HfApi
 
 TOKEN = ""
 REPO = "Hoshipu/roboreal_data"
-BASE = "/shared_work/robotwin_bench/customized_robotwin/data/bench_data"
+BASE = "customized_robotwin/data/bench_data"
 
 TASKS = [
     "close_microwave_ks",

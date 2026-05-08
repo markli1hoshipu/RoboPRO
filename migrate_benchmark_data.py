@@ -5,9 +5,10 @@ Skips task-configs currently being written by active SLURM jobs.
 import os, re, sys, shutil, subprocess
 from pathlib import Path
 
-DATA_ROOT = Path("/shared_work/robotwin_bench/customized_robotwin/data/bench_data")
-STAGE_ROOT = Path("/shared_work/robotwin_bench/benchmark_data")
-BENCH_ENVS = Path("/shared_work/robotwin_bench/benchmark/bench_envs")
+REPO_ROOT = Path(__file__).resolve().parent
+DATA_ROOT = REPO_ROOT / "customized_robotwin/data/bench_data"
+STAGE_ROOT = REPO_ROOT / "benchmark_data"
+BENCH_ENVS = REPO_ROOT / "benchmark/bench_envs"
 
 def task_group(task):
     for g in ("office", "study", "kitchenl", "kitchens"):
@@ -42,8 +43,8 @@ def running_task_cfgs():
         if "_" not in jid: continue
         arr = jid.split("_")[-1]
         prefix = "kl" if jname.startswith("rtwkl") else "slurm"
-        for logf in (f"/shared_work/robotwin_bench/customized_robotwin/logs/{prefix}-{jid.replace('_','_')}.out",
-                     f"/shared_work/robotwin_bench/customized_robotwin/logs/{prefix}-{jid}.out"):
+        for logf in (str(REPO_ROOT / f"customized_robotwin/logs/{prefix}-{jid.replace('_','_')}.out"),
+                     str(REPO_ROOT / f"customized_robotwin/logs/{prefix}-{jid}.out")):
             p = Path(logf)
             if not p.exists(): continue
             text = p.read_text(errors="ignore").splitlines()

@@ -17,7 +17,7 @@ domain_randomization:
   obstacle_density: 6
   language_perturbation:
     enabled: true
-    instruction_bank: /shared_work/robotwin_bench/benchmark/bench_task_config/instruction_bank_reasoning_chain.json
+    instruction_bank: benchmark/bench_task_config/instruction_bank_reasoning_chain.json
 camera:
   head_camera_type: D435
   wrist_camera_type: D435

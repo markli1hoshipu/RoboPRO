@@ -18,7 +18,7 @@ domain_randomization:
 
   language_perturbation:
     enabled: true
-    instruction_bank: /shared_work/markhsp/robotwin_bench/benchmark/bench_task_config/instruction_bank.json
+    instruction_bank: benchmark/bench_task_config/instruction_bank.json
 camera:
   head_camera_type: D435
   wrist_camera_type: D435

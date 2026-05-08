@@ -14,7 +14,7 @@ pass renders the fresh K..9 episodes.
 """
 import os, glob, re, shutil, sys
 
-BASE = "/shared_work/robotwin_bench/customized_robotwin/data/bench_data/put_can_next_to_basket"
+BASE = "customized_robotwin/data/bench_data/put_can_next_to_basket"
 CONFIGS = [f"bench_demo_kitchens_d{i}" for i in range(6, 16)]
 
 def ep_idx(path, ext):

@@ -58,7 +58,7 @@ def main():
     parser.add_argument("--token", required=True)
     parser.add_argument(
         "--staging",
-        default="/shared_work/robotwin_bench/customized_robotwin/data/bench_instructions",
+        default=str(Path(__file__).resolve().parent.parent / "customized_robotwin/data/bench_instructions"),
     )
     parser.add_argument("--only-scene", type=str, default=None)
     parser.add_argument("--only-task", type=str, default=None)

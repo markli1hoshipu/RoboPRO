@@ -16,7 +16,7 @@ domain_randomization:
   obstacle_density: 9
   language_perturbation:
     enabled: true
-    instruction_bank: /shared_work/robotwin_bench/benchmark/bench_task_config/instruction_bank.json
+    instruction_bank: benchmark/bench_task_config/instruction_bank.json
   object_perturbation:
     unseen_obstacles: false
     unseen_targets: true

@@ -19,7 +19,7 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-REPO_ROOT = Path("/shared_work/robotwin_bench")
+REPO_ROOT = Path(__file__).resolve().parent.parent
 LANG_DIR = REPO_ROOT / "benchmark" / "bench_description" / "task_language"
 DATA_ROOT = REPO_ROOT / "customized_robotwin" / "data" / "bench_data"
 

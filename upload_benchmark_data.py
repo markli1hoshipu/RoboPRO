@@ -5,7 +5,7 @@ api = HfApi()
 print(f"[upload] user={api.whoami()['name']}", flush=True)
 
 api.upload_large_folder(
-    folder_path="/shared_work/robotwin_bench/benchmark_data",
+    folder_path="benchmark_data",
     repo_id="Hoshipu/roboreal_data",
     repo_type="dataset",
     print_report=True,

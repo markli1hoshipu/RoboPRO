@@ -17,7 +17,7 @@ domain_randomization:
   obstacle_density: 11
   language_perturbation:
     enabled: true
-    instruction_bank: /shared_work/robotwin_bench/benchmark/bench_task_config/instruction_bank_multi_object_distraction.json
+    instruction_bank: benchmark/bench_task_config/instruction_bank_multi_object_distraction.json
 camera:
   head_camera_type: D435
   wrist_camera_type: D435
