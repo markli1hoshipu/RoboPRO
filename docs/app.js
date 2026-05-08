@@ -278,7 +278,7 @@
   const boot = async () => {
     initTabs();
     try {
-      const res = await fetch('manifest.json', { cache: 'no-cache' });
+      const res = await fetch('manifest.json?v=5', { cache: 'no-cache' });
       manifest = await res.json();
     } catch (e) {
       console.error('Failed to load manifest.json:', e);
