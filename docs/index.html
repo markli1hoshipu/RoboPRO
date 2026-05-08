@@ -3,231 +3,283 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>RoboPRO — Perturbation-Resilient Obstacle-awareness Benchmark</title>
-<meta name="description" content="RoboPRO extends RoboTwin with realistic office, study and kitchen scenes and a systematic language / vision / object perturbation suite for evaluating perturbation-resilient, obstacle-aware bimanual manipulation policies." />
+<title>RoboPRO — A Benchmark for Perturbation-Resilient and Obstacle-Aware Robotic Manipulation</title>
+<meta name="description" content="RoboPRO is a benchmark of 80 bimanual manipulation tasks across four furnished indoor scenes, with 16K demonstrations, factorial perturbations across vision/language/object axes, controllable obstacle density, and two safety-aware collision metrics." />
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-<header class="masthead">
+<header class="site-header">
   <div class="container">
-    <p class="eyebrow"><span>Vol. 01 · 2026 · a benchmark for robustness</span></p>
-    <h1 class="title">Robo<span class="amp">PRO</span>.</h1>
-    <p class="deck">
-      <em>Perturbation-Resilient Obstacle-awareness</em> — a bimanual
-      manipulation benchmark that stress-tests policies across
-      <em>language</em>, <em>vision</em>, and <em>object</em> perturbations,
-      on realistic office, study, and kitchen scenes.
-    </p>
-    <div class="toc">
-      <a href="#overview">§ 01 · Overview</a>
-      <a href="#perturbations">§ 02 · Perturbations</a>
-      <a href="#tasks">§ 03 · Tasks</a>
-      <a href="#install">§ 04 · Install</a>
-      <a href="https://anonymous.4open.science/r/RoboPRO-EDE0">↗ Code</a>
-    </div>
-    <div class="meta">
-      <span><strong>Scenes</strong>Office · Study · Kitchen</span>
-      <span><strong>Embodiment</strong>Aloha-Agilex</span>
-      <span><strong>Simulator</strong>RoboTwin / SAPIEN</span>
-      <span><strong>Tasks</strong>25+</span>
+    <p class="eyebrow">Benchmark · Bimanual Manipulation · Robustness &amp; Safety</p>
+    <h1 class="title">Robo<span class="accent">PRO</span></h1>
+    <p class="tagline">A holistic <em>safety</em> manipulation benchmark — Perturbation-Resilient, Obstacle-aware — for bimanual manipulation policies in cluttered, realistic scenes.</p>
+    <div class="byline">
+      <span><strong>80</strong> bimanual tasks</span>
+      <span><strong>4</strong> furnished scenes</span>
+      <span><strong>3</strong> perturbation axes</span>
+      <span><strong>2</strong> safety metrics</span>
+      <span><a href="install.html">Install →</a></span>
+      <span><a href="https://anonymous.4open.science/r/RoboPRO-EDE0">Code ↗</a></span>
     </div>
   </div>
 </header>
 
+<section class="abstract">
+  <div class="container">
+    <h2>Abstract</h2>
+    <p>
+      Object manipulation in the real world requires robotic policies to be robust to contextual perturbations and capable of safe planning in cluttered scenes. However, the majority of existing robotics benchmarks contain clean tabletop environments with success rate as the sole metric, leaving two critical deployment questions unanswered: <em>does the policy manipulate safely under real conditions, and what leads to its failure?</em> Some benchmarks evaluate robustness by applying perturbations in isolation on uncluttered surfaces and relying on binary or count-based collision detection. Others provide realistic environments but omit perturbation evaluation and safety metrics entirely.
+    </p>
+    <p>
+      To this end, we present <strong>RoboPRO</strong>, a <strong>Robo</strong>tics benchmark for <strong>P</strong>erturbation-<strong>R</strong>esilient and <strong>O</strong>bstacle-aware planning, which unifies various axes of robustness in manipulation. RoboPRO comprises 80 diverse bimanual atomic and compositional tasks across four furnished indoor environments, with a total of 16,000 demonstrations and 5.6K diverse language instructions. Scenes are populated with different numbers of distractors, ranging from clean (only target objects) to densely populated, imposing both visual and operational clutter. We propose two novel metrics that detect unsafe contact between the robot and the environment or distractors. Our evaluation protocol consists of a factorial analysis of three key perturbations — visual, linguistic, object-level — at multiple distractor densities. We conduct extensive experiments on RoboPRO using state-of-the-art manipulation policies to analyze the impact of visual and operational clutter, perturbations, and instructional diversity. Our findings highlight the key challenges for manipulation in real-world conditions and motivate future research in this domain.
+    </p>
+  </div>
+</section>
+
+<section class="logo-block">
+  <div class="container">
+    <img src="logo.png" alt="RoboPRO logo — a benchmark for robotics manipulation in cluttered and diverse environments" />
+    <div class="logo-caption">A benchmark for robotics manipulation in cluttered and diverse environments</div>
+  </div>
+</section>
+
+<section class="intro">
+  <div class="container">
+    <p>
+      RoboPRO sits between two existing camps. Tabletop suites exercise clean
+      per-skill evaluation but ignore real-world clutter and only report a single
+      success metric; household-scale suites model realistic environments yet
+      contain no systematic perturbations. RoboPRO inherits the furnished,
+      multi-skill, bimanual character of household suites and applies
+      perturbations <em>within</em> cluttered scenes — letting each robustness
+      axis be measured separately and jointly with safety.
+    </p>
+    <div class="stats">
+      <div class="stat"><div class="num">80</div><div class="lbl">Tasks</div></div>
+      <div class="stat"><div class="num">16K</div><div class="lbl">Demonstrations</div></div>
+      <div class="stat"><div class="num">5.6K</div><div class="lbl">Language Instructions</div></div>
+      <div class="stat"><div class="num">4</div><div class="lbl">Indoor Scenes</div></div>
+    </div>
+  </div>
+</section>
+
+<nav class="tab-nav" aria-label="Section navigation">
+  <div class="container">
+    <ul class="tab-strip" role="tablist">
+      <li><a href="#tasks"      class="active" data-tab="tasks"      role="tab">Task Gallery</a></li>
+      <li><a href="#collision"                  data-tab="collision"  role="tab">Collision</a></li>
+      <li><a href="#vision"                     data-tab="vision"     role="tab">Vision</a></li>
+      <li><a href="#language"                   data-tab="language"   role="tab">Language</a></li>
+      <li><a href="#leaderboard"                data-tab="leaderboard" role="tab">Leaderboard</a></li>
+      <li><a href="#rollouts"                   data-tab="rollouts"   role="tab">Policy Rollouts</a></li>
+    </ul>
+  </div>
+</nav>
+
 <main>
 
-<section class="section" id="overview">
-  <div class="container grid">
-    <aside class="section-num">§ 01<br>Overview</aside>
-    <div>
-      <h2 class="section-title">What is <em>RoboPRO</em>?</h2>
-      <p class="lede">
-        <span class="drop">R</span>oboPRO is a systematic testbed for
-        measuring how bimanual manipulation policies fail under realistic
-        perturbations — <em>Perturbation-Resilient Obstacle-awareness</em>,
-        by name. It builds on the RoboTwin simulator and adds richly
-        dressed office, study, and kitchen scenes with a clean,
-        per-axis perturbation API.
-      </p>
-      <div class="body">
-        <p>
-          Every perturbation is a drop-in YAML. Running
-          <code>put_mouse_on_pad</code> with <code>bench_demo_office_clean</code>
-          vs. <code>bench_demo_vision</code> yields trajectories from the
-          same success-checker, but the policy observes a shifted world —
-          new lighting, motion blur, unseen obstacles, or a paraphrased
-          instruction.
+<!-- ============ Task Gallery ============ -->
+<section id="tasks" class="tab-panel active" role="tabpanel">
+  <div class="container">
+    <div class="panel-head">
+      <h2>Task Gallery</h2>
+      <p>Eighty tasks spanning four indoor environments — fifteen atomic and five compositional per scene. Pick a scene, then a task to view a representative rollout.</p>
+    </div>
+
+    <div class="controls">
+      <div class="field">
+        <label for="task-scene">Scene</label>
+        <select id="task-scene"></select>
+      </div>
+      <div class="field">
+        <label for="task-slug">Task</label>
+        <select id="task-slug"></select>
+      </div>
+    </div>
+
+    <div class="viewer">
+      <div id="task-video-slot"></div>
+      <div class="meta">
+        <h3 id="task-title">—</h3>
+        <p id="task-desc"></p>
+        <dl>
+          <dt>Scene</dt><dd id="task-scene-label">—</dd>
+          <dt>Type</dt><dd id="task-kind">—</dd>
+          <dt>Slug</dt><dd><code id="task-slug-text">—</code></dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Collision ============ -->
+<section id="collision" class="tab-panel" role="tabpanel">
+  <div class="container">
+    <div class="panel-head">
+      <h2>Collision &amp; Operational Clutter</h2>
+      <p>The same task in the same scene, executed at increasing obstacle densities <code>k ∈ {0, 6, …, 15}</code>. Distractors are sampled inside the workspace volume swept by the canonical demonstration trajectory, so they intersect the operational path and force active avoidance.</p>
+    </div>
+
+    <div class="controls">
+      <div class="field">
+        <label for="collision-density">Density</label>
+        <select id="collision-density"></select>
+      </div>
+    </div>
+
+    <div class="viewer">
+      <div id="collision-video-slot"></div>
+      <div class="meta">
+        <h3 id="collision-title">—</h3>
+        <dl>
+          <dt>Distractors</dt><dd id="collision-count">—</dd>
+          <dt>Task</dt><dd><code id="collision-task">—</code></dd>
+          <dt>Scene</dt><dd id="collision-scene">—</dd>
+        </dl>
+        <p style="margin-top:1rem; color: var(--muted); font-size: 0.9rem;">
+          RoboPRO instruments two safety metrics — <strong>FCR</strong> (force-violating furniture contact) and <strong>OCR</strong> (object-displacement contact) — that distinguish a 2&nbsp;mm cup nudge from a sweep that knocks a cup off the table.
         </p>
-        <p>
-          The result: a factored view of robustness. Language, vision, and
-          object axes are independent and composable, so a policy that
-          collapses under one can be diagnosed without confounds.
-        </p>
-      </div>
-      <blockquote class="pull">
-        Same success checker. Different world. Find the axis that breaks the policy.
-      </blockquote>
-    </div>
-  </div>
-</section>
-
-<section class="section" id="perturbations">
-  <div class="container grid">
-    <aside class="section-num">§ 02<br>Perturbations</aside>
-    <div>
-      <h2 class="section-title">Three <em>axes</em>, independently toggleable.</h2>
-
-      <div class="axis">
-        <aside class="axis-label">
-          Axis I
-          <strong>Language</strong>
-        </aside>
-        <div class="axis-body">
-          <p>
-            On each episode, the natural-language instruction is re-sampled
-            from a curated bank of paraphrases — about 8–10 per task across
-            25 tasks, for ~276 strings in total. The selected instruction
-            is persisted to <code>scene_info.json</code> and exposed to
-            the policy through the standard instruction API.
-          </p>
-          <figure class="figure">
-            <video controls muted loop playsinline preload="metadata">
-              <source src="videos/language.mp4" type="video/mp4" />
-            </video>
-            <figcaption><span class="fignum">Fig. 1</span><span>Language — paraphrased instruction per episode</span></figcaption>
-          </figure>
-        </div>
-      </div>
-
-      <div class="axis">
-        <aside class="axis-label">
-          Axis II
-          <strong>Vision</strong>
-        </aside>
-        <div class="axis-body">
-          <p>Three independently-toggleable sub-factors:</p>
-          <h4>Lighting</h4>
-          <ul>
-            <li><strong>L1</strong> — per-channel diffuse tint in <code>U[0.4, 1.8]</code></li>
-            <li><strong>L2</strong> — spherical light direction, <code>θ ∈ U[8°, 82°]</code>, <code>φ ∈ U[0, 2π)</code></li>
-            <li><strong>L3</strong> — 50% chance specular rewrite, <code>specular ∈ U[0.3, 6.0]</code>, <code>shininess ∈ U[10, 256]</code></li>
-            <li><strong>L4</strong> — 50% shadow toggle</li>
-          </ul>
-          <h4>Blur</h4>
-          <ul>
-            <li>Per-episode cycle through <code>motion / gaussian / zoom / fog / glass</code> at severity 2 (<code>s = 0.25</code>), strength-scaled via YAML</li>
-          </ul>
-          <h4>Pixel shake</h4>
-          <ul>
-            <li>Per-frame pixel shift <code>dx, dy ∈ U[-max·strength, +max·strength]</code> via <code>cv2.warpAffine</code></li>
-          </ul>
-          <div class="plate">
-            <figure class="figure">
-              <video controls muted loop playsinline preload="metadata"><source src="videos/vision.mp4" type="video/mp4" /></video>
-              <figcaption><span class="fignum">Fig. 2a</span><span>Combined</span></figcaption>
-            </figure>
-            <figure class="figure">
-              <video controls muted loop playsinline preload="metadata"><source src="videos/vision_lighting.mp4" type="video/mp4" /></video>
-              <figcaption><span class="fignum">Fig. 2b</span><span>Lighting only</span></figcaption>
-            </figure>
-            <figure class="figure">
-              <video controls muted loop playsinline preload="metadata"><source src="videos/vision_blur.mp4" type="video/mp4" /></video>
-              <figcaption><span class="fignum">Fig. 2c</span><span>Blur only</span></figcaption>
-            </figure>
-            <figure class="figure">
-              <video controls muted loop playsinline preload="metadata"><source src="videos/vision_shake.mp4" type="video/mp4" /></video>
-              <figcaption><span class="fignum">Fig. 2d</span><span>Pixel shake only</span></figcaption>
-            </figure>
-          </div>
-        </div>
-      </div>
-
-      <div class="axis">
-        <aside class="axis-label">
-          Axis III
-          <strong>Object</strong>
-        </aside>
-        <div class="axis-body">
-          <ul>
-            <li><strong>Target texture swap</strong> — after <code>load_actors</code>, a random PNG from <code>assets/background_texture/seen/</code> is bound as the base color map of the target's render body components.</li>
-            <li><strong>Unseen obstacles</strong> — obstacle sampling switches from <code>objects.&lt;scene&gt;.obstacles</code> to the visually disjoint <code>object_ood.&lt;scene&gt;.obstacles</code> pool; targets stay in the baseline pool so the success checker is preserved.</li>
-            <li><strong>background_plus</strong> — B1+ samples a wall/floor color tint; B2 samples table <code>metallic</code> and <code>roughness</code> from configured ranges.</li>
-          </ul>
-          <figure class="figure">
-            <video controls muted loop playsinline preload="metadata">
-              <source src="videos/object.mp4" type="video/mp4" />
-            </video>
-            <figcaption><span class="fignum">Fig. 3</span><span>Object — textured target, OOD obstacles, tinted background</span></figcaption>
-          </figure>
-        </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="section" id="tasks">
-  <div class="container grid">
-    <aside class="section-num">§ 03<br>Tasks</aside>
-    <div>
-      <h2 class="section-title">Scenes &amp; <em>representative</em> tasks.</h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Scene</th><th>Representative tasks</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><span class="scene-name">Office</span></td>
-              <td><code>put_mouse_on_pad</code>, <code>put_phone_on_holder</code>, <code>put_book_on_book</code>, <code>put_milktea_on_shelf</code>, <code>put_stapler_in_drawer</code>, <code>open_drawer</code>, <code>close_drawer</code></td>
-            </tr>
-            <tr>
-              <td><span class="scene-name">Study</span></td>
-              <td><code>put_book_on_stand</code>, <code>put_pen_in_cup</code></td>
-            </tr>
-            <tr>
-              <td><span class="scene-name">Kitchen (S)</span></td>
-              <td><code>put_dish_in_rack</code>, <code>place_in_sink</code></td>
-            </tr>
-            <tr>
-              <td><span class="scene-name">Kitchen (L)</span></td>
-              <td><code>microwave_heat</code>, <code>fridge_store</code></td>
-            </tr>
-          </tbody>
-        </table>
+<!-- ============ Vision ============ -->
+<section id="vision" class="tab-panel" role="tabpanel">
+  <div class="container">
+    <div class="panel-head">
+      <h2>Vision Perturbations</h2>
+      <p>Three independently-toggleable axes plus a combined setting. Lighting is fixed at scene reset; blur and pixel shift are resampled every frame, so all three stack independently with the language and object axes.</p>
+    </div>
+
+    <div class="controls">
+      <div class="field">
+        <label for="vision-axis">Axis</label>
+        <select id="vision-axis"></select>
       </div>
-      <p><small>Complete inventory under <code>benchmark/bench_envs/</code>.</small></p>
+    </div>
+
+    <div class="viewer">
+      <div id="vision-video-slot"></div>
+      <div class="meta">
+        <h3 id="vision-title">—</h3>
+        <p id="vision-blurb"></p>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="section" id="install">
-  <div class="container grid">
-    <aside class="section-num">§ 04<br>Install</aside>
-    <div>
-      <h2 class="section-title">Get running in <em>six</em> commands.</h2>
-<pre><code>git clone https://anonymous.4open.science/r/RoboPRO-EDE0
-cd RoboPRO
-# follow: robotwin-platform.github.io/doc/usage/robotwin-install.html
-
-cd customized_robotwin
-source set_env.sh
-export ROBOTWIN_BENCH_TASK="bench"
-
-bash collect_data.sh put_mouse_on_pad bench_demo_vision 0</code></pre>
-      <p>The long form — assets overlay, large-mesh fetch, and the CuRobo cache patch — lives at <a href="install.html">install.html</a>.</p>
+<!-- ============ Language ============ -->
+<section id="language" class="tab-panel" role="tabpanel">
+  <div class="container">
+    <div class="panel-head">
+      <h2>Language Perturbations</h2>
+      <p>Five evaluation-time language axes, each with ten validated paraphrases per task — disjoint from the four light-weight axes used at training time. Robust performance requires generalization beyond surface forms seen during fine-tuning.</p>
     </div>
+
+    <div class="controls">
+      <div class="field">
+        <label for="language-axis">Axis</label>
+        <select id="language-axis"></select>
+      </div>
+    </div>
+
+    <div class="viewer">
+      <div id="language-video-slot"></div>
+      <div class="meta">
+        <h3 id="language-title">—</h3>
+        <p style="font-size:0.9rem;color:var(--muted);margin:0;">Sample instruction:</p>
+        <blockquote id="language-sample">—</blockquote>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Leaderboard ============ -->
+<section id="leaderboard" class="tab-panel" role="tabpanel">
+  <div class="container">
+    <div class="panel-head">
+      <h2>Leaderboard</h2>
+      <p>State-of-the-art bimanual manipulation policies evaluated on RoboPRO. Tables reproduce the main results from the paper appendix.</p>
+    </div>
+
+    <div class="table-wrap">
+      <h3>Table 1 · Clutter — SR/HSR per scene</h3>
+      <p class="table-note">Per-environment SR / HSR with no perturbations applied. <strong>Off</strong> = Office, <strong>Stu</strong> = Study, <strong>K-S</strong> = Kitchen-S, <strong>K-L</strong> = Kitchen-L. Higher is better. Best in column shown in bold.</p>
+      <table class="booktabs">
+        <thead>
+          <tr>
+            <th rowspan="2">Model</th>
+            <th colspan="5" style="text-align:center; padding-bottom:0.1rem;">Clean (SR / HSR)</th>
+            <th colspan="5" style="text-align:center; padding-bottom:0.1rem;">Cluttered (SR / HSR)</th>
+            <th rowspan="2" class="num">Overall</th>
+          </tr>
+          <tr>
+            <th class="num">Off</th><th class="num">Stu</th><th class="num">K-S</th><th class="num">K-L</th><th class="num">Avg</th>
+            <th class="num">Off</th><th class="num">Stu</th><th class="num">K-S</th><th class="num">K-L</th><th class="num">Avg</th>
+          </tr>
+        </thead>
+        <tbody id="lb-clutter"></tbody>
+      </table>
+    </div>
+
+    <div class="table-wrap">
+      <h3>Table 2 · Perturbation impact</h3>
+      <p class="table-note">Averaged over top-12 tasks (three from each environment), reported for Object (OOD textures and objects), Visual, and Language perturbations. SR↑, HSR↑, CR↓.</p>
+      <table class="booktabs">
+        <thead>
+          <tr>
+            <th>Model</th><th>Metric</th>
+            <th class="num">Original</th><th class="num">Object</th><th class="num">Visual</th><th class="num">Language</th>
+            <th class="num">Pert. Avg.</th>
+          </tr>
+        </thead>
+        <tbody id="lb-perturb"></tbody>
+      </table>
+    </div>
+
+    <div class="table-wrap">
+      <h3>Table 3 · Collision in clean vs. cluttered</h3>
+      <p class="table-note">Averaged over all scenes with no perturbations applied. Lower is better. <strong>FCR</strong> = furniture collision rate, <strong>OCR</strong> = object collision rate, <strong>CR</strong> = total collision rate.</p>
+      <table class="booktabs">
+        <thead>
+          <tr>
+            <th rowspan="2">Model</th>
+            <th colspan="3" style="text-align:center; padding-bottom:0.1rem;">Clean</th>
+            <th colspan="3" style="text-align:center; padding-bottom:0.1rem;">Cluttered</th>
+          </tr>
+          <tr>
+            <th class="num">FCR</th><th class="num">OCR</th><th class="num">CR</th>
+            <th class="num">FCR</th><th class="num">OCR</th><th class="num">CR</th>
+          </tr>
+        </thead>
+        <tbody id="lb-collision"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Policy Rollouts ============ -->
+<section id="rollouts" class="tab-panel" role="tabpanel">
+  <div class="container">
+    <div class="panel-head">
+      <h2>Policy Rollouts</h2>
+      <p>Curated rollouts of the leading policy across diverse tasks and scenes.</p>
+    </div>
+    <div class="rollouts-grid" id="rollouts-grid"></div>
   </div>
 </section>
 
 </main>
 
 <footer>
-  <div class="container" style="display: flex; justify-content: space-between; width: 100%;">
+  <div class="container" style="display:flex; justify-content:space-between; width:100%; flex-wrap:wrap; gap:1rem;">
     <span>RoboPRO · 2026</span>
-    <span>Built atop <a href="https://robotwin-platform.github.io">RoboTwin</a></span>
+    <span>Built atop <a href="https://robotwin-platform.github.io">RoboTwin</a> &amp; SAPIEN</span>
   </div>
 </footer>
 
+<script src="app.js"></script>
 </body>
 </html>

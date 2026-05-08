@@ -1,0 +1,204 @@
+{
+  "_comment": "Asset and content manifest for the RoboPRO project page. Loaded by app.js.",
+  "tasks": {
+    "office": [
+      { "slug": "close_drawer",                   "label": "Close drawer",                     "video": "videos/tasks/office/close_drawer.mp4",            "kind": "atomic" },
+      { "slug": "open_drawer",                    "label": "Open drawer",                      "video": null,                                              "kind": "atomic" },
+      { "slug": "put_mouse_on_pad",               "label": "Put mouse on pad",                 "video": "videos/tasks/office/put_mouse_on_pad.mp4",        "kind": "atomic" },
+      { "slug": "put_milktea_on_shelf",           "label": "Put milktea on shelf",             "video": "videos/tasks/office/put_milktea_on_shelf.mp4",    "kind": "atomic" },
+      { "slug": "put_book_in_fileholder",         "label": "Put book in fileholder",           "video": null,                                              "kind": "atomic" },
+      { "slug": "put_book_on_book",               "label": "Put book on book",                 "video": null,                                              "kind": "atomic" },
+      { "slug": "put_milktea_next_to_laptop",     "label": "Put milktea next to laptop",       "video": null,                                              "kind": "atomic" },
+      { "slug": "put_mouse_next_to_stapler",      "label": "Put mouse next to stapler",        "video": null,                                              "kind": "atomic" },
+      { "slug": "put_phone_next_to_cube",         "label": "Put phone next to cube",           "video": null,                                              "kind": "atomic" },
+      { "slug": "put_phone_on_holder",            "label": "Put phone on holder",              "video": null,                                              "kind": "atomic" },
+      { "slug": "put_rubikscube_in_drawer",       "label": "Put rubik's cube in drawer",       "video": null,                                              "kind": "atomic" },
+      { "slug": "put_rubikscube_next_to_milktea", "label": "Put rubik's cube next to milktea", "video": null,                                              "kind": "atomic" },
+      { "slug": "put_stapler_in_drawer",          "label": "Put stapler in drawer",            "video": "videos/tasks/office/put_stapler_in_drawer.mp4",   "kind": "atomic" },
+      { "slug": "put_stapler_next_to_mouse",      "label": "Put stapler next to mouse",        "video": null,                                              "kind": "atomic" },
+      { "slug": "put_stapler_on_book",            "label": "Put stapler on book",              "video": "videos/tasks/office/put_stapler_on_book.mp4",     "kind": "atomic" },
+      { "slug": "move_items_around",              "label": "Move items around",                "video": null,                                              "kind": "compositional" },
+      { "slug": "organize_table",                 "label": "Organize table",                   "video": null,                                              "kind": "compositional" },
+      { "slug": "set_up_table",                   "label": "Set up table",                     "video": null,                                              "kind": "compositional" },
+      { "slug": "store_rubikscube_on_shelf",      "label": "Store rubik's cube on shelf",      "video": null,                                              "kind": "compositional" },
+      { "slug": "store_stapler_in_drawer",        "label": "Store stapler in drawer",          "video": null,                                              "kind": "compositional" }
+    ],
+    "study": [
+      { "slug": "move_book_onto_table",      "label": "Move book onto table",       "video": null,                                          "kind": "atomic" },
+      { "slug": "move_cup",                  "label": "Move cup",                   "video": null,                                          "kind": "atomic" },
+      { "slug": "move_cup_next_to_book",     "label": "Move cup next to book",      "video": null,                                          "kind": "atomic" },
+      { "slug": "move_cup_onto_table",       "label": "Move cup onto table",        "video": null,                                          "kind": "atomic" },
+      { "slug": "move_pen_to_box",           "label": "Move pen to box",            "video": "videos/tasks/study/move_pen_to_box.mp4",      "kind": "atomic" },
+      { "slug": "move_seal_next_to_box",     "label": "Move seal next to box",      "video": "videos/tasks/study/move_seal_next_to_box.mp4","kind": "atomic" },
+      { "slug": "move_seal_next_to_pencup",  "label": "Move seal next to pen-cup",  "video": null,                                          "kind": "atomic" },
+      { "slug": "move_seal_onto_book",       "label": "Move seal onto book",        "video": null,                                          "kind": "atomic" },
+      { "slug": "move_seal_onto_table",      "label": "Move seal onto table",       "video": "videos/tasks/study/move_seal_onto_table.mp4", "kind": "atomic" },
+      { "slug": "put_cup_in_box",            "label": "Put cup in box",             "video": null,                                          "kind": "atomic" },
+      { "slug": "put_cup_on_coaster",        "label": "Put cup on coaster",         "video": null,                                          "kind": "atomic" },
+      { "slug": "put_cup_on_table",          "label": "Put cup on table",           "video": null,                                          "kind": "atomic" },
+      { "slug": "put_glue_in_box",           "label": "Put glue in box",            "video": null,                                          "kind": "atomic" },
+      { "slug": "put_pen_in_box",            "label": "Put pen in box",             "video": null,                                          "kind": "atomic" },
+      { "slug": "put_pen_in_pencup",         "label": "Put pen in pen-cup",         "video": null,                                          "kind": "atomic" },
+      { "slug": "put_seal_in_box",           "label": "Put seal in box",            "video": null,                                          "kind": "atomic" },
+      { "slug": "empty_box",                 "label": "Empty box",                  "video": null,                                          "kind": "compositional" },
+      { "slug": "move_cup_put_pen_in_cup",   "label": "Move cup, put pen in cup",   "video": null,                                          "kind": "compositional" },
+      { "slug": "move_cups_into_box",        "label": "Move cups into box",         "video": null,                                          "kind": "compositional" },
+      { "slug": "move_seal_cup_next_to_box", "label": "Move seal & cup next to box","video": null,                                          "kind": "compositional" }
+    ],
+    "kitchens": [
+      { "slug": "close_microwave_ks",            "label": "Close microwave",            "video": null,                                                "kind": "atomic" },
+      { "slug": "drop_apple_in_bin_ks",          "label": "Drop apple in bin",          "video": "videos/tasks/kitchens/drop_apple_in_bin_ks.mp4",    "kind": "atomic" },
+      { "slug": "move_hamburger_onto_plate_ks",  "label": "Move hamburger onto plate",  "video": null,                                                "kind": "atomic" },
+      { "slug": "pick_apple_from_bowl_ks",       "label": "Pick apple from bowl",       "video": "videos/tasks/kitchens/pick_apple_from_bowl_ks.mp4", "kind": "atomic" },
+      { "slug": "pick_apple_from_sink_ks",       "label": "Pick apple from sink",       "video": null,                                                "kind": "atomic" },
+      { "slug": "pick_fork_from_sink_ks",        "label": "Pick fork from sink",        "video": "videos/tasks/kitchens/pick_fork_from_sink_ks.mp4",  "kind": "atomic" },
+      { "slug": "pick_hamburger_from_microwave_ks", "label": "Pick hamburger from microwave", "video": null,                                          "kind": "atomic" },
+      { "slug": "place_bowl_in_dishrack_ks",     "label": "Place bowl in dishrack",     "video": null,                                                "kind": "atomic" },
+      { "slug": "put_bowl_in_sink_ks",           "label": "Put bowl in sink",           "video": "videos/tasks/kitchens/put_bowl_in_sink_ks.mp4",     "kind": "atomic" },
+      { "slug": "put_bread_on_board_ks",         "label": "Put bread on board",         "video": "videos/tasks/kitchens/put_bread_on_board_ks.mp4",   "kind": "atomic" },
+      { "slug": "put_hamburger_in_microwave_ks", "label": "Put hamburger in microwave", "video": null,                                                "kind": "atomic" },
+      { "slug": "put_plate_in_sink_ks",          "label": "Put plate in sink",          "video": null,                                                "kind": "atomic" },
+      { "slug": "put_spoon_in_dishrack_ks",      "label": "Put spoon in dishrack",      "video": null,                                                "kind": "atomic" },
+      { "slug": "put_spoon_in_sink_ks",          "label": "Put spoon in sink",          "video": null,                                                "kind": "atomic" },
+      { "slug": "put_spoon_on_plate_ks",         "label": "Put spoon on plate",         "video": null,                                                "kind": "atomic" },
+      { "slug": "chain_apple_bin_bowl_rack_spoon_sink_ks", "label": "Chain: apple→bin, bowl→rack, spoon→sink", "video": null, "kind": "compositional" },
+      { "slug": "chain_apple_sink_plate_bread_board_ks",   "label": "Chain: apple→sink, plate, bread→board",   "video": null, "kind": "compositional" },
+      { "slug": "chain_bowl_rack_apple_sink_ks",           "label": "Chain: bowl→rack, apple→sink",            "video": null, "kind": "compositional" },
+      { "slug": "chain_heat_hamburger_ks",                 "label": "Chain: heat hamburger",                   "video": null, "kind": "compositional" },
+      { "slug": "chain_serve_hamburger_ks",                "label": "Chain: serve hamburger",                  "video": null, "kind": "compositional" }
+    ],
+    "kitchenl": [
+      { "slug": "move_bottle",                          "label": "Move bottle",                          "video": null,                                                "kind": "atomic" },
+      { "slug": "move_bottle_from_fridge_next_to_can",  "label": "Move bottle from fridge next to can",  "video": null,                                                "kind": "atomic" },
+      { "slug": "move_can_from_cabinet_to_basket",      "label": "Move can from cabinet to basket",      "video": null,                                                "kind": "atomic" },
+      { "slug": "move_milk_close_fridge",               "label": "Move milk, close fridge",              "video": null,                                                "kind": "atomic" },
+      { "slug": "pick_bottle_from_fridge",              "label": "Pick bottle from fridge",              "video": "videos/tasks/kitchenl/pick_bottle_from_fridge.mp4", "kind": "atomic" },
+      { "slug": "pick_boxdrink_from_basket",            "label": "Pick box-drink from basket",           "video": null,                                                "kind": "atomic" },
+      { "slug": "pick_can_from_basket",                 "label": "Pick can from basket",                 "video": null,                                                "kind": "atomic" },
+      { "slug": "pick_can_from_cabinet",                "label": "Pick can from cabinet",                "video": null,                                                "kind": "atomic" },
+      { "slug": "pick_milk_box_from_fridge",            "label": "Pick milk-box from fridge",            "video": null,                                                "kind": "atomic" },
+      { "slug": "pick_sauce_can_from_cabinet",          "label": "Pick sauce-can from cabinet",          "video": null,                                                "kind": "atomic" },
+      { "slug": "put_bottle_in_basket",                 "label": "Put bottle in basket",                 "video": "videos/tasks/kitchenl/put_bottle_in_basket.mp4",    "kind": "atomic" },
+      { "slug": "put_bottle_in_fridge",                 "label": "Put bottle in fridge",                 "video": "videos/tasks/kitchenl/put_bottle_in_fridge.mp4",    "kind": "atomic" },
+      { "slug": "put_can_close_cabinet",                "label": "Put can, close cabinet",               "video": null,                                                "kind": "atomic" },
+      { "slug": "put_can_in_cabinet",                   "label": "Put can in cabinet",                   "video": null,                                                "kind": "atomic" },
+      { "slug": "put_can_infront_of_microwave",         "label": "Put can in front of microwave",        "video": null,                                                "kind": "atomic" },
+      { "slug": "put_can_next_to_basket",               "label": "Put can next to basket",               "video": null,                                                "kind": "atomic" },
+      { "slug": "put_milk_box_in_fridge",               "label": "Put milk-box in fridge",               "video": null,                                                "kind": "atomic" },
+      { "slug": "put_sauce_can_in_basket",              "label": "Put sauce-can in basket",              "video": null,                                                "kind": "atomic" },
+      { "slug": "put_sauce_can_in_cabinet",             "label": "Put sauce-can in cabinet",             "video": null,                                                "kind": "atomic" },
+      { "slug": "switch_can_with_bottle_in_basket",     "label": "Switch can with bottle in basket",     "video": null,                                                "kind": "compositional" }
+    ]
+  },
+  "scenes": {
+    "office":   { "label": "Office",     "short": "Off", "blurb": "Desk, drawers, shelf." },
+    "study":   { "label": "Study",     "short": "Stu", "blurb": "Table, bookcase, storage box." },
+    "kitchens": { "label": "Kitchen-S", "short": "K-S", "blurb": "Countertop, sink, microwave, overhead shelves." },
+    "kitchenl": { "label": "Kitchen-L", "short": "K-L", "blurb": "Refrigerator, deep cabinets, storage baskets." }
+  },
+  "collision": {
+    "_comment": "Same scene + task, increasing obstacle density. Visualizes operational clutter.",
+    "task": "close_drawer",
+    "scene": "office",
+    "levels": [
+      { "key": "clean", "label": "Clean (no distractors)", "obstacles": 0,  "video": "videos/collision/clean.mp4" },
+      { "key": "d6",    "label": "d6 — 6 distractors",     "obstacles": 6,  "video": "videos/collision/d6.mp4"    },
+      { "key": "d7",    "label": "d7 — 7 distractors",     "obstacles": 7,  "video": "videos/collision/d7.mp4"    },
+      { "key": "d8",    "label": "d8 — 8 distractors",     "obstacles": 8,  "video": "videos/collision/d8.mp4"    },
+      { "key": "d9",    "label": "d9 — 9 distractors",     "obstacles": 9,  "video": "videos/collision/d9.mp4"    },
+      { "key": "d10",   "label": "d10 — 10 distractors",   "obstacles": 10, "video": "videos/collision/d10.mp4"   },
+      { "key": "d11",   "label": "d11 — 11 distractors",   "obstacles": 11, "video": "videos/collision/d11.mp4"   },
+      { "key": "d12",   "label": "d12 — 12 distractors",   "obstacles": 12, "video": "videos/collision/d12.mp4"   },
+      { "key": "d13",   "label": "d13 — 13 distractors",   "obstacles": 13, "video": "videos/collision/d13.mp4"   },
+      { "key": "d14",   "label": "d14 — 14 distractors",   "obstacles": 14, "video": "videos/collision/d14.mp4"   },
+      { "key": "d15",   "label": "d15 — 15 distractors",   "obstacles": 15, "video": "videos/collision/d15.mp4"   }
+    ]
+  },
+  "vision": {
+    "axes": [
+      { "key": "lighting", "label": "Lighting",    "video": "videos/vision_lighting.mp4", "blurb": "Per-episode color multiplier in [0.4, 1.8]; toggled directional lighting and shadow casting." },
+      { "key": "blur",     "label": "Blur",        "video": "videos/vision_blur.mp4",     "blurb": "Per-frame Gaussian blur with a fixed kernel σ = 0.5." },
+      { "key": "shake",    "label": "Pixel Shift", "video": "videos/vision_shake.mp4",    "blurb": "Per-frame integer pixel translation up to 5 px, simulating platform vibration." },
+      { "key": "combined", "label": "Combined",    "video": "videos/vision.mp4",          "blurb": "All three vision axes stacked." }
+    ]
+  },
+  "language": {
+    "axes": [
+      { "key": "colloquial_polite",        "label": "Colloquial / Polite",       "video": "videos/language/colloquial_polite.mp4",        "sample": "If you wouldn't mind, could you go ahead and close the drawer for me, please?" },
+      { "key": "commonsense_indirect",     "label": "Commonsense Indirect",      "video": "videos/language/commonsense_indirect.mp4",     "sample": "Make the desk look tidier — that compartment is sticking out." },
+      { "key": "distractor_context",       "label": "Distractor Context",        "video": "videos/language/distractor_context.mp4",       "sample": "It's almost the end of the day; before we leave, please close the drawer on the desk." },
+      { "key": "multi_object_distraction", "label": "Multi-object Distraction",  "video": "videos/language/multi_object_distraction.mp4", "sample": "Among the laptop, the stapler, and the open drawer, close the drawer." },
+      { "key": "reasoning_chain",          "label": "Reasoning Chain",           "video": "videos/language/reasoning_chain.mp4",          "sample": "We don't want anyone to bump into something sharp; close the open compartment on the desk." }
+    ]
+  },
+  "rollouts": [
+    { "video": "videos/tasks/office/close_drawer.mp4",                "policy": "π0.5", "task": "close_drawer",            "scene": "Office" },
+    { "video": "videos/tasks/office/put_mouse_on_pad.mp4",            "policy": "π0.5", "task": "put_mouse_on_pad",        "scene": "Office" },
+    { "video": "videos/tasks/study/move_pen_to_box.mp4",              "policy": "π0.5", "task": "move_pen_to_box",         "scene": "Study" },
+    { "video": "videos/tasks/kitchens/pick_apple_from_bowl_ks.mp4",   "policy": "π0.5", "task": "pick_apple_from_bowl_ks", "scene": "Kitchen-S" },
+    { "video": "videos/tasks/kitchens/put_bowl_in_sink_ks.mp4",       "policy": "π0.5", "task": "put_bowl_in_sink_ks",     "scene": "Kitchen-S" },
+    { "video": "videos/tasks/kitchenl/put_bottle_in_fridge.mp4",      "policy": "π0.5", "task": "put_bottle_in_fridge",    "scene": "Kitchen-L" }
+  ],
+  "leaderboard": {
+    "_comment": "From paper Tables 2-4. SR = success rate (↑), HSR = holistic SR with collision penalty (↑), CR = collision rate (↓), FCR = furniture collision rate (↓), OCR = object collision rate (↓).",
+    "models": [
+      {
+        "name": "π0",
+        "clutter": {
+          "clean":     { "office": "0.20/0.15", "study": "0.56/0.36", "kitchens": "0.55/0.32", "kitchenl": "0.67/0.48", "avg": "0.49/0.33" },
+          "cluttered": { "office": "0.12/0.09", "study": "0.55/0.26", "kitchens": "0.47/0.10", "kitchenl": "0.37/0.03", "avg": "0.38/0.12" },
+          "overall": "0.43/0.22"
+        },
+        "perturbation": {
+          "original": { "sr": 0.66, "hsr": 0.43, "cr": 0.34 },
+          "object":   { "sr": 0.46, "hsr": 0.25, "cr": 0.49 },
+          "visual":   { "sr": 0.50, "hsr": 0.25, "cr": 0.45 },
+          "language": { "sr": 0.50, "hsr": 0.31, "cr": 0.44 },
+          "average":  { "sr": 0.49, "hsr": 0.27, "cr": 0.46 }
+        },
+        "collision": {
+          "clean":     { "fcr": 0.15, "ocr": 0.11, "cr": 0.26 },
+          "cluttered": { "fcr": 0.19, "ocr": 0.70, "cr": 0.76 }
+        }
+      },
+      {
+        "name": "X-VLA",
+        "clutter": {
+          "clean":     { "office": "0.38/0.28", "study": "0.53/0.46", "kitchens": "0.21/0.11", "kitchenl": "0.68/0.57", "avg": "0.45/0.36" },
+          "cluttered": { "office": "0.35/0.14", "study": "0.57/0.23", "kitchens": "0.27/0.07", "kitchenl": "0.60/0.11", "avg": "0.45/0.14" },
+          "overall": "0.45/0.25"
+        },
+        "perturbation": {
+          "original": { "sr": 0.82, "hsr": 0.37, "cr": 0.56 },
+          "object":   { "sr": 0.64, "hsr": 0.27, "cr": 0.58 },
+          "visual":   { "sr": 0.68, "hsr": 0.28, "cr": 0.55 },
+          "language": { "sr": 0.66, "hsr": 0.20, "cr": 0.70 },
+          "average":  { "sr": 0.66, "hsr": 0.25, "cr": 0.61 }
+        },
+        "collision": {
+          "clean":     { "fcr": 0.08, "ocr": 0.14, "cr": 0.22 },
+          "cluttered": { "fcr": 0.06, "ocr": 0.62, "cr": 0.68 }
+        }
+      },
+      {
+        "name": "π0.5",
+        "clutter": {
+          "clean":     { "office": "0.37/0.24", "study": "0.68/0.51", "kitchens": "0.59/0.36", "kitchenl": "0.78/0.58", "avg": "0.60/0.42" },
+          "cluttered": { "office": "0.23/0.12", "study": "0.59/0.25", "kitchens": "0.48/0.07", "kitchenl": "0.67/0.08", "avg": "0.49/0.13" },
+          "overall": "0.55/0.28"
+        },
+        "perturbation": {
+          "original": { "sr": 0.83, "hsr": 0.54, "cr": 0.34 },
+          "object":   { "sr": 0.58, "hsr": 0.31, "cr": 0.56 },
+          "visual":   { "sr": 0.63, "hsr": 0.31, "cr": 0.50 },
+          "language": { "sr": 0.63, "hsr": 0.39, "cr": 0.48 },
+          "average":  { "sr": 0.61, "hsr": 0.34, "cr": 0.51 }
+        },
+        "collision": {
+          "clean":     { "fcr": 0.16, "ocr": 0.23, "cr": 0.37 },
+          "cluttered": { "fcr": 0.14, "ocr": 0.70, "cr": 0.74 }
+        }
+      }
+    ]
+  }
+}
