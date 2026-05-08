@@ -116,34 +116,46 @@ object_ood:
       101_milk-tea: [5]
       061_battery: [5]
     obstacles:
-      017_calculator: [5]
-      023_tissue-box: [5,6]
-      048_stapler: [5,6]
-      100_seal: [6]
-      120_plant: [0]
-  study:
-      targets:
-        021_cup: [5]
-        039_mug: [9]
-        058_markpen: [5]
-        095_glue: [5]
+      short:
+        031_jam-jar: [0,1,2,3,4]
+        039_mug: [0,1]
+        068_boxdrink: [0,1,2]
+        092_notebook: [0,1,2]
+        094_rest: [0,1,2,3]
+        017_calculator: [5]
+        023_tissue-box: [5,6]
         048_stapler: [5,6]
-      obstacles:
+        100_seal: [6]
+      tall:
+        029_olive-oil: [0,1,2,3]
+        038_milk-box: [0,1,2]
+        080_pillbottle: [1,2,3,4]
+        120_plant: [0]
+  study:
+    targets:
+      021_cup: [5]
+      039_mug: [9]
+      058_markpen: [5]
+      095_glue: [5]
+      048_stapler: [5,6]
+    obstacles:
+      short:
         023_tissue-box: [5,6]
         057_toycar: [5]
         080_pillbottle: [5]
         108_block: [5]
+      tall:
         001_bottle: [9,8,17,6]
-
   kitchens:
     targets:
       006_hamburg: [3]
       075_bread: [4]
     obstacles:
-      029_olive-oil: [4]
-      065_soy-sauce: [4]
-      088_wineglass: [4]
-      091_kettle: [5]
+      short:
+        029_olive-oil: [4]
+        065_soy-sauce: [4]
+        088_wineglass: [4]
+        091_kettle: [5]
   kitchenl:
     targets:
       001_bottle: [21]
@@ -151,13 +163,15 @@ object_ood:
       071_can: [5]
       105_sauce-can: [6]
     obstacles:
-      025_chips-tub: [3]
-      029_olive-oil: [4]
-      031_jam-jar: [4]
-      064_msg: [5]
-      069_vagetable: [6]
-      091_kettle: [5]
-      112_tea-box: [5]
+      short:
+        025_chips-tub: [3]
+        031_jam-jar: [4]
+        064_msg: [5]
+        069_vagetable: [6]
+        112_tea-box: [5]
+      tall:
+        029_olive-oil: [4]
+        091_kettle: [5]
 
 scales:
   001_bottle:
