@@ -3,7 +3,6 @@
 **P**erturbation-**R**esilient **O**bstacle-awareness — a bimanual manipulation benchmark for policy robustness evaluation.
 
 **Project page:** https://anonymous.4open.science/w/RoboPRO-EDE0/index.html
-**Code (anonymous):** https://anonymous.4open.science/r/RoboPRO-EDE0
 
 RoboPRO extends the RoboTwin simulation framework with:
 - **Realistic scenes** across office, study, kitchen (small & large) domains
