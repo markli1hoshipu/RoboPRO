@@ -33,13 +33,15 @@ def create_glb_actor(
     model_dir = root / "assets" / "objects_bench" / model_name
     model_dir = Path(model_dir)
 
-    # Prefer base.glb, otherwise use first .glb in directory
+    # Prefer base.glb at the root, otherwise fall back to the first GLB found
+    # anywhere under the model directory because some benchmark assets are
+    # nested one level deeper.
     glb_path = model_dir / "base.glb"
     if not glb_path.exists():
-        glb_files = list(model_dir.glob("*.glb"))
+        glb_files = list(model_dir.rglob("*.glb"))
         if not glb_files:
             raise FileNotFoundError(f"No GLB file found in {model_dir}")
-        glb_path = glb_files[0]
+        glb_path = sorted(glb_files)[0]
 
     if isinstance(scale, (int, float)):
         scale = [float(scale), float(scale), float(scale)]

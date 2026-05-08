@@ -155,7 +155,7 @@ class chain_apple_bin_bowl_rack_spoon_sink_ks(KitchenS_base_task):
         self.move(self.move_by_displacement(arm_tag=arm_tag, z=0.1))
         self.attach_object(
             self.spoon,
-            f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/134_spoon/collision/base{self.spoon_id}.glb",
+            f"{os.environ.get('BENCH_ROOT', os.environ['ROBOTWIN_ROOT'] + '/../benchmark')}/bench_assets/134_spoon/collision/base{self.spoon_id}.glb",
             str(arm_tag),
         )
         self.enable_table(enable=True)
@@ -197,9 +197,9 @@ class chain_apple_bin_bowl_rack_spoon_sink_ks(KitchenS_base_task):
         spoon_in_sink = (abs(sp[0] - sink_p[0]) < sg["hole_hx"]
                          and abs(sp[1] - sink_p[1]) < sg["hole_hy"]
                          and sp[2] < sink_p[2] + 0.01)
-        print(f"[chain_apple_bin] apple_in_bin={apple_in_bin} "
-              f"(dx={ap[0]-bin_p[0]:.3f}, dy={ap[1]-bin_p[1]:.3f}, dz_above_bin={ap[2]-bin_p[2]:.3f}) | "
-              f"bowl_on_rack={bowl_on_rack} (dx={bp[0]-rack_p[0]:.3f}, dy={bp[1]-rack_p[1]:.3f}) | "
-              f"spoon_in_sink={spoon_in_sink} (dx={sp[0]-sink_p[0]:.3f}, dy={sp[1]-sink_p[1]:.3f}, "
-              f"dz_above_rim={sp[2]-sink_p[2]:.3f}, hole_hx={sg['hole_hx']:.3f}, hole_hy={sg['hole_hy']:.3f})")
+        # print(f"[chain_apple_bin] apple_in_bin={apple_in_bin} "
+        #       f"(dx={ap[0]-bin_p[0]:.3f}, dy={ap[1]-bin_p[1]:.3f}, dz_above_bin={ap[2]-bin_p[2]:.3f}) | "
+        #       f"bowl_on_rack={bowl_on_rack} (dx={bp[0]-rack_p[0]:.3f}, dy={bp[1]-rack_p[1]:.3f}) | "
+        #       f"spoon_in_sink={spoon_in_sink} (dx={sp[0]-sink_p[0]:.3f}, dy={sp[1]-sink_p[1]:.3f}, "
+        #       f"dz_above_rim={sp[2]-sink_p[2]:.3f}, hole_hx={sg['hole_hx']:.3f}, hole_hy={sg['hole_hy']:.3f})")
         return apple_in_bin and bowl_on_rack and spoon_in_sink
