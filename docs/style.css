@@ -68,7 +68,7 @@ h1.title {
 h1.title .accent { color: var(--accent); }
 h1.title .title-logo {
   display: block;
-  max-height: clamp(80px, 11vw, 160px);
+  max-height: clamp(48px, 5vw, 80px);
   width: auto;
   max-width: 100%;
   height: auto;
@@ -129,7 +129,8 @@ h1.title .title-logo {
   height: auto;
 }
 .logo-block .teaser-img {
-  max-width: min(1400px, 100%);
+  width: 100%;
+  max-width: 100%;
   border-radius: 6px;
   box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 18px 38px -22px rgba(0,0,0,0.18);
 }
