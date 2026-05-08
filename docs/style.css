@@ -68,7 +68,7 @@ h1.title {
 h1.title .accent { color: var(--accent); }
 h1.title .title-logo {
   display: block;
-  max-height: clamp(48px, 5vw, 80px);
+  max-height: clamp(144px, 15vw, 240px);
   width: auto;
   max-width: 100%;
   height: auto;
