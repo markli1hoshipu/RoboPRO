@@ -16,13 +16,12 @@ git clone https://anonymous.4open.science/r/RoboPRO-EDE0
 cd RoboPRO
 ```
 
-Follow the RoboTwin install guide: https://robotwin-platform.github.io/doc/usage/robotwin-install.html
+Follow the RoboTwin install guide: https://robotwin-platform.github.io/doc/usage/robotwin-install.html for the simulator and policy dependencies.
 
-Then:
+All assets live under `benchmark/assets/` (objects, embodiments, background_texture, backgrounds, files). Two one-time setup notes:
 
-1. Copy `benchmark/bench_assets/*` into `customized_robotwin/assets/objects_bench/`.
-2. Overlay `benchmark/bench_assets/embodiments/aloha-agilex/*.yml` onto `customized_robotwin/assets/embodiments/aloha-agilex/` and update paths in `curobo_left.yml` / `curobo_right.yml`.
-3. Fetch the large `box2_Link.dae` mesh (not tracked here — see `docs/install.html`, Step 4).
+1. Edit absolute paths inside `benchmark/assets/embodiments/aloha-agilex/curobo_left.yml` and `curobo_right.yml` (`urdf_path`, `collision_spheres`) so they match the absolute path of your local `benchmark/assets/embodiments/aloha-agilex/` checkout.
+2. Fetch the large `box2_Link.dae` mesh (not tracked here — see `docs/install.html`, Step 4).
 
 ### CuRobo cache patch
 

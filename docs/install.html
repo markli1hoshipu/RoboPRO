@@ -69,13 +69,9 @@ cd RoboPRO</code></pre>
 <section class="install-section">
   <div class="container">
     <p class="step-num">Step 3 · Assets</p>
-    <h2>Assets overlay.</h2>
-<pre><code>cp -r benchmark/bench_assets/* \
-   customized_robotwin/assets/objects_bench/
-
-cp benchmark/bench_assets/embodiments/aloha-agilex/*.yml \
-   customized_robotwin/assets/embodiments/aloha-agilex/</code></pre>
-    <p>Edit <code>curobo_left.yml</code> and <code>curobo_right.yml</code> under <code>customized_robotwin/assets/embodiments/aloha-agilex/</code> to point at your local URDF paths.</p>
+    <h2>Assets are pre-bundled.</h2>
+    <p>All assets live under <code>benchmark/assets/</code> (objects, embodiments, background_texture, backgrounds, files). No copy/overlay step required.</p>
+    <p>Edit <code>curobo_left.yml</code> and <code>curobo_right.yml</code> under <code>benchmark/assets/embodiments/aloha-agilex/</code> to point at the absolute path of your local <code>benchmark/assets/embodiments/aloha-agilex/</code> checkout (the URDF and collision-spheres references are hardcoded absolute paths).</p>
   </div>
 </section>
 
@@ -86,7 +82,7 @@ cp benchmark/bench_assets/embodiments/aloha-agilex/*.yml \
     <p>
       The file <code>aloha-agilex/urdf/aloha_maniskill_sim/meshes/box2_Link.dae</code> (~206&nbsp;MB) is not tracked here. Fetch it from the upstream Aloha-Agilex release and place it at:
     </p>
-<pre><code>customized_robotwin/assets/embodiments/aloha-agilex/
+<pre><code>benchmark/assets/embodiments/aloha-agilex/
   urdf/aloha_maniskill_sim/meshes/box2_Link.dae</code></pre>
   </div>
 </section>

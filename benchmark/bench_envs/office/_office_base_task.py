@@ -266,7 +266,7 @@ class Office_base_task(Bench_base_task):
 
         if self.random_background:
             texture_type = "seen" if not self.eval_mode else "unseen"
-            directory_path = f"./assets/background_texture/{texture_type}"
+            directory_path = f"{os.environ['BENCH_ROOT']}/assets/background_texture/{texture_type}"
             file_count = len(
                 [name for name in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, name))])
 
@@ -368,7 +368,7 @@ class Office_base_task(Bench_base_task):
         )
         self.collision_list.append({
             "actor": self.shelf,
-            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/121_wall-shelf/cc0_wall_shelf_4.glb",
+            "collision_path": f"{os.environ['BENCH_ROOT']}/assets/objects/121_wall-shelf/cc0_wall_shelf_4.glb",
         })
         xmin = pose[0] - self.office_info["shelf_area"][0]/2
         xmax = pose[0] + self.office_info["shelf_area"][0]/2
@@ -392,19 +392,19 @@ class Office_base_task(Bench_base_task):
         self.cabinet.set_mass(0.5)
         self.collision_list.append({
             "actor": self.cabinet,
-            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
+            "collision_path": f"{os.environ['BENCH_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
             "link": "link_0",
             "files": ["original-4.obj","original-7.obj"], # these are only the side panels of the cabinet. Drawer is added separately when needed
         })
         self.collision_list.append({
             "actor": self.cabinet,
-            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
+            "collision_path": f"{os.environ['BENCH_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
             "link": "link_3",
             "files": ["original-57.obj","original-62.obj"], # these are the top panel and handle. needed for collision checking
         })
         self.collision_list.append({
             "actor": self.cabinet,
-            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
+            "collision_path": f"{os.environ['BENCH_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
             "link": "link_2",
             "files": ["original-34.obj", "original-41.obj"], # middle panel
         })
@@ -445,7 +445,7 @@ class Office_base_task(Bench_base_task):
         self.prohibited_area["table"].append([xmin-0.01, ymin, xmax+0.01, ymax])
         self.collision_list.append({
             "actor": self.file_holder,
-            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects_bench/122_file-holder/base.glb",
+            "collision_path": f"{os.environ['BENCH_ROOT']}/assets/objects/122_file-holder/base.glb",
         })
     def load_basic_office_items(self):
         # load office items: items that are always placed as obstacles ie key obstacles
@@ -501,7 +501,7 @@ class Office_base_task(Bench_base_task):
         #         self.add_prohibit_area(self.laptop, padding=0.01)
         #         self.collision_list.append({
         #             "actor": self.laptop,
-        #             "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/015_laptop/9912/textured_objs/",
+        #             "collision_path": f"{os.environ['BENCH_ROOT']}/assets/objects/015_laptop/9912/textured_objs/",
         #             "link": ["link_0", "link_1"],
         #             "files": ["original-5.obj"],
         #         })
@@ -542,7 +542,7 @@ class Office_base_task(Bench_base_task):
                 self.prohibited_area["table"].append([pose[0]-0.03, pose[1]-0.03, pose[0]+0.03, pose[1]+0.03]) # manual because plant extents are incorrect
                 self.collision_list.append({
                     "actor": self.plant,
-                    "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/120_plant/collision/base{plant_id}.glb",
+                    "collision_path": f"{os.environ['BENCH_ROOT']}/assets/objects/120_plant/collision/base{plant_id}.glb",
                     "is_obstacle": True,
                 })
     
@@ -580,17 +580,17 @@ class Office_base_task(Bench_base_task):
         self.clutter_surface(xlim, ylim, [self.office_info["shelf_heights"][1]], self.prohibited_area["shelf1"], 5, cluttered_item_info, obj_names_short)
     
     def add_extra_cameras(self):
-        self.cameras.add_extra_cameras(f"{os.environ['BENCH_ROOT']}/bench_assets/embodiments/office_config.yml")
+        self.cameras.add_extra_cameras(f"{os.environ['BENCH_ROOT']}/assets/embodiments/office_config.yml")
     
     def enable_drawer(self, enable: bool):
         files = ["original-23.obj", "original-24.obj", "original-18.obj", "original-34.obj", "original-41.obj", "original-57.obj", "original-62.obj"]
-        names = [f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/{file}_{self.seed}" for file in files]
+        names = [f"{os.environ['BENCH_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/{file}_{self.seed}" for file in files]
         self.enable_obstacle(enable, names)
     
     def disable_panel(self):
         # disable middle panel so that closing and opening dont throw a curobo error
         files = ["original-34.obj", "original-41.obj"]
-        names = [f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/{file}_{self.seed}" for file in files]
+        names = [f"{os.environ['BENCH_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/{file}_{self.seed}" for file in files]
         self.enable_obstacle(False, names)
     
     def enable_table(self, enable: bool):
@@ -603,7 +603,7 @@ class Office_base_task(Bench_base_task):
         self.cabinet.set_qpos([limit[1],0,0]) # open drawer for extracting open pose
         self.collision_list.append({
             "actor": self.cabinet,
-            "collision_path": f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
+            "collision_path": f"{os.environ['BENCH_ROOT']}/assets/objects/036_cabinet/46653/textured_objs/",
             "pose": self.cabinet.get_link_pose("link_1"),
             "files": ["original-23.obj", "original-24.obj", "original-18.obj"],
         })
