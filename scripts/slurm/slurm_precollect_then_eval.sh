@@ -6,8 +6,8 @@
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=8
 # NOTE: set --chdir and --output to your local checkout, e.g.
-#   #SBATCH --chdir=/path/to/robotwin_bench/customized_robotwin
-#   #SBATCH --output=/path/to/robotwin_bench/logs/%x_%j.out
+#   #SBATCH --chdir=/path/to/RoboPRO/customized_robotwin
+#   #SBATCH --output=/path/to/RoboPRO/logs/%x_%j.out
 
 # Args: <task_name> <task_config> <train_config> <model_name> <ckpt_id> <seed> <test_num>
 TASK_NAME="${1:?}"

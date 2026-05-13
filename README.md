@@ -22,7 +22,7 @@ Then:
 
 1. Copy `benchmark/bench_assets/*` into `customized_robotwin/assets/objects_bench/`.
 2. Overlay `benchmark/bench_assets/embodiments/aloha-agilex/*.yml` onto `customized_robotwin/assets/embodiments/aloha-agilex/` and update paths in `curobo_left.yml` / `curobo_right.yml`.
-3. Fetch the large `box2_Link.dae` mesh (not tracked here — see `docs/install.md`).
+3. Fetch the large `box2_Link.dae` mesh (not tracked here — see `docs/install.html`, Step 4).
 
 ### CuRobo cache patch
 
@@ -72,7 +72,7 @@ Drop-in YAMLs under `benchmark/bench_task_config/`:
 | `bench_demo_vision_shake.yml` | Pixel shake only |
 | `bench_demo_object.yml` | Target texture swap + unseen obstacles + background_plus |
 
-See `docs/perturbations.md` for parameter-level details, and `presentation_material/perturbation videos/` for sample outputs.
+See the YAMLs in `benchmark/bench_task_config/` for parameter-level details, and `docs/videos/` (`vision*.mp4`, `language.mp4`, `object.mp4`) for sample outputs.
 
 ## Scenes and tasks
 

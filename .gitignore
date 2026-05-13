@@ -1,8 +1,71 @@
+# Python
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+.python-version
+
+# Secrets / credentials
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+
+# IDE / editors
+.vscode/
+.idea/
+*.swp
+*.swo
+.cursor/
+.claude/
+.codex
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs / runs
+logs/
+*.log
+wandb/
+runs/
+outputs/
+
+# ML artifacts
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+*.h5
+*.hdf5
+*.npz
+
+# Jupyter
+.ipynb_checkpoints/
+
+# RoboPRO-specific
 benchmark/assets/objects_bench
-benchmark_data/
+benchmark_data/*
+!benchmark_data/.gitkeep
 benchmark/collision_test/
 benchmark/bench_script/collision_test/
 presentation_material/
-.claude/
-.codex
