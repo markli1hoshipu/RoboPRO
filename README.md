@@ -18,7 +18,13 @@ cd RoboPRO
 
 Follow the RoboTwin install guide: https://robotwin-platform.github.io/doc/usage/robotwin-install.html for the simulator and policy dependencies.
 
-All assets live under `benchmark/assets/` (objects, embodiments, background_texture, backgrounds, files). Two one-time setup notes:
+Then fetch the asset bundle (~15 GB, not tracked in git) from HuggingFace:
+
+```bash
+python scripts/install/download_assets.py
+```
+
+This populates `benchmark/assets/` (objects, embodiments, background_texture, backgrounds, files). Two one-time setup notes after the download:
 
 1. Edit absolute paths inside `benchmark/assets/embodiments/aloha-agilex/curobo_left.yml` and `curobo_right.yml` (`urdf_path`, `collision_spheres`) so they match the absolute path of your local `benchmark/assets/embodiments/aloha-agilex/` checkout.
 2. Fetch the large `box2_Link.dae` mesh (not tracked here — see `docs/install.html`, Step 4).

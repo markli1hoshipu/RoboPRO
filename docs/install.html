@@ -69,8 +69,9 @@ cd RoboPRO</code></pre>
 <section class="install-section">
   <div class="container">
     <p class="step-num">Step 3 · Assets</p>
-    <h2>Assets are pre-bundled.</h2>
-    <p>All assets live under <code>benchmark/assets/</code> (objects, embodiments, background_texture, backgrounds, files). No copy/overlay step required.</p>
+    <h2>Fetch the asset bundle.</h2>
+    <p>Assets (~15 GB: objects, embodiments, background textures, scene-camera configs) live under <code>benchmark/assets/</code> and are not tracked in git. Fetch from the HuggingFace dataset <a href="https://huggingface.co/datasets/Hoshipu/RoboPRO_assets">Hoshipu/RoboPRO_assets</a>:</p>
+<pre><code>python scripts/install/download_assets.py</code></pre>
     <p>Edit <code>curobo_left.yml</code> and <code>curobo_right.yml</code> under <code>benchmark/assets/embodiments/aloha-agilex/</code> to point at the absolute path of your local <code>benchmark/assets/embodiments/aloha-agilex/</code> checkout (the URDF and collision-spheres references are hardcoded absolute paths).</p>
   </div>
 </section>
