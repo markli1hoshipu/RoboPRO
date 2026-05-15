@@ -49,19 +49,98 @@ def clear_cache(self):
 
 ## Usage
 
+All commands run from `customized_robotwin/` with the bench env exported:
+
 ```bash
 cd customized_robotwin
-source set_env.sh
-export ROBOTWIN_BENCH_TASK="bench"
+source set_env.sh                  # exports BENCH_ROOT + ROBOTWIN_ROOT
+export ROBOTWIN_BENCH_TASK=bench   # routes loaders to BENCH_ROOT/{bench_task_config, bench_envs}
 ```
 
-Collect data for a task/config pair:
+### Collect demonstrations
 
 ```bash
 bash collect_data.sh <task_name> <task_config> <gpu_id>
 # Example:
 bash collect_data.sh put_mouse_on_pad bench_demo_office_clean 0
 ```
+
+Episodes land in `customized_robotwin/data/<task_name>/<task_config>/`.
+
+### Run inference (policy eval)
+
+Eval rolls a trained checkpoint out against a `(task, config)` pair and writes a per-rollout success log. Two modes depending on whether your policy fits in the same Python env as the simulator.
+
+**Args (shared by both modes):**
+
+| Arg | Meaning |
+|---|---|
+| `task_name` | Bench env class, e.g. `put_mouse_on_pad` (file at `benchmark/bench_envs/<scene>/<task>.py`) |
+| `task_config` | Perturbation YAML name, e.g. `bench_demo_office_clean` (in `benchmark/bench_task_config/`) |
+| `train_config_name` | Training config used to fine-tune the checkpoint |
+| `model_name` | Subdir name under `checkpoints/<train_config_name>/` |
+| `checkpoint_id` | Step number, e.g. `30000` |
+| `seed` | RNG seed for episode initialisation |
+| `gpu_id` | CUDA device, or `<server_gpu>:<client_gpu>` for dual-env |
+
+**Mode A — single-process** (policy + sim share one Python env, e.g. when openpi is conda-installable alongside SAPIEN):
+
+```bash
+bash policy/pi05/eval.sh <task_name> <task_config> <train_config_name> <model_name> <seed> <gpu_id>
+# Example:
+bash policy/pi05/eval.sh put_mouse_on_pad bench_demo_office_clean my_office_train pi05_ckpt 0 0
+```
+
+**Mode B — dual-env / dual-process** (recommended for pi05 since openpi+jax need an isolated uv venv at `policy/pi05/.venv/`):
+
+```bash
+bash policy/pi05/eval_double_env.sh <task_name> <task_config> <train_config_name> <model_name> <checkpoint_id> <seed> <gpu_spec>
+# Example (single GPU):
+bash policy/pi05/eval_double_env.sh put_mouse_on_pad bench_demo_office_clean my_office_train pi05_ckpt 30000 0 0
+# Example (split: server on GPU 0, sim client on GPU 1):
+bash policy/pi05/eval_double_env.sh put_mouse_on_pad bench_demo_office_clean my_office_train pi05_ckpt 30000 0 0:1
+```
+
+The script spawns a `policy_model_server.py` in the pi05 venv and an `eval_policy_client.py` in the RoboTwin conda env, communicating over a free socket port.
+
+**Direct Python invocation** (bypassing the shell wrappers):
+
+```bash
+python script/eval_policy.py \
+    --config policy/pi05/deploy_policy.yml \
+    --overrides \
+    --task_name put_mouse_on_pad \
+    --task_config bench_demo_office_clean \
+    --train_config_name my_office_train \
+    --model_name pi05_ckpt \
+    --checkpoint_id 30000 \
+    --ckpt_setting "my_office_train_pi05_ckpt_30000" \
+    --policy_name pi05 \
+    --seed 0 \
+    --instruction_type seen \
+    --test_num 10
+```
+
+**Where results land:**
+
+```
+customized_robotwin/eval_result/bench_eval_result/<task_name>/<policy_name>/<task_config>/<ckpt_setting>/<timestamp>/
+    _result.txt        # success count, per-seed pass/fail
+    *.mp4              # rollout videos (if eval_video_save is enabled)
+```
+
+### Batch eval on SLURM
+
+For sweeping many `(task, config)` pairs across nodes:
+
+```bash
+sbatch scripts/slurm/slurm_eval_bench.sh \
+    <task_name> <task_config> <train_config_name> <model_name> <checkpoint_id> <seed> <test_num>
+```
+
+Set `--chdir` and `--output` in the sbatch header to your local checkout (see comments at the top of `scripts/slurm/slurm_eval_bench.sh`). Pin a specific Python with `export PI05_PYTHON=/path/to/miniconda3/envs/pi05/bin/python`.
+
+For arrayed sweeps over a `(tasks × configs)` grid, see `customized_robotwin/robotwin_*.sbatch` for templates.
 
 ## Perturbation configs
 
