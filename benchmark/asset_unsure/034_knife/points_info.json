@@ -1,0 +1,16 @@
+{
+    "contact_points": [
+        {
+            "id": 0,
+            "description": "On the handle of the knife",
+            "usage": "Used for grasping the knife."
+        }
+    ],
+    "functional_points": [
+        {
+            "id": 0,
+            "description": "At the blade of the knife",
+            "usage": "Used to indicate where the knife will make contact with other objects."
+        }
+    ]
+}
