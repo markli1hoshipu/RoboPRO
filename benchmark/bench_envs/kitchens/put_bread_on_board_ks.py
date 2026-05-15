@@ -87,7 +87,7 @@ class put_bread_on_board_ks(KitchenS_base_task):
 
         self.attach_object(
             self.target_obj,
-            f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/075_bread/collision/base{self.bread_id}.glb",
+            f"{os.environ['BENCH_ROOT']}/assets/objects/075_bread/collision/base{self.bread_id}.glb",
             str(arm_tag),
         )
         self.enable_table(enable=True)

@@ -16,12 +16,12 @@ def create_glb_actor(
 ) -> Simple_Actor:
     """
     Create a SAPIEN actor from a single GLB file and wrap it in Simple_Actor.
-    Loads the GLB from assets/objects_bench/{model_name}.
+    Loads the GLB from assets/objects/{model_name}.
 
     Args:
         scene: SAPIEN scene
         pose: Initial pose of the actor
-        model_name: Model name; GLB is loaded from assets/objects_bench/{model_name}/
+        model_name: Model name; GLB is loaded from assets/objects/{model_name}/
         scale: Scale (tuple or list [x, y, z]). Default (1, 1, 1).
         convex: If True, use convex decomposition for collision; else nonconvex.
         is_static: If True, create static actor; else dynamic.
@@ -29,8 +29,8 @@ def create_glb_actor(
     Returns:
         Simple_Actor wrapping the built SAPIEN actor.
     """
-    root = Path(os.environ.get("ROBOTWIN_ROOT", "."))
-    model_dir = root / "assets" / "objects_bench" / model_name
+    root = Path(os.environ.get("BENCH_ROOT", "."))
+    model_dir = root / "assets" / "objects" / model_name
     model_dir = Path(model_dir)
 
     # Prefer base.glb at the root, otherwise fall back to the first GLB found

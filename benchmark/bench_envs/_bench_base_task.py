@@ -255,7 +255,7 @@ class Bench_base_task(Base_Task):
 
     def _apply_furniture_texture_ood(self):
         """Swap base-color textures of large scene furniture (shelf/cabinet/
-        fridge/bookcase/...) with random PNGs from bench_assets/backgrounds/
+        fridge/bookcase/...) with random PNGs from assets/backgrounds/
         <type>/. Each scene declares the targets via self._furniture_texture_targets
         as a list of (attr_name, object_type) pairs.
         """
@@ -521,9 +521,9 @@ class Bench_base_task(Base_Task):
 
             # add to collision list
             if cluttered_item_info[obj_name]["type"] == "urdf":
-                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
+                path = f"{os.environ['BENCH_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
             else:
-                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
+                path = f"{os.environ['BENCH_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
             self.collision_list.append({
                 "actor": self.cluttered_obj,
                 "collision_path": path,
@@ -646,9 +646,9 @@ class Bench_base_task(Base_Task):
 
             # add to collision list
             if cluttered_item_info[obj_name]["type"] == "urdf":
-                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
+                path = f"{os.environ['BENCH_ROOT']}/assets/objects/objaverse/{obj_name}/{obj_idx}/coacd_collision.obj"
             else:
-                path = f"{os.environ['ROBOTWIN_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
+                path = f"{os.environ['BENCH_ROOT']}/assets/objects/{obj_name}/collision/base{obj_idx}.glb"
             self.collision_list.append({
                 "actor": self.cluttered_obj,
                 "collision_path": path,
